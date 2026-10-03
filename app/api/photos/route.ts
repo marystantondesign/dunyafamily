@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+import { badRequest, getSession, unauthorized } from "@/lib/auth";
+import { q } from "@/lib/db";
+import { resolveOccasions, resolvePeople } from "@/lib/tags";
+
+type Body = {
+  photos: { originalKey: string; thumbKey: string; width: number; height: number; takenOn?: string | null }[];
+  tags: { people: (number | string)[]; occasions: (number | string)[]; year?: number | null; decade?: number | null; caption?: string };
+};
+
+const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
+
+export async function POST(req: Request) {
+  const s = await getSession();
+  if (!s) return unauthorized();
+  const { photos, tags } = (await req.json()) as Body;
+  if (!photos?.length) return badRequest("No photos to save.");
+  if (photos.some((p) => !KEY.test(p.originalKey) || !KEY.test(p.thumbKey))) return badRequest("Unexpected file keys.");
+
+  const peopleIds = await resolvePeople(tags.people ?? [], s);
+  const occasionIds = await resolveOccasions(tags.occasions ?? [], s);
+  const caption = tags.caption?.trim().slice(0, 500) || null;
+
+  const ids: number[] = [];
+  for (const p of photos) {
+    // A date saved by the camera beats the batch's shared year.
+    const taken = p.takenOn && /^\d{4}-\d{2}-\d{2}$/.test(p.takenOn) ? p.takenOn : null;
+    const year = taken ? Number(taken.slice(0, 4)) : tags.year ?? null;
+    const month = taken ? Number(taken.slice(5, 7)) : null;
+    const decade = year ? Math.floor(year / 10) * 10 : tags.decade ?? null;
+    const [row] = await q<{ id: number }>(
+      `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, caption, s.did, s.name],
+    );
+    ids.push(row.id);
+  }
+
+  if (peopleIds.length)
+    await q(
+      `insert into photo_people (photo_id, person_id, added_by_device)
+       select ph, pe, $3 from unnest($1::int[]) ph cross join unnest($2::int[]) pe on conflict do nothing`,
+      [ids, peopleIds, s.did],
+    );
+  if (occasionIds.length)
+    await q(
+      `insert into photo_occasions (photo_id, occasion_id, added_by_device)
+       select ph, oc, $3 from unnest($1::int[]) ph cross join unnest($2::int[]) oc on conflict do nothing`,
+      [ids, occasionIds, s.did],
+    );
+
+  return NextResponse.json({ ids });
+}
