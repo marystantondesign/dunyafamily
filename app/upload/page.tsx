@@ -1,15 +1,15 @@
 import { Uploader } from "@/components/Uploader";
-import { listOccasions, listPeople } from "@/lib/data";
+import { listOccasions } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function UploadPage() {
-  const [people, occasions] = await Promise.all([listPeople(), listOccasions()]);
+  const occasions = await listOccasions();
   return (
     <>
       <h1 className="display" style={{ marginTop: 32 }}>Add photos</h1>
-      <p className="muted">Add a batch, then tag everything in it at once. You can fine-tune single photos later.</p>
-      <Uploader people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))} occasions={occasions} />
+      <p className="muted">Add a batch and fill in what&apos;s true for all of them. You&apos;ll tag who&apos;s in each photo next.</p>
+      <Uploader occasions={occasions} />
     </>
   );
 }

@@ -1,13 +1,16 @@
 import { q } from "./db";
 import type { Session } from "./session";
 
+/** "aunt rose" becomes "Aunt Rose". Leaves the rest of each word alone, so "McKay" stays "McKay". */
+export const capitalizeName = (name: string) => name.replace(/(^|[\s-])(\p{Ll})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+
 /** Accepts existing ids (numbers) or new names (strings). Returns ids, creating people as needed. */
 export async function resolvePeople(items: (number | string)[], s: Session) {
   const ids: number[] = [];
   for (const item of items) {
     if (typeof item === "number") ids.push(item);
     else if (item.trim()) {
-      const name = item.trim().slice(0, 80);
+      const name = capitalizeName(item.trim().replace(/\s+/g, " ").slice(0, 80));
       const [existing] = await q<{ id: number }>(
         `select id from people where deleted_at is null and (lower(name) = lower($1) or lower($1) = any(select lower(a) from unnest(aliases) a))`,
         [name],

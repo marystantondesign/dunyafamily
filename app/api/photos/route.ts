@@ -6,6 +6,8 @@ import { resolveOccasions, resolvePeople } from "@/lib/tags";
 type Body = {
   photos: { originalKey: string; thumbKey: string; width: number; height: number; takenOn?: string | null }[];
   tags: { people: (number | string)[]; occasions: (number | string)[]; year?: number | null; decade?: number | null; caption?: string };
+  /** Scans and phone photos of old prints: the camera date is when the print was copied, not when the photo was taken. */
+  scans?: boolean;
 };
 
 const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
@@ -13,7 +15,7 @@ const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return unauthorized();
-  const { photos, tags } = (await req.json()) as Body;
+  const { photos, tags, scans } = (await req.json()) as Body;
   if (!photos?.length) return badRequest("No photos to save.");
   if (photos.some((p) => !KEY.test(p.originalKey) || !KEY.test(p.thumbKey))) return badRequest("Unexpected file keys.");
 
@@ -21,17 +23,18 @@ export async function POST(req: Request) {
   const occasionIds = await resolveOccasions(tags.occasions ?? [], s);
   const caption = tags.caption?.trim().slice(0, 500) || null;
 
+  const batch = crypto.randomUUID();
   const ids: number[] = [];
   for (const p of photos) {
-    // A date saved by the camera beats the batch's shared year.
-    const taken = p.takenOn && /^\d{4}-\d{2}-\d{2}$/.test(p.takenOn) ? p.takenOn : null;
+    // A date saved by the camera beats the batch's shared year, unless these are scans of old prints.
+    const taken = !scans && p.takenOn && /^\d{4}-\d{2}-\d{2}$/.test(p.takenOn) ? p.takenOn : null;
     const year = taken ? Number(taken.slice(0, 4)) : tags.year ?? null;
     const month = taken ? Number(taken.slice(5, 7)) : null;
     const decade = year ? Math.floor(year / 10) * 10 : tags.decade ?? null;
     const [row] = await q<{ id: number }>(
-      `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
-      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, caption, s.did, s.name],
+      `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name, upload_batch)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
+      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, caption, s.did, s.name, batch],
     );
     ids.push(row.id);
   }
@@ -49,5 +52,5 @@ export async function POST(req: Request) {
       [ids, occasionIds, s.did],
     );
 
-  return NextResponse.json({ ids });
+  return NextResponse.json({ ids, batch });
 }

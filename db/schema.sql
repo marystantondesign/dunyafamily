@@ -39,6 +39,9 @@ create index if not exists photos_year on photos (year);
 create index if not exists photos_month on photos (month);
 create index if not exists photos_decade on photos (decade);
 create index if not exists photos_created on photos (created_at desc);
+-- Groups the photos from one upload so the batch can be found again (tagging mode).
+alter table photos add column if not exists upload_batch uuid;
+create index if not exists photos_upload_batch on photos (upload_batch);
 
 create table if not exists photo_people (
   photo_id int not null references photos(id),

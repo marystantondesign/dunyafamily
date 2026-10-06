@@ -1,7 +1,7 @@
 "use client";
 import exifr from "exifr";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type Item = {
@@ -9,6 +9,8 @@ type Item = {
   takenOn?: string | null; state: "ready" | "uploading" | "done" | "error"; message?: string;
 };
 const THUMB_MAX = 800;
+const SHOWN = 15;
+const SCANS_KEY = "df_scans";
 
 async function prepare(file: File): Promise<Item> {
   const key = `${file.name}-${file.size}-${file.lastModified}`;
@@ -38,18 +40,32 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
-export function Uploader({ people, occasions }: { people: Option[]; occasions: Option[] }) {
+export function Uploader({ occasions }: { occasions: Option[] }) {
   const [items, setItems] = useState<Item[]>([]);
-  const [ppl, setPpl] = useState<Picked[]>([]);
   const [occ, setOcc] = useState<Picked[]>([]);
   const [year, setYear] = useState("");
   const [decade, setDecade] = useState("");
   const [caption, setCaption] = useState("");
+  // Most of the archive is phone pictures of old prints, so this starts checked until someone says otherwise.
+  const [scans, setScans] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(0);
+  const [done, setDone] = useState<{ count: number; batch: string; cover?: string } | null>(null);
   const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SCANS_KEY);
+      if (saved !== null) setScans(saved === "1");
+    } catch { /* private browsing */ }
+  }, []);
+
+  function chooseScans(on: boolean) {
+    setScans(on);
+    try { localStorage.setItem(SCANS_KEY, on ? "1" : "0"); } catch { /* private browsing */ }
+  }
 
   const update = (key: string, patch: Partial<Item>) => setItems((prev) => prev.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
@@ -95,13 +111,17 @@ export function Uploader({ people, occasions }: { people: Option[]; occasions: O
       const res = await fetch("/api/photos", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          photos: uploaded.map(({ item, s }) => ({ originalKey: s.originalKey, thumbKey: s.thumbKey, width: item.width, height: item.height, takenOn: item.takenOn })),
-          tags: { people: ppl, occasions: occ, year: y, decade: !y && decade ? Number(decade) : null, caption },
+          photos: uploaded.map(({ item, s }) => ({ originalKey: s.originalKey, thumbKey: s.thumbKey, width: item.width, height: item.height, takenOn: scans ? null : item.takenOn })),
+          tags: { people: [], occasions: occ, year: y, decade: !y && decade ? Number(decade) : null, caption },
+          scans,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      setDone(uploaded.length);
-      setItems([]); setPpl([]); setOcc([]); setYear(""); setDecade(""); setCaption("");
+      const { batch } = (await res.json()) as { batch: string };
+      setDone({ count: uploaded.length, batch, cover: uploaded[0].item.preview });
+      // Keep any that failed so they can be tried again.
+      setItems((prev) => prev.filter((i) => failed.has(i.key)).map((i) => ({ ...i, state: "ready", message: undefined })));
+      setOcc([]); setYear(""); setDecade(""); setCaption(""); setShowAll(false);
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : "Something went wrong. Your photos weren't saved. Try again.");
     } finally {
@@ -111,10 +131,14 @@ export function Uploader({ people, occasions }: { people: Option[]; occasions: O
 
   if (done) {
     return (
-      <div className="card" style={{ marginTop: 24 }}>
-        <h2 className="section-title">{done} {done === 1 ? "photo" : "photos"} added</h2>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button className="btn btn-primary" onClick={() => setDone(0)}>Add more</button>
+      <div className="card done-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {done.cover && <img src={done.cover} alt="" className="done-cover" />}
+        <h2 className="section-title">{done.count} {done.count === 1 ? "photo" : "photos"} added</h2>
+        <p className="muted">Next, tag who&apos;s in each one. It takes a click or two per photo, and you can stop any time.</p>
+        <div className="actions">
+          <Link className="btn btn-primary" href={`/tag?batch=${done.batch}`}>Tag who&apos;s in them</Link>
+          <button className="btn" onClick={() => setDone(null)}>Add more photos</button>
           <Link className="btn" href="/">Go home</Link>
         </div>
       </div>
@@ -122,6 +146,8 @@ export function Uploader({ people, occasions }: { people: Option[]; occasions: O
   }
 
   const withDates = items.filter((i) => i.takenOn).length;
+  const readyCount = items.filter((i) => i.state === "ready").length;
+  const shown = showAll ? items : items.slice(0, SHOWN);
 
   return (
     <div className="upload-layout">
@@ -143,10 +169,10 @@ export function Uploader({ people, occasions }: { people: Option[]; occasions: O
         {items.length > 0 && (
           <>
             <p className="small muted" style={{ margin: "12px 0 0" }}>
-              {items.length} selected{withDates > 0 && `, ${withDates} with a date from the camera`}
+              {items.length} selected{!scans && withDates > 0 && `, ${withDates} with a date from the camera`}
             </p>
             <div className="thumbs">
-              {items.map((i) => (
+              {shown.map((i) => (
                 <figure key={i.key} title={i.message ?? i.file.name}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {i.preview && <img src={i.preview} alt="" />}
@@ -157,35 +183,47 @@ export function Uploader({ people, occasions }: { people: Option[]; occasions: O
                 </figure>
               ))}
             </div>
+            {items.length > SHOWN && !showAll && (
+              <button className="link-button small muted" onClick={() => setShowAll(true)}>and {items.length - SHOWN} more</button>
+            )}
           </>
         )}
       </div>
 
       <div className="card form-grid">
-        <p className="label" style={{ margin: 0 }}>Tag the whole batch</p>
-        <TagPicker label="Who's in these" options={people} value={ppl} onChange={setPpl} placeholder="Start typing a name" hint="Add anyone who's in most of them. You can adjust single photos later." />
-        <TagPicker label="Occasion" options={occasions} value={occ} onChange={setOcc} placeholder="Christmas, Birthday, Summer" />
+        <div>
+          <p className="label" style={{ margin: 0 }}>What&apos;s true for all of these</p>
+          <p className="hint" style={{ margin: "4px 0 0" }}>Leave anything blank that varies. You can fill it in per photo later.</p>
+        </div>
+        <label className="check-card">
+          <input type="checkbox" checked={scans} onChange={(e) => chooseScans(e.target.checked)} />
+          <span>
+            <strong>These are scans or photos of old prints</strong>
+            <span className="hint">We&apos;ll ignore the date your phone or scanner saved, since it&apos;s not when the photo was taken.</span>
+          </span>
+        </label>
         <div className="row-2">
           <div className="field">
             <label htmlFor="year">Year</label>
-            <input id="year" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} placeholder="2002" />
+            <input id="year" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} placeholder="1958" />
           </div>
           <div className="field">
             <label htmlFor="decade">Or decade</label>
             <select id="decade" value={decade} onChange={(e) => setDecade(e.target.value)} disabled={!!year.trim()}>
               <option value="">Not sure</option>
-              {Array.from({ length: 11 }, (_, i) => 1930 + i * 10).map((d) => <option key={d} value={d}>{d}s</option>)}
+              {Array.from({ length: 10 }, (_, i) => 1930 + i * 10).map((d) => <option key={d} value={d}>{d}s</option>)}
             </select>
           </div>
         </div>
-        <span className="hint">Photos with a date from the camera keep their own date.</span>
+        {!scans && <span className="hint">Photos with a date from the camera keep their own date.</span>}
+        <TagPicker label="Occasion" options={occasions} value={occ} onChange={setOcc} placeholder="Christmas, Birthday, Summer" />
         <div className="field">
           <label htmlFor="caption">A note for these (optional)</label>
-          <textarea id="caption" rows={2} value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Lena's graduation party at the lake house" />
+          <textarea id="caption" rows={2} value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Mama's senior year" />
         </div>
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn btn-primary" onClick={save} disabled={busy}>
-          {busy ? "Adding photos" : `Add ${items.filter((i) => i.state === "ready").length || ""} ${items.length === 1 ? "photo" : "photos"}`}
+        <button className="btn btn-primary" onClick={save} disabled={busy || !readyCount}>
+          {busy ? "Adding photos" : `Add ${readyCount || ""} ${readyCount === 1 ? "photo" : "photos"}`}
         </button>
       </div>
     </div>
