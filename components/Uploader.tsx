@@ -11,6 +11,8 @@ type Item = {
 const THUMB_MAX = 800;
 const SHOWN = 15;
 const SCANS_KEY = "df_scans";
+// Ready, or failed to upload and worth trying again. Files the browser couldn't read have no thumbnail.
+const retryable = (i: Item) => i.state === "ready" || (i.state === "error" && !!i.thumb);
 
 async function prepare(file: File): Promise<Item> {
   const key = `${file.name}-${file.size}-${file.lastModified}`;
@@ -77,7 +79,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
   }
 
   async function save() {
-    const ready = items.filter((i) => i.state === "ready");
+    const ready = items.filter(retryable);
     if (!ready.length) return setError("Add at least one photo.");
     const y = year.trim() ? Number(year) : null;
     if (y !== null && (isNaN(y) || y < 1850 || y > new Date().getFullYear())) return setError("That year doesn't look right.");
@@ -146,7 +148,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
   }
 
   const withDates = items.filter((i) => i.takenOn).length;
-  const readyCount = items.filter((i) => i.state === "ready").length;
+  const readyCount = items.filter(retryable).length;
   const shown = showAll ? items : items.slice(0, SHOWN);
 
   return (
@@ -176,10 +178,10 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
                 <figure key={i.key} title={i.message ?? i.file.name}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {i.preview && <img src={i.preview} alt="" />}
-                  {i.state === "ready" && !busy && (
+                  {(i.state === "ready" || i.state === "error") && !busy && (
                     <button className="x" aria-label={`Remove ${i.file.name}`} onClick={() => setItems((prev) => prev.filter((x) => x.key !== i.key))}>×</button>
                   )}
-                  {i.state !== "ready" && <span className="state">{i.state === "uploading" ? "Uploading" : i.state === "done" ? "Done" : "Can't add"}</span>}
+                  {i.state !== "ready" && <span className="state">{i.state === "uploading" ? "Uploading" : i.state === "done" ? "Done" : i.thumb ? "Upload failed" : "Can't add"}</span>}
                 </figure>
               ))}
             </div>

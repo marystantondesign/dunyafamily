@@ -11,6 +11,10 @@ function s3() {
         accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
       },
+      // Newer SDKs sign a checksum into presigned URLs. For a PUT that is the checksum of an empty body,
+      // so R2 rejects the real upload. Only add checksums when an operation requires them.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
   }
   return client;
