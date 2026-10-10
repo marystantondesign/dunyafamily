@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Gallery } from "@/components/Gallery";
+import { BrowseResults } from "@/components/BrowseResults";
+import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
 import { filterQuery, filtersFrom, ids, type SP } from "@/lib/filters";
 import { countPhotos, findPhotos } from "@/lib/photos";
@@ -34,6 +35,8 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decade: Number(sp.decade) || undefined };
   const filters = filtersFrom(sp, occasions);
   const page = Math.max(1, Number(sp.page) || 1);
+  const s = await getSession();
+  const qs = filterQuery(sp);
   const [photos, total] = await Promise.all([
     findPhotos(filters, { order: sp.order === "oldest" ? "oldest" : "newest", limit: PAGE, offset: (page - 1) * PAGE }),
     countPhotos(filters),
@@ -90,17 +93,23 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           ))}
           {anyFilter ? <> · <Link href="/browse">Clear all</Link></> : null}
         </p>
-        <span className="small" style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          {total > 0 && <Link className="btn" href={`/tag${filterQuery(sp) ? `?${filterQuery(sp)}` : ""}`}>Tag these</Link>}
-          <span>
+        <span className="small">
           <Link href={href(sp, { order: undefined })} aria-current={sp.order !== "oldest"}>Newest first</Link>
           {" or "}
           <Link href={href(sp, { order: "oldest" })} aria-current={sp.order === "oldest"}>Oldest first</Link>
-          </span>
         </span>
       </div>
 
-      {photos.length ? <Gallery photos={photos} showWhen /> : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
+      {photos.length ? (
+        <BrowseResults
+          // Only what the browser needs: no file keys or device ids.
+          photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
+          query={qs}
+          tagHref={`/tag${qs ? `?${qs}` : ""}`}
+          people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
+          occasions={occasions}
+        />
+      ) : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
 
       {total > page * PAGE && (
         <p style={{ marginTop: 24 }}><Link className="btn" href={href(sp, { page: String(page + 1) })}>Show more</Link></p>

@@ -22,10 +22,11 @@ export function filtersFrom(sp: SP, occasions: Occasion[]): Filters {
 }
 
 const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "order"];
+const ORDERS = new Set(["oldest", "newest", "recent"]);
 
 /** Just the filter params, in a stable order, for links and for remembering a place. */
 export function filterQuery(sp: SP) {
   const qs = new URLSearchParams();
-  for (const k of FILTER_KEYS) if (sp[k]) qs.set(k, sp[k]!);
+  for (const k of FILTER_KEYS) if (sp[k] && (k !== "order" || ORDERS.has(sp[k]!))) qs.set(k, sp[k]!);
   return qs.toString();
 }

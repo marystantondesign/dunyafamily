@@ -63,7 +63,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       {[...groups.entries()].map(([label, list]) => (
         <div key={label} className="decade">
           <h2>{label}</h2>
-          <Gallery photos={list} showWhen />
+          <Gallery photos={list} showWhen query={`people=${id}&order=oldest`} />
         </div>
       ))}
       {!photos.length && <p className="muted" style={{ marginTop: 32 }}>No photos of {person.name} yet.</p>}

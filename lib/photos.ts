@@ -89,13 +89,7 @@ export function withThumbs(rows: PhotoRow[]): Promise<Photo[]> {
   return Promise.all(rows.map(async (r) => ({ ...r, url: await signGet(r.thumb_key) })));
 }
 
-export function whenLabel(p: Pick<PhotoRow, "year" | "decade" | "month">) {
-  if (p.year && p.month)
-    return `${new Date(2000, p.month - 1, 1).toLocaleString("en-US", { month: "long" })} ${p.year}`;
-  if (p.year) return String(p.year);
-  if (p.decade) return `${p.decade}s`;
-  return null;
-}
+export { whenLabel } from "./when";
 
 export type TagTarget = {
   id: number; width: number | null; height: number | null; year: number | null; decade: number | null;
@@ -127,4 +121,18 @@ export async function findForTagging(f: Filters, order: keyof typeof ORDER, limi
       url: await signGet(original_key, hours6),
     })),
   );
+}
+
+/** The photos on either side of this one, in the same filtered and ordered list the person came from. */
+export async function neighbors(f: Filters, order: keyof typeof ORDER, id: number) {
+  const { where, params, $ } = build(f);
+  const [row] = await q<{ prev: number | null; next: number | null; pos: number; total: number }>(
+    `select prev, next, pos::int, total::int from (
+       select p.id, lag(p.id) over w as prev, lead(p.id) over w as next,
+              row_number() over w as pos, count(*) over () as total
+         from photos p where ${where} window w as (order by ${ORDER[order]})
+     ) t where id = ${$(id)}`,
+    params,
+  );
+  return row ?? null;
 }
