@@ -2,15 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Gallery } from "@/components/Gallery";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
-import { seasonMonths } from "@/lib/hero";
-import { countPhotos, findPhotos, type Filters } from "@/lib/photos";
+import { filterQuery, filtersFrom, ids, type SP } from "@/lib/filters";
+import { countPhotos, findPhotos } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
-type SP = Record<string, string | undefined>;
 const PAGE = 120;
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-const ids = (v?: string) => (v ? v.split(",").map(Number).filter(Boolean) : []);
 
 function href(sp: SP, change: SP) {
   const next: SP = { ...sp, page: undefined, ...change };
@@ -35,17 +32,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   }
 
   const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decade: Number(sp.decade) || undefined };
-  const filters: Filters = {
-    people: sel.people,
-    occasions: sel.occasions,
-    decade: sel.decade,
-    year: Number(sp.year) || undefined,
-    months: sp.month ? [Number(sp.month)] : undefined,
-    untagged: sp.untagged === "1",
-  };
-  if (sp.season && seasonMonths(sp.season)) {
-    filters.season = { months: seasonMonths(sp.season), occasionId: occasions.find((o) => o.name === sp.season)?.id };
-  }
+  const filters = filtersFrom(sp, occasions);
   const page = Math.max(1, Number(sp.page) || 1);
   const [photos, total] = await Promise.all([
     findPhotos(filters, { order: sp.order === "oldest" ? "oldest" : "newest", limit: PAGE, offset: (page - 1) * PAGE }),
@@ -56,6 +43,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     sp.month && { label: `${MONTHS[Number(sp.month) - 1]}s`, clear: { month: undefined } },
     sp.season && { label: `${sp.season}s`, clear: { season: undefined } },
     filters.untagged && { label: "Needs tags", clear: { untagged: undefined } },
+    filters.batch && { label: "One upload", clear: { batch: undefined } },
   ].filter(Boolean) as { label: string; clear: SP }[];
   const anyFilter = sel.people.length || sel.occasions.length || sel.decade || extras.length;
 
@@ -102,10 +90,13 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           ))}
           {anyFilter ? <> · <Link href="/browse">Clear all</Link></> : null}
         </p>
-        <span className="small">
+        <span className="small" style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+          {total > 0 && <Link className="btn" href={`/tag${filterQuery(sp) ? `?${filterQuery(sp)}` : ""}`}>Tag these</Link>}
+          <span>
           <Link href={href(sp, { order: undefined })} aria-current={sp.order !== "oldest"}>Newest first</Link>
           {" or "}
           <Link href={href(sp, { order: "oldest" })} aria-current={sp.order === "oldest"}>Oldest first</Link>
+          </span>
         </span>
       </div>
 

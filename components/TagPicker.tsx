@@ -6,8 +6,8 @@ export type Picked = number | string;
 
 /** Pick existing names (by id) or type a new one. New ones are sent as strings and created on save. */
 export function TagPicker({
-  label, options, value, onChange, placeholder, hint,
-}: { label: string; options: Option[]; value: Picked[]; onChange: (v: Picked[]) => void; placeholder?: string; hint?: string }) {
+  label, options, value, onChange, placeholder, hint, hideLabel,
+}: { label: string; options: Option[]; value: Picked[]; onChange: (v: Picked[]) => void; placeholder?: string; hint?: string; hideLabel?: boolean }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -21,7 +21,7 @@ export function TagPicker({
 
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={hideLabel ? "sr-only" : undefined}>{label}</label>
       <div className="picked">
         {value.map((v) => (
           <button type="button" key={String(v)} className="pill on" onClick={() => onChange(value.filter((x) => x !== v))}>

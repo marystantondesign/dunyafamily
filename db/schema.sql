@@ -50,6 +50,8 @@ create table if not exists photo_people (
   primary key (photo_id, person_id)
 );
 create index if not exists photo_people_person on photo_people (person_id);
+-- When a tag was added, so tagging mode can put the people you tagged most recently first.
+alter table photo_people add column if not exists added_at timestamptz not null default now();
 
 create table if not exists photo_occasions (
   photo_id int not null references photos(id),

@@ -25,7 +25,11 @@ export type Filters = {
   months?: number[];
   season?: { months: number[]; occasionId?: number };
   untagged?: boolean;
+  /** One upload, by its upload_batch id. */
+  batch?: string;
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function build(f: Filters) {
   const where = ["p.deleted_at is null"];
@@ -50,6 +54,7 @@ function build(f: Filters) {
     where.push(
       `p.year is null and p.decade is null and not exists (select 1 from photo_people x where x.photo_id = p.id) and not exists (select 1 from photo_occasions x where x.photo_id = p.id)`,
     );
+  if (f.batch) where.push(UUID.test(f.batch) ? `p.upload_batch = ${$(f.batch)}::uuid` : "false");
   return { where: where.join(" and "), params, $ };
 }
 
@@ -57,6 +62,7 @@ const ORDER = {
   oldest: "coalesce(p.year, p.decade) asc nulls last, p.month asc nulls last, p.id asc",
   newest: "coalesce(p.year, p.decade) desc nulls last, p.month desc nulls last, p.id desc",
   recent: "p.created_at desc",
+  uploaded: "p.id asc",
   random: "random()",
 };
 
@@ -89,4 +95,36 @@ export function whenLabel(p: Pick<PhotoRow, "year" | "decade" | "month">) {
   if (p.year) return String(p.year);
   if (p.decade) return `${p.decade}s`;
   return null;
+}
+
+export type TagTarget = {
+  id: number; width: number | null; height: number | null; year: number | null; decade: number | null;
+  uploaded_by_device: string;
+  people: { id: number; by: string | null }[];
+  occasions: { id: number; by: string | null }[];
+  thumb: string; url: string;
+};
+
+/** Everything tagging mode needs for each photo, with links that last long enough for a long session. */
+export async function findForTagging(f: Filters, order: keyof typeof ORDER, limit = 1000): Promise<TagTarget[]> {
+  const { where, params, $ } = build(f);
+  const rows = await q<Omit<TagTarget, "thumb" | "url"> & { original_key: string; thumb_key: string }>(
+    `select p.id, p.width, p.height, p.year, p.decade, p.uploaded_by_device, p.original_key, p.thumb_key,
+            coalesce((select json_agg(json_build_object('id', x.person_id, 'by', x.added_by_device))
+                        from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
+                       where x.photo_id = p.id), '[]') as people,
+            coalesce((select json_agg(json_build_object('id', x.occasion_id, 'by', x.added_by_device))
+                        from photo_occasions x where x.photo_id = p.id), '[]') as occasions
+       from photos p where ${where}
+      order by ${ORDER[order]} limit ${$(limit)}`,
+    params,
+  );
+  const hours6 = 6 * 60 * 60;
+  return Promise.all(
+    rows.map(async ({ original_key, thumb_key, ...r }) => ({
+      ...r,
+      thumb: await signGet(thumb_key, hours6),
+      url: await signGet(original_key, hours6),
+    })),
+  );
 }

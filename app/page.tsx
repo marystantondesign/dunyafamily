@@ -116,7 +116,7 @@ export default async function Home() {
           </div>
           <Gallery photos={recent} base={140} />
           {untagged > 0 && (
-            <Link href="/browse?untagged=1" className="needs-tags">
+            <Link href="/tag?untagged=1" className="needs-tags">
               {untagged} {untagged === 1 ? "photo needs" : "photos need"} tags. Know who&apos;s in them?
             </Link>
           )}
