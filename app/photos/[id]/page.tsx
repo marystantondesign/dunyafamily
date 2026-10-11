@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { byName, displayName } from "@/lib/names";
 import { PhotoScreen } from "@/components/PhotoScreen";
+import { photoTalk } from "@/lib/comments";
 import { albumOptions, albumsFor, canTakeOut } from "@/lib/albums";
 import { homepageEntry, spotsUsed } from "@/lib/homepage";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
@@ -35,6 +36,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   ]);
   const admin = isAdmin(s);
   const [hpEntry, hpUsed] = admin ? await Promise.all([homepageEntry(id), spotsUsed()]) : [null, 0];
+  const talk = await photoTalk(id, s);
   const tagged = taggedRaw.map((t) => ({ ...t, name: displayName(t.name) }));
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
@@ -78,6 +80,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
       slideshowHref={slideshowHref}
       tagHref={tagHref}
       canDelete={owner}
+      comments={talk.comments}
+      reactions={talk.reactions}
       avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
       details={{
         photoId: id,

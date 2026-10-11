@@ -1121,3 +1121,30 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .ssv-btn { width: 48px; height: 48px; }
   .ssv-play { width: 60px; height: 60px; }
 }
+
+/* Reactions and comments on photos. */
+.talk-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.react-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); font: inherit; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.react-chip:hover { border-color: var(--input); }
+.react-chip.mine { background: var(--plum-wash); border-color: var(--plum-line); color: var(--plum); }
+.react-chip.add { color: var(--ink-3); gap: 0; padding: 0 8px; }
+.react-add { position: relative; }
+.react-palette { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 30; display: flex; gap: 2px; padding: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 8px 24px rgba(43, 29, 26, 0.14); }
+.react-palette button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; font-size: 22px; cursor: pointer; line-height: 1; }
+.react-palette button:hover, .react-palette button.mine { background: var(--plum-wash); }
+.talk-comments { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font: inherit; font-size: 14px; color: var(--plum); background: none; border: 0; cursor: pointer; padding: 6px 4px; }
+.talk-comments:hover { text-decoration: underline; text-underline-offset: 3px; }
+.comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.comment-list li { display: flex; gap: 10px; }
+.comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: #C9B79C; color: var(--paper); font-family: var(--serif); display: flex; align-items: center; justify-content: center; flex: none; }
+.comment-meta { margin: 0; font-size: 14px; }
+.comment-meta span { color: var(--muted); font-size: 13px; margin-left: 4px; }
+.comment-body { margin: 2px 0 0; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-form { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; position: sticky; bottom: -32px; background: var(--header); padding-bottom: 8px; }
+.comment-form textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); color: var(--ink); resize: vertical; }
+.comment-form .btn { align-self: flex-end; }
+@media (max-width: 760px) {
+  .talk-row { margin-top: 12px; }
+  .react-chip { min-height: 36px; }
+  .comment-form { bottom: calc(-24px - env(safe-area-inset-bottom)); }
+}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { PhotoDetails, type DetailsData } from "./PhotoDetails";
+import { Comments, Reactions, type Comment, type Reaction } from "./PhotoTalk";
 
 /**
  * The photo page (mockups 3, 4, 8, and 9). View mode shows only the photo, fitted to the window, with round
@@ -18,9 +19,13 @@ export function PhotoScreen(props: {
   backHref: string; backLabel: string; slideshowHref: string; tagHref: string;
   canDelete: boolean; avatarFor: { id: number; name: string }[];
   details: DetailsData;
+  comments: Comment[]; reactions: Reaction[];
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  // The side panel (a sheet on phones) shows either Edit details or Comments.
+  const [panel, setPanel] = useState<"edit" | "comments" | null>(null);
+  const editing = panel !== null;
+  const setEditing = (on: boolean) => setPanel(on ? "edit" : null);
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
@@ -128,6 +133,7 @@ export function PhotoScreen(props: {
               <h1>{props.title}</h1>
               <p>{withLine}{props.addedBy}.</p>
               {note && <p className="pv-note" role="status">{note}</p>}
+              <Reactions photoId={props.photoId} reactions={props.reactions} comments={props.comments.length} onComments={() => setPanel("comments")} />
             </div>
             <span className="pv-count desktop-only">{count}</span>
             <button type="button" className="btn pv-edit phone-only" onClick={() => setEditing(true)}><Icon name="pencil" size={16} /> Edit details</button>
@@ -139,10 +145,12 @@ export function PhotoScreen(props: {
       {editing && (
         <>
           <div className="pv-sheet-backdrop phone-only" onClick={() => setEditing(false)} aria-hidden="true" />
-          <aside className="pv-panel" role="dialog" aria-label="Edit details">
+          <aside className="pv-panel" role="dialog" aria-label={panel === "comments" ? "Comments" : "Edit details"}>
             <div className="sheet-grip phone-only" aria-hidden="true" />
-            <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => setEditing(false)}
-              onRemove={props.canDelete ? () => setConfirming(true) : undefined} />
+            {panel === "comments"
+              ? <Comments photoId={props.photoId} comments={props.comments} onClose={() => setPanel(null)} />
+              : <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => setEditing(false)}
+                  onRemove={props.canDelete ? () => setConfirming(true) : undefined} />}
           </aside>
         </>
       )}

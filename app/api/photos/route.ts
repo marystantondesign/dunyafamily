@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { badRequest, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { addToAlbum, resolveAlbum } from "@/lib/albums";
+import { addComment } from "@/lib/comments";
 import { resolveOccasions, resolvePeople } from "@/lib/tags";
 
 type Body = {
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
 
   const peopleIds = await resolvePeople(tags.people ?? [], s);
   const occasionIds = await resolveOccasions(tags.occasions ?? [], s);
-  const caption = tags.caption?.trim().slice(0, 500) || null;
+  // The upload note becomes the first comment on each photo.
+  const note = tags.caption?.trim().slice(0, 2000) || null;
 
   const batch = crypto.randomUUID();
   const ids: number[] = [];
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
     const [row] = await q<{ id: number }>(
       `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name, upload_batch)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
-      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, caption, s.did, s.name, batch],
+      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, null, s.did, s.name, batch],
     );
     ids.push(row.id);
   }
@@ -59,6 +61,7 @@ export async function POST(req: Request) {
     );
 
   if (album) await addToAlbum(album.id, ids, s);
+  if (note) for (const pid of ids) await addComment(pid, note, s);
 
   return NextResponse.json({ ids, batch, albumId: album?.id ?? null });
 }

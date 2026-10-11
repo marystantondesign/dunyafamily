@@ -196,3 +196,35 @@ create table if not exists homepage_photos (
 
 -- An optional name for a photo ("Afreen at the bead shop"). When blank, the occasion and year show instead.
 alter table photos add column if not exists title text;
+
+-- Comments on photos. Whoever wrote one, or Mary, can delete it (soft, restorable).
+create table if not exists photo_comments (
+  id serial primary key,
+  photo_id int not null references photos(id),
+  body text not null,
+  author_name text,
+  author_pid int,
+  created_by_device text,
+  from_note boolean not null default false,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by_name text
+);
+create index if not exists photo_comments_photo on photo_comments (photo_id);
+
+-- Notes written before comments existed become the first comment on their photo, from whoever uploaded it.
+-- The note itself stays on the photo. This only ever copies a note once.
+insert into photo_comments (photo_id, body, author_name, created_by_device, from_note, created_at)
+select p.id, p.caption, p.uploaded_by_name, p.uploaded_by_device, true, p.created_at from photos p
+ where coalesce(trim(p.caption), '') <> '' and not exists (select 1 from photo_comments c where c.photo_id = p.id and c.from_note);
+
+-- One of each emoji per device per photo. Tapping it again takes it back.
+create table if not exists photo_reactions (
+  photo_id int not null references photos(id),
+  emoji text not null,
+  created_by_device text not null,
+  author_name text,
+  author_pid int,
+  created_at timestamptz not null default now(),
+  primary key (photo_id, emoji, created_by_device)
+);

@@ -217,7 +217,7 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
         {!scans && <span className="hint">Photos with a date from the camera keep their own date.</span>}
         <TagPicker label="Occasion" options={occasions} value={occ} onChange={setOcc} placeholder="Christmas, Birthday, Summer" />
         <div className="field">
-          <label htmlFor="caption">A note for these (optional)</label>
+          <label htmlFor="caption">A comment for these (optional)</label>
           <textarea id="caption" rows={2} value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Mama's senior year" />
         </div>
         {error && <p className="error" role="alert">{error}</p>}

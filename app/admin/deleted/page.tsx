@@ -7,7 +7,7 @@ import { listDeleted, type DeletedType } from "@/lib/deleted";
 export const dynamic = "force-dynamic";
 
 const ICON: Record<DeletedType, IconName> = {
-  photo: "photo", person: "person", album: "album", birthday: "cake", gathering: "family", date: "calendar", relationship: "family",
+  photo: "photo", person: "person", album: "album", birthday: "cake", gathering: "family", date: "calendar", relationship: "family", comment: "mail",
 };
 
 const when = (d: string) => {
@@ -23,7 +23,7 @@ export default async function DeletedPage() {
     <div className="admin-page">
       <div className="page-head">
         <h1 className="display">Recently deleted</h1>
-        <p>Photos, people, albums, and dates removed in the last 30 days. Restore puts them back just as they were.</p>
+        <p>Photos, people, albums, dates, and comments removed in the last 30 days. Restore puts them back just as they were.</p>
       </div>
       {items.length ? (
         <ul className="deleted-list">
