@@ -1,74 +1,37 @@
 import Link from "next/link";
 import { AlbumCard } from "@/components/AlbumCard";
-import { Gallery } from "@/components/Gallery";
-import { Icon } from "@/components/Icon";
-import { featuredAlbums, heroPortrait } from "@/lib/featured";
-import { countPhotos, findPhotos } from "@/lib/photos";
+import { Avatar } from "@/components/Avatar";
+import { HeroPolaroid } from "@/components/HeroPolaroid";
+import { everyone, featuredCollections, heroSlides, HOME_COPY } from "@/lib/home";
 
 export const dynamic = "force-dynamic";
 
-function Sprig() {
-  return (
-    <svg aria-hidden="true" className="sprig" width="110" height="154" viewBox="0 0 100 140" fill="none" stroke="#8A6A4A" strokeWidth="1.1" strokeLinecap="round">
-      <path d="M70 135C60 100 48 70 30 30" /><path d="M58 100C50 85 40 78 22 74" /><path d="M50 80C56 64 66 54 82 48" />
-      <path d="M42 62C34 52 24 48 12 48" /><path d="M38 52C44 40 52 32 64 26" />
-      <g fill="#E9D7B0" stroke="#B89462">
-        <circle cx="30" cy="28" r="4" /><circle cx="24" cy="22" r="3.2" /><circle cx="34" cy="20" r="3" /><circle cx="21" cy="73" r="3.6" />
-        <circle cx="15" cy="68" r="3" /><circle cx="83" cy="47" r="3.6" /><circle cx="88" cy="41" r="3" /><circle cx="11" cy="47" r="3.4" />
-        <circle cx="65" cy="25" r="3.4" /><circle cx="70" cy="19" r="2.8" />
-      </g>
-    </svg>
-  );
-}
+const photos = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
 
 export default async function Home() {
-  const [hero, albums, recent, untagged] = await Promise.all([
-    heroPortrait(),
-    featuredAlbums(),
-    findPhotos({}, { order: "recent", limit: 12 }),
-    countPhotos({ untagged: true }),
-  ]);
+  const [{ slides, seconds }, collections, people] = await Promise.all([heroSlides(), featuredCollections(), everyone()]);
 
   return (
     <>
       <section className="home-hero">
-        <div className="polaroid-wrap">
-          <Sprig />
-          <figure className="polaroid">
-            {hero.photo ? (
-              <Link href={`/photos/${hero.photo.id}`} aria-label="Open this photo of Mamaw">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={hero.photo.url} alt="Mamaw" />
-              </Link>
-            ) : <div className="polaroid-blank" />}
-            <figcaption>Mamaw <Icon name="heart" size={20} stroke={1.5} /></figcaption>
-          </figure>
-        </div>
+        <HeroPolaroid slides={slides} seconds={seconds} />
         <div className="home-hero-text">
-          <h1>Our family,<br />through the years</h1>
-          <p className="lede">A place for the memories we share.</p>
-          <form action="/browse" role="search" className="search">
-            <label htmlFor="hs" className="sr-only">Search photos, people, or occasions</label>
-            <div className="search-field">
-              <Icon name="search" />
-              <input id="hs" name="q" placeholder="Search photos, people, or occasions..." />
-            </div>
-            <button className="btn btn-primary search-go">Search</button>
-          </form>
-          <Link href="/browse" className="text-link">Browse all photos <span aria-hidden="true">→</span></Link>
+          <h1>{HOME_COPY.title}</h1>
+          <p className="lede">{HOME_COPY.subtitle}</p>
         </div>
       </section>
 
-      {albums.length > 0 ? (
+      {collections.length > 0 ? (
         <section className="featured">
           <div className="section-head">
             <h2 className="section-title">Featured albums</h2>
-            <Link href="/albums" className="text-link small">See all albums <span aria-hidden="true">→</span></Link>
+            <Link href="/albums" className="text-link small">
+              <span className="desktop-only">See all albums <span aria-hidden="true">→</span></span>
+              <span className="phone-only">See all</span>
+            </Link>
           </div>
           <div className="album-grid">
-            {albums.map((a) => (
-              <AlbumCard key={a.href} href={a.href} title={a.title} text={a.text} photos={a.photos} />
-            ))}
+            {collections.map((c) => <AlbumCard key={c.key} href={c.href} title={c.title} count={c.count} photos={c.photos} />)}
           </div>
         </section>
       ) : (
@@ -79,17 +42,27 @@ export default async function Home() {
         </section>
       )}
 
-      {recent.length > 0 && (
-        <section>
+      {people.length > 0 && (
+        <section className="everyone" id="everyone">
           <div className="section-head">
-            <h2 className="section-title">Recently added</h2>
-            {untagged > 0 && (
-              <Link href="/tag?untagged=1" className="needs-tags">
-                {untagged} {untagged === 1 ? "photo needs" : "photos need"} tags. Know who&apos;s in them?
-              </Link>
-            )}
+            <h2 className="section-title">Everyone</h2>
+            <Link href="/people" className="text-link small">
+              <span className="desktop-only">See the family tree <span aria-hidden="true">→</span></span>
+              <span className="phone-only">Family tree</span>
+            </Link>
           </div>
-          <Gallery photos={recent} base={150} query="order=recent" />
+          <ul className="everyone-grid">
+            {people.map((p) => (
+              <li key={p.id}>
+                <Link href={`/people/${p.id}`} className="member">
+                  <Avatar name={p.name} url={p.avatarUrl} />
+                  <span className="member-name">{p.name}</span>
+                  <span className="member-sub desktop-only">{photos(p.photos)}{p.inMemory ? ", in memory" : ""}</span>
+                  <span className="member-sub phone-only">{p.inMemory ? "In memory" : photos(p.photos)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </>

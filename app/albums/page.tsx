@@ -4,8 +4,6 @@ import { listAlbums } from "@/lib/albums";
 
 export const dynamic = "force-dynamic";
 
-const plural = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
-
 export default async function AlbumsPage() {
   const albums = await listAlbums();
   return (
@@ -20,8 +18,7 @@ export default async function AlbumsPage() {
       {albums.length ? (
         <div className="album-grid">
           {albums.map((a) => (
-            <AlbumCard key={a.id} href={`/albums/${a.id}`} title={a.title}
-              text={`${a.count ? plural(a.count) : "No photos yet"}${a.createdByName ? `, started by ${a.createdByName}` : ""}`} photos={a.photos} />
+            <AlbumCard key={a.id} href={`/albums/${a.id}`} title={a.title} count={a.count} photos={a.photos} />
           ))}
         </div>
       ) : <p className="muted">No albums yet. Start one, or choose one when you add photos.</p>}

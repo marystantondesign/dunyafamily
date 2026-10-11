@@ -1,20 +1,18 @@
 import Link from "next/link";
 
-/** The same card as the automatic albums on Home: title, a line under it, and three photos. */
-export function AlbumCard({ href, title, text, photos }: { href: string; title: string; text: string; photos: { id: number; url: string }[] }) {
+/** An album card: a three-photo collage (one large, two stacked), the title, and how many photos. */
+export function AlbumCard({ href, title, count, photos }: { href: string; title: string; count: number; photos: { id: number; url: string }[] }) {
+  const slots = [0, 1, 2].map((i) => photos[i]);
   return (
     <Link href={href} className="album-card">
-      <span>
-        <span className="album-title">{title}</span>
-        <span className="album-text">{text}</span>
-      </span>
-      <span className="album-photos">
-        {photos.map((p) => (
+      <span className="album-collage" aria-hidden="true">
+        {slots.map((p, i) => (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={p.id} src={p.url} alt="" loading="lazy" />
+          p ? <img key={p.id} src={p.url} alt="" loading="lazy" className={i === 0 ? "big" : undefined} /> : <span key={`blank${i}`} className={`album-blank${i === 0 ? " big" : ""}`} />
         ))}
-        {Array.from({ length: Math.max(0, 3 - photos.length) }, (_, i) => <span key={i} className="album-blank" />)}
       </span>
+      <span className="album-title">{title}</span>
+      <span className="album-count">{count} {count === 1 ? "photo" : "photos"}</span>
     </Link>
   );
 }
