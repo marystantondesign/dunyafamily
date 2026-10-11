@@ -19,12 +19,16 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
   const [photos, personOrder, occasionUse] = await Promise.all([
     findForTagging(filters, order, MAX),
     // People you tagged most recently first, then whoever is in the most photos.
+    // Falls back to most photos if the database hasn't been given the added_at column yet.
     q<{ id: number }>(
       `select pe.id from people pe left join photo_people x on x.person_id = pe.id
         where pe.deleted_at is null group by pe.id, pe.name
         order by max(case when x.added_by_device = $1 then x.added_at end) desc nulls last, count(x.photo_id) desc, lower(pe.name)`,
       [s.did],
-    ),
+    ).catch(() => q<{ id: number }>(
+      `select pe.id from people pe left join photo_people x on x.person_id = pe.id
+        where pe.deleted_at is null group by pe.id, pe.name order by count(x.photo_id) desc, lower(pe.name)`,
+    )),
     q<{ id: number; n: number }>(`select occasion_id as id, count(*)::int as n from photo_occasions group by occasion_id`),
   ]);
 

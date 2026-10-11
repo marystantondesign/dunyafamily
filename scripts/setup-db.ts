@@ -13,4 +13,9 @@ async function main() {
   for (const s of statements) await sql.query(s);
   console.log(`Ran ${statements.length} statements.`);
 }
-main();
+// Runs before every build (see package.json), so a deploy can't go out on an out-of-date database.
+// If this fails, the build fails and the site that's already live stays as it is.
+main().catch((e) => {
+  console.error("Database setup failed:", e instanceof Error ? e.message : e);
+  process.exit(1);
+});
