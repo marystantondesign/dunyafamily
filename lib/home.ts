@@ -98,3 +98,42 @@ export async function everyone(): Promise<Member[]> {
   })));
 }
 
+
+/** The family's time zone, so "today" on Home turns over at their midnight, not the server's. */
+export const FAMILY_TZ = "America/New_York";
+
+function today(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: FAMILY_TZ, year: "numeric", month: "numeric", day: "numeric" })
+    .formatToParts(now).map((p) => [p.type, p.value]));
+  return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day) };
+}
+
+export type BirthdayToday = { id: number; name: string; inMemory: boolean; turns: number | null; photos: { id: number; url: string; year: number | null; decade: number | null; month: number | null }[] };
+
+/** Whose birthday it is today, with up to six photos of them through the years, oldest first. */
+export async function birthdaysToday(): Promise<BirthdayToday[]> {
+  const t = today();
+  const rows = await q<{ id: number; name: string; in_memory: boolean; year: number | null }>(
+    `select pe.id, pe.name, pe.in_memory, b.year from birthdays b join people pe on pe.id = b.person_id and pe.deleted_at is null
+      where b.deleted_at is null and b.month = $1 and b.day = $2 order by pe.in_memory, lower(pe.name)`, [t.month, t.day]);
+  return Promise.all(rows.map(async (r) => {
+    const all = await findPhotos({ people: [r.id] }, { order: "oldest", limit: 2000 });
+    // Spread across their life: evenly spaced picks from oldest to newest.
+    const pick = all.length <= 6 ? all : Array.from({ length: 6 }, (_, i) => all[Math.round((i * (all.length - 1)) / 5)]);
+    return {
+      id: r.id, name: displayName(r.name), inMemory: !!r.in_memory, turns: r.year && !r.in_memory ? t.year - r.year : null,
+      photos: pick.map(({ id, url, year, decade, month }) => ({ id, url, year, decade, month })),
+    };
+  }));
+}
+
+/** Photos taken on today's date in earlier years (only photos with a full date from the camera). */
+export async function onThisDay(limit = 12) {
+  const t = today();
+  const rows = await q<PhotoRow>(
+    `select ${COLS} from photos p where p.deleted_at is null and p.taken_on is not null
+        and extract(month from p.taken_on) = $1 and extract(day from p.taken_on) = $2 and extract(year from p.taken_on) < $3
+      order by p.taken_on desc limit $4`, [t.month, t.day, t.year, limit]);
+  const urls = await Promise.all(rows.map((r) => signGet(r.thumb_key)));
+  return rows.map((r, i) => ({ id: r.id, url: urls[i], width: r.width, height: r.height, year: r.year, decade: r.decade, month: r.month, yearsAgo: r.year ? t.year - r.year : null }));
+}

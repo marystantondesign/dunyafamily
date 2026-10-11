@@ -1209,3 +1209,16 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
 }
 /* Phone tree cards draw faces without a border, so the ring comes from a shadow there. */
 .tcard .halo > .tdot-face, .trow .halo > .tdot-face { box-shadow: 0 0 0 2.5px var(--memory) !important; }
+
+/* Birthday takeover and On this day on Home. */
+.hero-eyebrow { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--plum); }
+.home-hero.birthday h1 { color: var(--plum); }
+.hero-links { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 0; }
+.hero-remember { margin: 6px 0 0; color: var(--ink-3); }
+.on-this-day { margin-top: 44px; }
+.on-this-day .section-head { align-items: baseline; }
+@media (max-width: 760px) {
+  .hero-links { justify-content: center; }
+  .on-this-day { margin-top: 32px; }
+  .on-this-day .section-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+}
