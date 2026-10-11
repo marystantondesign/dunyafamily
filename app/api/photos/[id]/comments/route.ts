@@ -10,7 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const id = Number((await params).id);
   const [photo] = await q(`select 1 from photos where id = $1 and deleted_at is null`, [id]);
   if (!photo) return badRequest("That photo isn't here anymore.");
-  const { body } = (await req.json().catch(() => ({}))) as { body?: string };
-  const cid = await addComment(id, body ?? "", s);
-  return cid ? NextResponse.json({ id: cid }) : badRequest("Write something first.");
+  const { body, replyTo } = (await req.json().catch(() => ({}))) as { body?: string; replyTo?: number };
+  const cid = await addComment(id, body ?? "", s, Number(replyTo) || null);
+  return typeof cid === "number" ? NextResponse.json({ id: cid }) : badRequest(cid);
 }

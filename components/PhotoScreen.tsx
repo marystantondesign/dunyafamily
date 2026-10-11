@@ -5,13 +5,15 @@ import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { PhotoDetails, type DetailsData } from "./PhotoDetails";
-import { Comments, Reactions, type Comment, type Reaction } from "./PhotoTalk";
+import { Reactions, Thread, type Comment, type Reaction } from "./PhotoTalk";
 
 /**
  * The photo page (mockups 3, 4, 8, and 9). View mode shows only the photo, fitted to the window, with round
  * Previous and Next buttons (arrow keys and swiping work too) and a caption row. Edit details opens a panel on
  * the right on desktop and a sheet on phones, with the photo still in view.
  */
+const TALK_KEY = "df_talk_hidden";
+
 export function PhotoScreen(props: {
   photoId: number; imgUrl: string; thumbUrl: string; alt: string;
   title: string; people: { id: number; name: string }[]; addedBy: string;
@@ -19,13 +21,16 @@ export function PhotoScreen(props: {
   backHref: string; backLabel: string; slideshowHref: string; tagHref: string;
   canDelete: boolean; avatarFor: { id: number; name: string }[];
   details: DetailsData;
-  comments: Comment[]; reactions: Reaction[];
+  comments: Comment[]; reactions: Reaction[]; me: string;
 }) {
   const router = useRouter();
-  // The side panel (a sheet on phones) shows either Edit details or Comments.
-  const [panel, setPanel] = useState<"edit" | "comments" | null>(null);
-  const editing = panel !== null;
-  const setEditing = (on: boolean) => setPanel(on ? "edit" : null);
+  const [editing, setEditing] = useState(false);
+  // Comments sit beside the photo on desktop (Hide puts them away, remembered on this device) and in a sheet on phones.
+  const [talkHidden, setTalkHidden] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => { try { setTalkHidden(localStorage.getItem(TALK_KEY) === "1"); } catch { /* private window */ } }, []);
+  const hideTalk = (on: boolean) => { setTalkHidden(on); try { localStorage.setItem(TALK_KEY, on ? "1" : "0"); } catch { /* private window */ } };
+  const talking = !editing && !talkHidden;
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
@@ -39,7 +44,7 @@ export function PhotoScreen(props: {
       if (e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement).closest("input, textarea, select, [role=dialog]")) return;
       if (e.key === "ArrowLeft" && props.prevHref) router.push(props.prevHref);
       if (e.key === "ArrowRight" && props.nextHref) router.push(props.nextHref);
-      if (e.key === "Escape") { setMenu(false); setEditing(false); }
+      if (e.key === "Escape") { setMenu(false); setEditing(false); setSheet(false); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -64,8 +69,20 @@ export function PhotoScreen(props: {
     ))}. </>
   );
 
+  const n = props.comments.length;
+  const nComments = `${n} ${n === 1 ? "comment" : "comments"}`;
+  const latest = props.comments.reduce<Comment | null>((a, c) => (!a || c.createdAt >= a.createdAt ? c : a), null);
+  const heading = (
+    <>
+      <h1>{props.title}</h1>
+      <p>{withLine}{props.addedBy}.</p>
+      {note && <p className="pv-note" role="status">{note}</p>}
+    </>
+  );
+
   const options = (
     <ul className="pv-menu-list">
+      <li className="phone-only"><button type="button" onClick={() => { setMenu(false); setEditing(true); }}><Icon name="pencil" size={20} /> Edit details</button></li>
       <li><a href={`/api/photos/${props.photoId}/download`}><Icon name="download" size={20} /> Download original</a></li>
       {props.avatarFor.map((p) => (
         <li key={p.id}>
@@ -82,7 +99,7 @@ export function PhotoScreen(props: {
   );
 
   return (
-    <div className={`pv${editing ? " editing" : ""}`}>
+    <div className={`pv${editing ? " editing" : talking ? " talking" : ""}`}>
       <div className="pv-main">
         <div className="pv-bar">
           <Link href={props.backHref} className="pv-back">
@@ -129,28 +146,57 @@ export function PhotoScreen(props: {
 
         {!editing && (
           <div className="pv-caption">
-            <div>
-              <h1>{props.title}</h1>
-              <p>{withLine}{props.addedBy}.</p>
-              {note && <p className="pv-note" role="status">{note}</p>}
-              <Reactions photoId={props.photoId} reactions={props.reactions} comments={props.comments.length} onComments={() => setPanel("comments")} />
+            <div className="pv-cap-text">
+              {heading}
+              <Reactions photoId={props.photoId} reactions={props.reactions} comments={n} onComments={() => hideTalk(false)} />
             </div>
             <span className="pv-count desktop-only">{count}</span>
-            <button type="button" className="btn pv-edit phone-only" onClick={() => setEditing(true)}><Icon name="pencil" size={16} /> Edit details</button>
-            {(props.prevHref || props.nextHref) && <p className="pv-swipe phone-only">Swipe left or right for more photos</p>}
           </div>
         )}
       </div>
 
+      {talking && (
+        <aside className="pv-talk desktop-only" aria-label="Comments">
+          <div className="pv-talk-head">
+            <div>{heading}</div>
+            <button type="button" className="btn pv-hide" onClick={() => hideTalk(true)}>Hide <Icon name="chevronRight" size={14} /></button>
+          </div>
+          <div className="pv-talk-react">
+            <Reactions photoId={props.photoId} reactions={props.reactions} comments={n} countOnly />
+          </div>
+          <Thread photoId={props.photoId} comments={props.comments} me={props.me} />
+        </aside>
+      )}
+
+      {!editing && (
+        <button type="button" className="pv-talkbar phone-only" onClick={() => setSheet(true)} aria-haspopup="dialog">
+          <span className="sheet-grip" aria-hidden="true" />
+          <span className="pv-talkbar-row">
+            <Icon name="comment" size={20} />
+            <strong>{n ? nComments : "Comment"}</strong>
+            <span className="pv-talkbar-last">{latest ? `${latest.author}: ${latest.body}` : "Share a memory about this photo"}</span>
+            <Icon name="chevronUp" size={18} />
+          </span>
+        </button>
+      )}
+      {sheet && !editing && (
+        <>
+          <div className="pv-sheet-backdrop phone-only" onClick={() => setSheet(false)} aria-hidden="true" />
+          <aside className="pv-talksheet phone-only" role="dialog" aria-label={nComments}>
+            <button type="button" className="sheet-grip-btn" onClick={() => setSheet(false)} aria-label="Close comments"><span className="sheet-grip" aria-hidden="true" /></button>
+            <h2>{n ? nComments : "Comments"}</h2>
+            <Thread photoId={props.photoId} comments={props.comments} me={props.me} compose="Write a comment" />
+          </aside>
+        </>
+      )}
+
       {editing && (
         <>
           <div className="pv-sheet-backdrop phone-only" onClick={() => setEditing(false)} aria-hidden="true" />
-          <aside className="pv-panel" role="dialog" aria-label={panel === "comments" ? "Comments" : "Edit details"}>
+          <aside className="pv-panel" role="dialog" aria-label="Edit details">
             <div className="sheet-grip phone-only" aria-hidden="true" />
-            {panel === "comments"
-              ? <Comments photoId={props.photoId} comments={props.comments} onClose={() => setPanel(null)} />
-              : <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => setEditing(false)}
-                  onRemove={props.canDelete ? () => setConfirming(true) : undefined} />}
+            <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => setEditing(false)}
+              onRemove={props.canDelete ? () => setConfirming(true) : undefined} />
           </aside>
         </>
       )}

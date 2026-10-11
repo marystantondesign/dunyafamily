@@ -229,6 +229,22 @@ create table if not exists photo_reactions (
   primary key (photo_id, emoji, created_by_device)
 );
 
+-- Replies: a reply points at the comment it belongs under (one level deep) and names who it answers.
+alter table photo_comments add column if not exists parent_id int references photo_comments(id);
+alter table photo_comments add column if not exists reply_to_name text;
+create index if not exists photo_comments_parent on photo_comments (parent_id);
+
+-- Reactions on comments: one per device per comment. A different emoji replaces it; the same one takes it back.
+create table if not exists comment_reactions (
+  comment_id int not null references photo_comments(id),
+  emoji text not null,
+  created_by_device text not null,
+  author_name text,
+  author_pid int,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, created_by_device)
+);
+
 -- Family tree editing (admin). Gender only picks the word: mother or father, sister or brother, daughter or son.
 alter table people add column if not exists gender text;
 -- Birth year for ordering children and siblings oldest first; birth_order places anyone without a year.

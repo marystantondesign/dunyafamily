@@ -82,6 +82,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
       canDelete={owner}
       comments={talk.comments}
       reactions={talk.reactions}
+      me={s?.name ? displayName(s.name) : "You"}
       avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
       details={{
         photoId: id,

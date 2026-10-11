@@ -1020,8 +1020,6 @@ main.wrap:has(.pv) { max-width: none; padding: 0; }
   .pv-caption { display: block; padding: 16px 20px calc(16px + env(safe-area-inset-bottom)); background: var(--header); border-top: 1px solid var(--line); }
   .pv-caption h1 { font-size: 24px; }
   .pv-caption p { font-size: 15px; }
-  .pv-edit { width: 100%; margin-top: 14px; min-height: 46px; font-size: 16px; }
-  .pv-swipe { text-align: center; margin: 12px 0 0 !important; font-size: 14px !important; color: var(--ink-3) !important; }
   .pv-sheet-backdrop { display: block; position: fixed; inset: 0; background: rgba(43, 29, 26, 0.45); z-index: 40; }
   .pv-panel { position: fixed; left: 0; right: 0; bottom: 0; max-height: 88dvh; z-index: 41; border-left: 0; border-radius: 16px 16px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); }
   .pd-head h2 { font-family: var(--serif); font-weight: 400; font-size: 24px; }
@@ -1095,19 +1093,77 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
 .react-palette button:hover, .react-palette button.mine { background: var(--plum-wash); }
 .talk-comments { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font: inherit; font-size: 14px; color: var(--plum); background: none; border: 0; cursor: pointer; padding: 6px 4px; }
 .talk-comments:hover { text-decoration: underline; text-underline-offset: 3px; }
-.comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-.comment-list li { display: flex; gap: 10px; }
-.comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: #C9B79C; color: var(--paper); font-family: var(--serif); display: flex; align-items: center; justify-content: center; flex: none; }
-.comment-meta { margin: 0; font-size: 14px; }
-.comment-meta span { color: var(--muted); font-size: 13px; margin-left: 4px; }
-.comment-body { margin: 2px 0 0; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.comment-form { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; position: sticky; bottom: -32px; background: var(--header); padding-bottom: 8px; }
-.comment-form textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); color: var(--ink); resize: vertical; }
-.comment-form .btn { align-self: flex-end; }
+.talk-count { margin-left: auto; font-size: 14px; color: var(--ink-3); }
+
+/* Comments beside the photo (desktop) and in a sheet (phone). */
+@media (min-width: 761px) {
+  .pv.talking { grid-template-columns: minmax(0, 1fr) 420px; }
+  .pv.talking .pv-main { max-width: none; padding: 14px 32px 18px; }
+  .pv.talking .pv-cap-text { display: none; }
+  .pv.talking .pv-caption { justify-content: flex-end; }
+}
+.pv-talk { border-left: 1px solid var(--line); background: var(--header); display: flex; flex-direction: column; min-height: 0; }
+.pv-talk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 0; }
+.pv-talk-head h1 { font-family: var(--serif); font-weight: 400; font-size: 26px; margin: 0 0 4px; line-height: 1.15; }
+.pv-talk-head p { margin: 0; font-size: 14px; color: var(--ink-2); }
+.pv-hide { min-height: 32px !important; padding: 0 8px 0 10px !important; font-size: 13px; gap: 2px; flex: none; }
+.pv-talk-react { padding: 2px 20px 14px; border-bottom: 1px solid var(--line); }
+.cm-thread { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cm-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.cm-none { margin: 0; }
+.cm { display: flex; gap: 10px; }
+.comment-avatar { width: 34px; height: 34px; border-radius: 50%; background: #B39A80; color: var(--paper); font-family: var(--serif); font-size: 16px; display: flex; align-items: center; justify-content: center; flex: none; }
+.comment-avatar.small { width: 26px; height: 26px; font-size: 13px; }
+.cm-main { min-width: 0; flex: 1; }
+.cm-bubble { position: relative; display: inline-block; max-width: 100%; background: #EFE4D3; border-radius: 16px; padding: 8px 14px 9px 12px; }
+.cm-author { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.cm-body { margin: 1px 0 0; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.cm-mention { color: var(--plum); font-weight: 600; }
+.cm-badge { position: absolute; right: -10px; bottom: -12px; display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px 1px 5px; border-radius: 999px; background: var(--paper); box-shadow: 0 1px 4px rgba(43, 29, 26, 0.18); font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.cm-actions { position: relative; display: flex; align-items: center; gap: 14px; margin: 5px 0 0 12px; font-size: 13px; }
+.cm-actions button { background: none; border: 0; padding: 2px 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-3); cursor: pointer; -webkit-touch-callout: none; user-select: none; }
+.cm-actions button:hover { color: var(--plum); }
+.cm-actions .cm-like.on { color: var(--plum); }
+.cm-actions time { color: var(--muted); }
+.cm-actions .cm-delete { font-weight: 400; color: var(--muted); }
+.cm-quick { position: absolute; left: -14px; top: calc(100% + 6px); z-index: 5; display: flex; gap: 4px; padding: 6px 10px; border-radius: 999px; background: var(--paper); box-shadow: 0 6px 20px rgba(43, 29, 26, 0.2); }
+.cm-quick.up { top: auto; bottom: calc(100% + 6px); }
+.cm-quick button { font-size: 26px; line-height: 1; padding: 2px 3px; border-radius: 50%; transition: transform 0.12s; }
+.cm-quick button:hover, .cm-quick button.on { transform: scale(1.22); }
+.cm-replies { margin: 12px 0 0 16px; padding-left: 22px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 16px; }
+.cm-more { align-self: flex-start; display: inline-flex; gap: 8px; background: none; border: 0; padding: 2px 0; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.cm-more:hover { color: var(--plum); }
+.cm-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--header); }
+.cm-compose .comment-avatar { margin-bottom: 5px; }
+.cm-compose.small { padding: 0; border: 0; background: none; }
+.cm-compose.small .comment-avatar { margin-bottom: 6px; }
+.cm-field { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 4px; min-height: 44px; padding: 5px 6px 5px 16px; border: 1px solid var(--input); border-radius: 22px; background: var(--paper); cursor: text; }
+.cm-compose.small .cm-field { min-height: 38px; border-color: var(--plum); }
+.cm-field:focus-within { border-color: var(--plum); box-shadow: 0 0 0 1px var(--plum); }
+.cm-field .cm-mention { align-self: center; flex: none; font-size: 15px; }
+.cm-field textarea { flex: 1; min-width: 0; align-self: center; border: 0; background: none; resize: none; font: inherit; font-size: 15px; line-height: 1.35; color: var(--ink); padding: 5px 0; outline: none; }
+.cm-send { width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; background: var(--plum); color: var(--paper); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.cm-compose.small .cm-send { width: 28px; height: 28px; }
+.cm-send:disabled { background: var(--line); cursor: default; }
+.cm-error { margin: 0; padding: 0 20px 8px; }
+.pv-talkbar, .pv-talksheet { display: none; }
 @media (max-width: 760px) {
   .talk-row { margin-top: 12px; }
   .react-chip { min-height: 36px; }
-  .comment-form { bottom: calc(-24px - env(safe-area-inset-bottom)); }
+  .pv-caption { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .pv-caption .talk-comments { display: none; }
+  .pv-talkbar { display: flex; flex-direction: column; align-items: stretch; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 0 16px calc(14px + env(safe-area-inset-bottom)); border: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; background: var(--header); box-shadow: 0 -4px 16px rgba(43, 29, 26, 0.08); font: inherit; text-align: left; color: var(--ink); cursor: pointer; }
+  .pv-talkbar .sheet-grip { margin: 8px auto 10px; }
+  .pv-talkbar-row { display: flex; align-items: center; gap: 10px; }
+  .pv-talkbar strong { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .pv-talkbar-last { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink-3); }
+  .pv-talkbar-row > svg:last-child { color: var(--plum); flex: none; }
+  .pv-talksheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; height: 90dvh; z-index: 41; border-radius: 16px 16px 0 0; background: var(--header); padding-bottom: env(safe-area-inset-bottom); }
+  .pv-talksheet h2 { margin: 0; padding: 2px 0 12px; text-align: center; font-family: var(--sans); font-size: 17px; font-weight: 600; border-bottom: 1px solid var(--line); }
+  .sheet-grip-btn { display: flex; justify-content: center; width: 100%; padding: 10px 0 8px; background: none; border: 0; cursor: pointer; }
+  .cm-list { padding: 16px; }
+  .cm-compose:not(.small) { padding: 12px 12px; }
+  .cm-field textarea { font-size: 16px; }
 }
 .react-more { width: 40px; height: 40px; margin-left: 2px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .react-more:hover { border-color: var(--plum-line); color: var(--plum); }
