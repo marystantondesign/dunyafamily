@@ -148,3 +148,21 @@ create table if not exists album_photos (
   primary key (album_id, photo_id)
 );
 create index if not exists album_photos_photo on album_photos (photo_id);
+
+-- Family tree. kind 'parent': person_id is a parent of related_id. kind 'partner': a couple, saved with the lower id first.
+create table if not exists relationships (
+  id serial primary key,
+  person_id int not null references people(id),
+  related_id int not null references people(id),
+  kind text not null,
+  created_by_device text,
+  created_by_name text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create index if not exists relationships_person on relationships (person_id);
+create index if not exists relationships_related on relationships (related_id);
+create unique index if not exists relationships_unique on relationships (kind, person_id, related_id) where deleted_at is null;
+-- Friends of the family have no relatives in the tree but still belong here.
+alter table people add column if not exists family_friend boolean not null default false;
+alter table people add column if not exists family_friend_by_device text;

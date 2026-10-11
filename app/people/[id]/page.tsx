@@ -5,6 +5,7 @@ import { CopyButton, ProfilePhotoPicker } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
+import { relationsFor } from "@/lib/family";
 import { comingUp, monthDay, personDetails, shortMonthDay, updatedLabel } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
 import { whenLabel } from "@/lib/when";
@@ -17,7 +18,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const [person, det] = await Promise.all([listPeople().then((all) => all.find((p) => p.id === id)), personDetails(id, s)]);
   if (!person || !det) notFound();
 
-  const [photos, often] = await Promise.all([
+  const [photos, often, rel] = await Promise.all([
     findPhotos({ people: [id] }, { order: "oldest", limit: 1000 }),
     q<{ id: number; name: string; n: number }>(
       `select pe.id, pe.name, count(*)::int as n
@@ -28,7 +29,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         where a.person_id = $1 group by pe.id, pe.name order by n desc limit 6`,
       [id],
     ),
+    relationsFor(id, s),
   ]);
+  const familyLine = ([["Parents", rel.parents], ["Partner", rel.partners], ["Children", rel.children]] as const).filter(([, list]) => list.length);
   const anniversary = det.dates.find((d) => d.kind === "anniversary");
   const soon = comingUp(det);
   const query = `people=${id}&order=oldest`;
@@ -83,6 +86,16 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
+
+      {familyLine.length > 0 && (
+        <p className="often small family-line">
+          {familyLine.map(([label, list], i) => (
+            <span key={label}>{i > 0 && " · "}<span className="muted">{label}</span>{" "}
+              {list.map((r, j) => <span key={r.relId}>{j > 0 && ", "}<Link href={`/people/${r.person.id}`}>{r.person.name}</Link></span>)}
+            </span>
+          ))}
+        </p>
+      )}
 
       {often.length > 0 && (
         <p className="often small">

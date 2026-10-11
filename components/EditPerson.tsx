@@ -14,8 +14,8 @@ async function send(url: string, method: string, body?: unknown) {
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "That didn't save. Try again.");
 }
 
-/** Edit a person: about, mailing address, important dates, in memory, and removing them. */
-export function EditPerson({ det, avatarUrl, photos }: { det: PersonDetails; avatarUrl: string | null; photos: { id: number; url: string }[] }) {
+/** Edit a person: about, mailing address, important dates, family (passed in), in memory, and removing them. */
+export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDetails; avatarUrl: string | null; photos: { id: number; url: string }[]; children?: React.ReactNode }) {
   const router = useRouter();
   const back = `/people/${det.id}`;
   const [name, setName] = useState(det.name);
@@ -184,6 +184,8 @@ export function EditPerson({ det, avatarUrl, photos }: { det: PersonDetails; ava
               <button type="button" className="btn dashed" onClick={() => { setDateOpen("new"); setDateError(""); setDateDraft({ ...blankDate, kind: inMemory ? "remembrance" : "anniversary", label: inMemory ? `Remembering ${det.name}` : "" }); }}>+ Add a date</button>
             )}
           </section>
+
+          {children}
 
           {det.canRemovePerson && (
             <section className="edit-card danger-card">

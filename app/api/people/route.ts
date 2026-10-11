@@ -3,12 +3,17 @@ import { badRequest, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { validMonthDay } from "@/lib/people";
 import { capitalizeName } from "@/lib/tags";
+import { addRelation } from "@/lib/family";
 
 /** Add someone to the family, with an optional birthday. */
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return unauthorized();
-  const body = (await req.json()) as { name?: string; month?: number | null; day?: number | null; year?: number | null; address?: string | null; shareAddress?: boolean };
+  const body = (await req.json()) as {
+    name?: string; month?: number | null; day?: number | null; year?: number | null; address?: string | null; shareAddress?: boolean;
+    /** How they're related: child of, parent of, or partner of someone; or a friend of the family. */
+    relation?: { kind: "child" | "parent" | "partner"; other: number } | { kind: "friend" } | null;
+  };
   const name = capitalizeName((body.name ?? "").trim().replace(/\s+/g, " ").slice(0, 80));
   if (!name) return badRequest("Add a name.");
   const m = Number(body.month) || 0, d = Number(body.day) || 0;
@@ -27,5 +32,13 @@ export async function POST(req: Request) {
     [name, s.did, s.name, address, address ? new Date().toISOString() : null, address ? s.did : null, body.shareAddress !== false]);
   if (m && d)
     await q(`insert into birthdays (person_id, month, day, year, created_by_device, created_by_name) values ($1,$2,$3,$4,$5,$6)`, [row.id, m, d, y, s.did, s.name]);
-  return NextResponse.json({ id: row.id });
+  // "Child of Danielle" means Danielle is their parent.
+  const rel = body.relation;
+  let note: string | null = null;
+  if (rel?.kind === "friend") await q(`update people set family_friend = true, family_friend_by_device = $1 where id = $2`, [s.did, row.id]);
+  else if (rel && rel.other) {
+    const flip = { child: "parent", parent: "child", partner: "partner" } as const;
+    note = await addRelation(row.id, flip[rel.kind], Number(rel.other), s);
+  }
+  return NextResponse.json({ id: row.id, note });
 }

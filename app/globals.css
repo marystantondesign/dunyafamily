@@ -715,3 +715,103 @@ section { margin-top: 48px; }
   .album-blank { height: 64px; }
   .photo-albums { display: none; }
 }
+
+/* Family tree (screens 14 and 15). */
+.tree-tools { display: flex; justify-content: flex-end; gap: 12px; margin: -12px 0 12px; flex-wrap: wrap; }
+.tree-find { flex: 0 1 300px; width: 300px; max-width: 100%; }
+.tree { display: flex; flex-direction: column; align-items: center; }
+.tree-earlier { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 18px; }
+.btn-quiet { min-height: 40px; font-size: 15px; }
+.tree-gens { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--check); }
+.tree-gen { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tree-gen-label { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.tree-gen-people { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+.tdot { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--ink); text-align: center; }
+.tdot:hover { color: var(--plum); }
+.tdot-face { border-radius: 50%; background: #C9B79C; color: var(--paper); display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: var(--serif); border: 3px solid var(--photo-paper); box-shadow: 0 0 0 1px var(--check); flex: none; }
+.tdot-face img { width: 100%; height: 100%; object-fit: cover; }
+.tdot-root .tdot-face { width: 128px; height: 128px; font-size: 48px; }
+.tdot-lg .tdot-face { width: 84px; height: 84px; font-size: 32px; }
+.tdot-md .tdot-face { width: 60px; height: 60px; font-size: 24px; }
+.tdot-sm .tdot-face { width: 52px; height: 52px; font-size: 20px; }
+.tdot-name { font-family: var(--serif); font-size: 16px; line-height: 1.2; }
+.tdot-root .tdot-name { font-size: 28px; font-weight: 700; margin-top: 6px; }
+.tdot-lg .tdot-name { font-size: 20px; font-weight: 700; }
+.tdot-sub { font-size: 13px; color: var(--ink-3); }
+.tcouple { display: inline-flex; align-items: flex-start; justify-content: center; gap: 0; }
+.tpartner { display: inline-flex; align-items: flex-start; }
+.tpartner-line { width: 18px; margin-top: 26px; border-top: 1px solid var(--check); }
+.tdot-lg + .tpartner .tpartner-line { margin-top: 42px; }
+.tree-root { position: relative; padding-bottom: 20px; }
+.tree-root::after { content: ""; position: absolute; left: 50%; bottom: 0; height: 20px; border-left: 1px solid var(--check); }
+.tree-root:has(+ .tree-empty)::after { display: none; }
+.tree-root .tcouple:has(.tpartner) { transform: translateX(calc(50% - 64px)); }
+.tree-chart { width: 100%; overflow-x: auto; padding-bottom: 8px; }
+.tree-chart ul { display: flex; justify-content: center; margin: 0; padding: 20px 0 0; position: relative; min-width: max-content; margin-inline: auto; }
+.tree-chart > ul { padding-top: 0; }
+.tree-chart li { list-style: none; position: relative; padding: 20px 10px 0; display: flex; flex-direction: column; align-items: center; }
+.tree-chart li::before, .tree-chart li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: 20px; border-top: 1px solid var(--check); }
+.tree-chart li::after { right: auto; left: 50%; border-left: 1px solid var(--check); }
+.tree-chart li:first-child::before, .tree-chart li:last-child::after { border-top: 0; }
+.tree-chart li:last-child::before { border-right: 1px solid var(--check); }
+.tree-chart li:only-child::before { display: none; }
+.tree-chart li:only-child::after { border-top: 0; }
+.tree-chart ul ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 20px; border-left: 1px solid var(--check); }
+.tree-chart > ul > li { padding-inline: 22px; }
+.tmore { margin-top: 8px; font: inherit; font-size: 13px; color: var(--plum); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.tmore:hover { background: var(--paper); }
+.tree-phone { display: none; }
+.tree-empty { text-align: center; max-width: 520px; margin: 8px auto 0; }
+.family-groups { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line); }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.group-card { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: var(--ink); }
+.group-card:hover { color: var(--ink); box-shadow: 0 6px 18px rgba(60, 40, 25, 0.08); }
+.group-photo { display: block; height: 96px; border-radius: 2px; background: var(--wash); overflow: hidden; margin-bottom: 10px; }
+.group-photo img { width: 100%; height: 100%; object-fit: cover; }
+.group-title { font-family: var(--serif); font-size: 19px; padding: 0 8px; }
+.group-card .small { padding: 0 8px; }
+.family-everyone { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line); }
+.family-everyone .section-head { flex-wrap: wrap; gap: 12px; }
+@media (max-width: 760px) {
+  .tree-tools { justify-content: stretch; margin-top: 0; }
+  .tree-find { width: 100%; flex: 1; }
+  .tree-chart { display: none; }
+  .tree-root::after { display: none; }
+  .tree-root .tcouple:has(.tpartner) { transform: none; }
+  .tdot-root .tdot-face { width: 112px; height: 112px; }
+  .tdot-root .tdot-name { font-size: 26px; }
+  .tree-phone { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 8px 0 0; padding: 0 0 0 16px; width: 100%; border-left: 1px solid var(--check); }
+  .tcard { position: relative; }
+  .tcard::before { content: ""; position: absolute; left: -16px; top: 30px; width: 16px; border-top: 1px solid var(--check); }
+  .tcard > .tcard-head { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+  .tcard-head { display: flex; align-items: center; }
+  .tcard-link { flex: 1; display: flex; align-items: center; gap: 14px; padding: 6px 8px; text-decoration: none; color: var(--ink); min-height: 52px; }
+  .tcard > .tcard-head .tdot-face { width: 46px; height: 46px; font-size: 18px; border-width: 0; box-shadow: none; }
+  .tcard-name { display: block; font-family: var(--serif); font-size: 20px; }
+  .tcard-toggle { width: 48px; height: 48px; border: 0; background: none; color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .tsub { list-style: none; margin: 6px 0 4px 34px; padding: 0 0 0 16px; border-left: 1px solid var(--check); display: flex; flex-direction: column; gap: 2px; }
+  .trow { position: relative; }
+  .trow::before { content: ""; position: absolute; left: -16px; top: 24px; width: 14px; border-top: 1px solid var(--check); }
+  .trow .tdot-face { width: 40px; height: 40px; font-size: 16px; border-width: 0; box-shadow: none; }
+  .trow .tcard-link { padding: 4px 0; min-height: 48px; }
+  .trow .tcard-name { font-size: 18px; }
+  .group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* Family on Edit a person, and How they're related on Add a family member. */
+.rel-list { list-style: none; margin: 0 0 16px; padding: 0; }
+.rel-list > li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.rel-label { width: 110px; color: var(--ink-3); flex: none; }
+.rel-people { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.rel-chip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); padding: 3px 4px 3px 3px; }
+.rel-chip a { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); padding-right: 6px; }
+.rel-chip button { width: 28px; height: 28px; border: 0; background: none; border-radius: 50%; font-size: 18px; color: var(--muted); cursor: pointer; }
+.rel-chip button:hover { background: var(--wash); color: var(--ink); }
+.rel-add { margin-left: auto; }
+.rel-picker { flex-basis: 100%; display: flex; align-items: flex-end; gap: 12px; }
+.rel-picker .field { flex: 1; }
+.rel-kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.rel-kinds .pill { min-height: 44px; padding: 0 18px; font-size: 16px; }
+.rel-kinds .pill.on { background: var(--plum); border-color: var(--plum); color: var(--paper); }
+.family-line { margin-top: 20px; }
+@media (max-width: 760px) { .rel-label { width: 100%; } }
