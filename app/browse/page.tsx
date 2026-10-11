@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BrowseFilters, SortSelect } from "@/components/BrowseFilters";
 import { BrowseResults } from "@/components/BrowseResults";
+import { Icon } from "@/components/Icon";
 import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
 import { filterQuery, filtersFrom, ids, type SP } from "@/lib/filters";
@@ -32,7 +34,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     redirect(href({}, { people: pIds.join(",") || undefined, occasions: oIds.join(",") || undefined, decade, year }));
   }
 
-  const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decade: Number(sp.decade) || undefined };
+  const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decades: ids(sp.decade) };
   const filters = filtersFrom(sp, occasions);
   const page = Math.max(1, Number(sp.page) || 1);
   const s = await getSession();
@@ -41,79 +43,65 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     findPhotos(filters, { order: sp.order === "oldest" ? "oldest" : "newest", limit: PAGE, offset: (page - 1) * PAGE }),
     countPhotos(filters),
   ]);
-  const extras = [
-    filters.year && { label: String(filters.year), clear: { year: undefined } },
-    sp.month && { label: `${MONTHS[Number(sp.month) - 1]}s`, clear: { month: undefined } },
-    sp.season && { label: `${sp.season}s`, clear: { season: undefined } },
-    filters.untagged && { label: "Needs tags", clear: { untagged: undefined } },
-    filters.batch && { label: "One upload", clear: { batch: undefined } },
-  ].filter(Boolean) as { label: string; clear: SP }[];
-  const anyFilter = sel.people.length || sel.occasions.length || sel.decade || extras.length;
+  const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q")) as Record<string, string>;
+
+  // Everything that's filtering the photos, as removable chips above the grid.
+  const nameOf = (list: { id: number; name: string }[], id: number) => list.find((x) => x.id === id)?.name ?? "Unknown";
+  const chips: { key: string; label: string; icon: "person" | "calendar" | "photo"; clear: SP }[] = [
+    ...sel.people.map((id) => ({ key: `p${id}`, label: nameOf(people, id), icon: "person" as const, clear: { people: toggle(sel.people, id) } })),
+    ...sel.occasions.map((id) => ({ key: `o${id}`, label: nameOf(occasions, id), icon: "calendar" as const, clear: { occasions: toggle(sel.occasions, id) } })),
+    ...sel.decades.map((d) => ({ key: `d${d}`, label: `${d}s`, icon: "calendar" as const, clear: { decade: toggle(sel.decades, d) } })),
+    ...(filters.year ? [{ key: "y", label: String(filters.year), icon: "calendar" as const, clear: { year: undefined } }] : []),
+    ...(sp.month ? [{ key: "m", label: `${MONTHS[Number(sp.month) - 1]}s`, icon: "calendar" as const, clear: { month: undefined } }] : []),
+    ...(sp.season ? [{ key: "s", label: `${sp.season}s`, icon: "calendar" as const, clear: { season: undefined } }] : []),
+    ...(filters.untagged ? [{ key: "u", label: "Needs tags", icon: "photo" as const, clear: { untagged: undefined } }] : []),
+    ...(filters.batch ? [{ key: "b", label: "One upload", icon: "photo" as const, clear: { batch: undefined } }] : []),
+  ];
 
   return (
-    <>
-      <form action="/browse" className="search" role="search">
-        <label htmlFor="q" className="sr-only">Search photos</label>
-        <input id="q" name="q" placeholder="Try Grandma Christmas 1990s" />
-        <button className="btn">Search</button>
-      </form>
-
-      <div className="filter-group">
-        <h3>People</h3>
-        <div className="pills">
-          {people.map((p) => (
-            <Link key={p.id} className={`pill${sel.people.includes(p.id) ? " on" : ""}`} href={href(sp, { people: toggle(sel.people, p.id) })}>{p.name}</Link>
-          ))}
-        </div>
-      </div>
-      <div className="filter-group">
-        <h3>Occasions</h3>
-        <div className="pills">
-          {occasions.map((o) => (
-            <Link key={o.id} className={`pill${sel.occasions.includes(o.id) ? " on" : ""}`} href={href(sp, { occasions: toggle(sel.occasions, o.id) })}>{o.name}</Link>
-          ))}
-        </div>
-      </div>
-      {decades.length > 0 && (
-        <div className="filter-group">
-          <h3>Decades</h3>
-          <div className="pills">
-            {decades.map((d) => (
-              <Link key={d} className={`pill${sel.decade === d ? " on" : ""}`} href={href(sp, { decade: sel.decade === d ? undefined : String(d), year: undefined })}>{d}s</Link>
-            ))}
+    <div className="browse">
+      <BrowseFilters
+        people={people.map(({ id, name }) => ({ id, name }))}
+        occasions={occasions.map(({ id, name }) => ({ id, name }))}
+        decades={decades}
+        selected={sel}
+        params={params}
+      />
+      <div className="browse-main">
+        <form action="/browse" role="search">
+          <label htmlFor="bq" className="sr-only">Search photos, people, or occasions</label>
+          <div className="search-field">
+            <Icon name="search" />
+            <input id="bq" name="q" placeholder="Search photos, people, or occasions..." />
           </div>
-        </div>
-      )}
+        </form>
 
-      <div className="hero-head" style={{ marginTop: 32 }}>
-        <p className="muted" style={{ margin: 0 }}>
-          {total} {total === 1 ? "photo" : "photos"}
-          {extras.map((x) => (
-            <span key={x.label}> · {x.label} <Link href={href(sp, x.clear)} aria-label={`Clear ${x.label}`}>×</Link></span>
+        <div className="browse-bar">
+          {chips.map((c) => (
+            <Link key={c.key} href={href(sp, c.clear)} className="chip" aria-label={`Remove ${c.label}`}>
+              <Icon name={c.icon} size={16} /> {c.label} <Icon name="x" size={14} stroke={2} />
+            </Link>
           ))}
-          {anyFilter ? <> · <Link href="/browse">Clear all</Link></> : null}
-        </p>
-        <span className="small">
-          <Link href={href(sp, { order: undefined })} aria-current={sp.order !== "oldest"}>Newest first</Link>
-          {" or "}
-          <Link href={href(sp, { order: "oldest" })} aria-current={sp.order === "oldest"}>Oldest first</Link>
-        </span>
+          {chips.length > 0 && <Link href="/browse" className="small">Clear filters</Link>}
+          <span className="small muted">{total} {total === 1 ? "photo" : "photos"}</span>
+          <SortSelect value={sp.order === "oldest" ? "oldest" : "newest"} params={params} />
+        </div>
+
+        {photos.length ? (
+          <BrowseResults
+            // Only what the browser needs: no file keys or device ids.
+            photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
+            query={qs}
+            tagHref={`/tag${qs ? `?${qs}` : ""}`}
+            people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
+            occasions={occasions}
+          />
+        ) : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
+
+        {total > page * PAGE && (
+          <p style={{ marginTop: 24 }}><Link className="btn" href={href(sp, { page: String(page + 1) })}>Show more</Link></p>
+        )}
       </div>
-
-      {photos.length ? (
-        <BrowseResults
-          // Only what the browser needs: no file keys or device ids.
-          photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
-          query={qs}
-          tagHref={`/tag${qs ? `?${qs}` : ""}`}
-          people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
-          occasions={occasions}
-        />
-      ) : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
-
-      {total > page * PAGE && (
-        <p style={{ marginTop: 24 }}><Link className="btn" href={href(sp, { page: String(page + 1) })}>Show more</Link></p>
-      )}
-    </>
+    </div>
   );
 }

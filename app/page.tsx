@@ -1,125 +1,105 @@
 import Link from "next/link";
-import { Avatar } from "@/components/Avatar";
 import { Gallery } from "@/components/Gallery";
-import { birthdays, lastUpload, listOccasions, listPeople, relativeDays, shortDate, upcomingGatherings } from "@/lib/data";
-import { heroPhotos, pickHero } from "@/lib/hero";
+import { Icon } from "@/components/Icon";
+import { featuredAlbums, heroPortrait } from "@/lib/featured";
 import { countPhotos, findPhotos } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
-const PEOPLE_ON_HOME = 11;
+
+function Sprig() {
+  return (
+    <svg aria-hidden="true" className="sprig" width="110" height="154" viewBox="0 0 100 140" fill="none" stroke="#8A6A4A" strokeWidth="1.1" strokeLinecap="round">
+      <path d="M70 135C60 100 48 70 30 30" /><path d="M58 100C50 85 40 78 22 74" /><path d="M50 80C56 64 66 54 82 48" />
+      <path d="M42 62C34 52 24 48 12 48" /><path d="M38 52C44 40 52 32 64 26" />
+      <g fill="#E9D7B0" stroke="#B89462">
+        <circle cx="30" cy="28" r="4" /><circle cx="24" cy="22" r="3.2" /><circle cx="34" cy="20" r="3" /><circle cx="21" cy="73" r="3.6" />
+        <circle cx="15" cy="68" r="3" /><circle cx="83" cy="47" r="3.6" /><circle cx="88" cy="41" r="3" /><circle cx="11" cy="47" r="3.4" />
+        <circle cx="65" cy="25" r="3.4" /><circle cx="70" cy="19" r="2.8" />
+      </g>
+    </svg>
+  );
+}
 
 export default async function Home() {
-  const hero = await pickHero();
-  const [heroSet, bdays, gatherings, people, occasions, recent, last, untagged] = await Promise.all([
-    heroPhotos(hero),
-    birthdays(),
-    upcomingGatherings(3),
-    listPeople(),
-    listOccasions(),
-    findPhotos({}, { order: "recent", limit: 10 }),
-    lastUpload(),
+  const [hero, albums, recent, untagged] = await Promise.all([
+    heroPortrait(),
+    featuredAlbums(),
+    findPhotos({}, { order: "recent", limit: 12 }),
     countPhotos({ untagged: true }),
   ]);
-  const soonBirthdays = bdays.filter((b) => b.inDays <= 60).slice(0, 4);
 
   return (
     <>
-      <form action="/browse" className="search" role="search">
-        <label htmlFor="q" className="sr-only">Search photos</label>
-        <input id="q" name="q" placeholder="Search people, years, occasions" />
-        <button className="btn">Search</button>
-      </form>
-
-      {heroSet.length > 0 ? (
-        <>
-          <div className="hero-head">
-            <h1 className="display">{hero.title}</h1>
-            <Link href={hero.href} className="small">See them all</Link>
-          </div>
-          <Gallery photos={heroSet} base={260} showWhen />
-        </>
-      ) : (
-        <div style={{ marginTop: 40 }}>
-          <h1 className="display">Start the collection</h1>
-          <p className="muted">Add the first photos and tag who&apos;s in them.</p>
-          <Link href="/upload" className="btn btn-primary">Add photos</Link>
+      <section className="home-hero">
+        <div className="polaroid-wrap">
+          <Sprig />
+          <figure className="polaroid">
+            {hero.photo ? (
+              <Link href={`/photos/${hero.photo.id}`} aria-label="Open this photo of Mamaw">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={hero.photo.url} alt="Mamaw" />
+              </Link>
+            ) : <div className="polaroid-blank" />}
+            <figcaption>Mamaw <Icon name="heart" size={20} stroke={1.5} /></figcaption>
+          </figure>
         </div>
-      )}
-
-      <section className="upcoming" aria-label="Coming up">
-        <div>
-          <h3>Upcoming birthdays</h3>
-          {soonBirthdays.length ? (
-            <ul className="rows">
-              {soonBirthdays.map((b) => (
-                <li key={b.id}>
-                  <Link href={`/people/${b.person_id}`}>{b.name}</Link>
-                  <span className={b.inDays === 0 ? "today" : "date"}>{b.inDays === 0 ? "Today" : shortDate(b.next)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="small muted">None in the next two months.</p>
-          )}
-          <Link href="/calendar" className="small">All birthdays</Link>
-        </div>
-        <div>
-          <h3>Coming up</h3>
-          {gatherings.length ? (
-            <ul className="rows">
-              {gatherings.map((g) => (
-                <li key={g.id}><span>{g.title}</span><span className="date">{shortDate(g.date)}</span></li>
-              ))}
-            </ul>
-          ) : (
-            <p className="small muted">Nothing planned yet.</p>
-          )}
-          <Link href="/calendar" className="small">Add a gathering or sync to your calendar</Link>
+        <div className="home-hero-text">
+          <h1>Our family,<br />through the years</h1>
+          <p className="lede">A place for the memories we share.</p>
+          <form action="/browse" role="search" className="search">
+            <label htmlFor="hs" className="sr-only">Search photos, people, or occasions</label>
+            <div className="search-field">
+              <Icon name="search" />
+              <input id="hs" name="q" placeholder="Search photos, people, or occasions..." />
+            </div>
+            <button className="btn btn-primary search-go">Search</button>
+          </form>
+          <Link href="/browse" className="text-link">Browse all photos <span aria-hidden="true">→</span></Link>
         </div>
       </section>
 
-      {people.length > 0 && (
-        <section>
-          <h2 className="section-title">Family</h2>
-          <div className="people">
-            {people.slice(0, PEOPLE_ON_HOME).map((p) => (
-              <Link key={p.id} href={`/people/${p.id}`} className="person">
-                <Avatar name={p.name} url={p.avatar_url} />
-                {p.name}
+      {albums.length > 0 ? (
+        <section className="featured">
+          <div className="section-head">
+            <h2 className="section-title">Featured albums</h2>
+            <Link href="/browse" className="text-link small">See all photos <span aria-hidden="true">→</span></Link>
+          </div>
+          <div className="album-grid">
+            {albums.map((a) => (
+              <Link key={a.title} href={a.href} className="album-card">
+                <span>
+                  <span className="album-title">{a.title}</span>
+                  <span className="album-text">{a.text}</span>
+                </span>
+                <span className="album-photos">
+                  {a.photos.map((p) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={p.id} src={p.url} alt="" loading="lazy" />
+                  ))}
+                </span>
               </Link>
             ))}
-            {people.length > PEOPLE_ON_HOME && (
-              <Link href="/people" className="person">
-                <div className="avatar" aria-hidden="true">+{people.length - PEOPLE_ON_HOME}</div>
-                See everyone
-              </Link>
-            )}
           </div>
+        </section>
+      ) : (
+        <section className="featured">
+          <h2 className="section-title">Start the collection</h2>
+          <p className="lede">Add the first photos and tag who&apos;s in them.</p>
+          <Link href="/upload" className="btn btn-primary">Add photos</Link>
         </section>
       )}
 
-      <section>
-        <h2 className="section-title">Browse</h2>
-        <div className="pills">
-          {occasions.filter((o) => o.kind !== "season").map((o) => (
-            <Link key={o.id} href={`/browse?occasions=${o.id}`} className="pill">{o.name}</Link>
-          ))}
-          <Link href="/browse" className="pill">By decade</Link>
-        </div>
-      </section>
-
       {recent.length > 0 && (
         <section>
-          <div className="hero-head" style={{ margin: "0 0 14px" }}>
-            <h2 className="section-title" style={{ margin: 0 }}>Recently added</h2>
-            {last && <span className="small muted">{last.name ?? "Someone"} added {last.n} {last.n === 1 ? "photo" : "photos"} {relativeDays(last.at)}</span>}
+          <div className="section-head">
+            <h2 className="section-title">Recently added</h2>
+            {untagged > 0 && (
+              <Link href="/tag?untagged=1" className="needs-tags">
+                {untagged} {untagged === 1 ? "photo needs" : "photos need"} tags. Know who&apos;s in them?
+              </Link>
+            )}
           </div>
-          <Gallery photos={recent} base={140} />
-          {untagged > 0 && (
-            <Link href="/tag?untagged=1" className="needs-tags">
-              {untagged} {untagged === 1 ? "photo needs" : "photos need"} tags. Know who&apos;s in them?
-            </Link>
-          )}
+          <Gallery photos={recent} base={150} query="order=recent" />
         </section>
       )}
     </>

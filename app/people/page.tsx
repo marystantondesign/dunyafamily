@@ -8,7 +8,7 @@ export default async function People() {
   const people = await listPeople();
   return (
     <>
-      <h1 className="display" style={{ margin: "32px 0 24px" }}>Family</h1>
+      <div className="page-head"><h1 className="display">Our family</h1><p>Rooted in Dunya. Growing through generations.</p></div>
       <div className="people">
         {people.map((p) => (
           <Link key={p.id} href={`/people/${p.id}`} className="person">

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { TagPicker, type Picked } from "./TagPicker";
 
 type Tag = { id: Picked; removable: boolean };
@@ -15,8 +16,10 @@ type OccasionOption = { id: number; name: string };
 type Draft = { people: Tag[]; occasions: Tag[]; year: number | null; decade: number | null; yearText: string };
 
 const SHORTCUTS = 9;
-const OCCASION_CHIPS = 8;
 const DECADES = Array.from({ length: 10 }, (_, i) => 1930 + i * 10);
+const THIS_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: THIS_YEAR - 1899 }, (_, i) => THIS_YEAR - i);
+const OTHER = "__other";
 const LOCKED = "Only the person who added this, or Mary, can remove it.";
 
 const fromPhoto = (p: TagPhoto): Draft => ({
@@ -200,19 +203,23 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
   }
 
   const header = (
-    <div className="tag-top">
-      <Link href="/" className="brand">Dunya Family</Link>
-      <div className="tag-status">
-        <span className="muted tag-label">Tagging photos</span>
-        <strong>{Math.min(index + 1, total)} of {total}</strong>
-        <button className="btn" onClick={doneForNow}>Done for now</button>
+    <div className="tag-head">
+      <div>
+        <h1 className="display">Tag photos</h1>
+        <p>Photo {Math.min(index + 1, total)} of {total} · <button type="button" className="link-btn" onClick={doneForNow}>Done for now</button></p>
       </div>
+      {photo && (
+        <div className="tag-actions">
+          <button type="button" className="btn" onClick={() => go(index - 1)} disabled={index === 0}><Icon name="chevronLeft" size={18} /> Previous</button>
+          <button type="button" className="btn" onClick={skip}>Skip</button>
+          <button type="button" className="btn btn-primary" onClick={saveAndNext}>Save &amp; next <Icon name="arrowRight" size={18} /></button>
+        </div>
+      )}
     </div>
   );
 
   const filmstrip = (
     <div className="filmstrip-row">
-      <button className="link-btn" onClick={() => go(index - 1)} disabled={index === 0}>← Back</button>
       <div className="filmstrip" ref={strip}>
         {photos.map((p, i) => (
           <button
@@ -252,10 +259,8 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
 
   const yearLocked = !photo.owner && saved[photo.id].year !== null;
   const decadeLocked = yearLocked || (!photo.owner && saved[photo.id].decade !== null);
-  const shownDecade = draft.yearText.trim() && Number(draft.yearText) > 1800 ? Math.floor(Number(draft.yearText) / 10) * 10 : draft.decade;
   const extraPeople = draft.people.filter((t) => !shortcuts.some((p) => p.id === t.id));
-  const occChips = knownOcc.slice(0, OCCASION_CHIPS);
-  const extraOcc = draft.occasions.filter((t) => !occChips.some((o) => o.id === t.id));
+  const extraOcc = draft.occasions.slice(1);
 
   const personChip = (id: Picked, n?: number) => {
     const tag = draft.people.find((t) => t.id === id);
@@ -271,12 +276,13 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
         title={tag && !tag.removable ? LOCKED : undefined}
         onClick={() => toggle("people", id)}
       >
+        {tag && <Icon name="check" size={16} stroke={2.2} />}
         <span className="chip-avatar" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {person?.avatar_url ? <img src={person.avatar_url} alt="" /> : name.slice(0, 1).toUpperCase()}
         </span>
         <span className="chip-name">{name}</span>
-        {n !== undefined && <kbd>{n}</kbd>}
+        {n !== undefined && <span className="sr-only">, shortcut {n}</span>}
       </button>
     );
   };
@@ -295,98 +301,98 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
 
         <div className="tag-panel">
           <section aria-labelledby="who">
-            <h2 id="who" className="label">Who&apos;s here</h2>
+            <h2 id="who" className="panel-title">Who&apos;s here?</h2>
+            <div className="tag-search">
+              <Icon name="search" size={18} />
+              <TagPicker
+                label="Search people, or add someone new"
+                hideLabel
+                options={knownPeople.filter((p) => !has(draft.people, p.id))}
+                value={[]}
+                onChange={(v) => addTyped("people", v[v.length - 1])}
+                placeholder="Search people..."
+              />
+            </div>
             <div className="person-chips">
               {shortcuts.map((p, i) => personChip(p.id, i + 1))}
               {extraPeople.map((t) => personChip(t.id))}
             </div>
-            <TagPicker
-              label="Someone else or someone new"
-              hideLabel
-              options={knownPeople.filter((p) => !has(draft.people, p.id))}
-              value={[]}
-              onChange={(v) => addTyped("people", v[v.length - 1])}
-              placeholder="Someone else or someone new"
-            />
             {index > 0 && (
               <button type="button" className="link-btn plum" onClick={sameAsLast}>Same people as last photo</button>
             )}
           </section>
 
-          <section aria-labelledby="when">
-            <h2 id="when" className="label">When</h2>
+          <div className="tag-fields">
+            <div className="field">
+              <label htmlFor="tag-when">Year <span className="opt">(optional)</span></label>
+              <select
+                id="tag-when"
+                value={draft.year ? `y${draft.year}` : draft.decade ? `d${draft.decade}` : ""}
+                disabled={yearLocked}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const n = Number(v.slice(1));
+                  edit((x) => v.startsWith("y") ? { ...x, year: n, decade: Math.floor(n / 10) * 10, yearText: String(n) }
+                    : v.startsWith("d") ? { ...x, year: null, decade: n, yearText: "" }
+                    : { ...x, year: null, decade: null, yearText: "" });
+                }}
+              >
+                <option value="">Not sure</option>
+                <optgroup label="Sometime in the">
+                  {DECADES.map((d) => <option key={d} value={`d${d}`} disabled={decadeLocked && d !== draft.decade}>{d}s</option>)}
+                </optgroup>
+                <optgroup label="Exact year">
+                  {YEARS.map((y) => <option key={y} value={`y${y}`}>{y}</option>)}
+                </optgroup>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="tag-occasion">Occasion <span className="opt">(optional)</span></label>
+              <select
+                id="tag-occasion"
+                value={otherOpen ? OTHER : String(draft.occasions[0]?.id ?? "")}
+                disabled={!!draft.occasions[0] && !draft.occasions[0].removable}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === OTHER) return setOtherOpen(true);
+                  setOtherOpen(false);
+                  const id = v ? Number(v) : null;
+                  edit((x) => ({ ...x, occasions: [...(id ? [{ id, removable: true }] : []), ...x.occasions.slice(1).filter((t) => t.id !== id)] }));
+                }}
+              >
+                <option value="">None</option>
+                {knownOcc.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                {typeof draft.occasions[0]?.id === "string" && <option value={String(draft.occasions[0].id)}>{draft.occasions[0].id}</option>}
+                <option value={OTHER}>Something else...</option>
+              </select>
+            </div>
+          </div>
+          {decadeLocked && <p className="hint">Only the person who added this photo, or Mary, can change its date.</p>}
+          {otherOpen && (
+            <TagPicker
+              label="Name the occasion"
+              options={knownOcc.filter((o) => !has(draft.occasions, o.id))}
+              value={[]}
+              onChange={(v) => { addTyped("occasions", v[v.length - 1]); setOtherOpen(false); }}
+              placeholder="Graduation, a trip, a reunion"
+            />
+          )}
+          {extraOcc.length > 0 && draft.occasions.length > 1 && (
             <div className="pills">
-              {DECADES.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`pill${shownDecade === d ? " on" : ""}`}
-                  aria-pressed={shownDecade === d}
-                  disabled={decadeLocked}
-                  onClick={() => edit((x) => ({ ...x, year: null, yearText: "", decade: x.decade === d && !x.yearText.trim() ? null : d }))}
-                >
-                  {d}s
+              {draft.occasions.slice(1).map((t) => (
+                <button key={String(t.id)} type="button" className="pill on" aria-disabled={!t.removable || undefined} title={t.removable ? "Remove" : LOCKED} onClick={() => toggle("occasions", t.id)}>
+                  {typeof t.id === "number" ? occNames.get(t.id) : t.id} {t.removable && <Icon name="x" size={14} />}
                 </button>
               ))}
             </div>
-            <div className="field tag-year">
-              <label htmlFor="tag-year" className="sr-only">Exact year</label>
-              <input
-                id="tag-year"
-                inputMode="numeric"
-                placeholder="Exact year"
-                value={draft.yearText}
-                disabled={yearLocked}
-                onChange={(e) => edit((x) => ({ ...x, yearText: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
-              />
-            </div>
-            {decadeLocked && <p className="hint">Only the person who added this photo, or Mary, can change its date.</p>}
-          </section>
-
-          <section aria-labelledby="occasion">
-            <h2 id="occasion" className="label">Occasion</h2>
-            <div className="pills">
-              {[...occChips.map((o) => o.id), ...extraOcc.map((t) => t.id)].map((id) => {
-                const tag = draft.occasions.find((t) => t.id === id);
-                return (
-                  <button
-                    key={String(id)}
-                    type="button"
-                    className={`pill${tag ? " on" : ""}`}
-                    aria-pressed={!!tag}
-                    aria-disabled={tag && !tag.removable ? true : undefined}
-                    title={tag && !tag.removable ? LOCKED : undefined}
-                    onClick={() => toggle("occasions", id)}
-                  >
-                    {typeof id === "number" ? occNames.get(id) : id}
-                  </button>
-                );
-              })}
-              {!otherOpen && <button type="button" className="pill" onClick={() => setOtherOpen(true)}>+ Other</button>}
-            </div>
-            {otherOpen && (
-              <TagPicker
-                label="Other occasion"
-                hideLabel
-                options={knownOcc.filter((o) => !has(draft.occasions, o.id))}
-                value={[]}
-                onChange={(v) => addTyped("occasions", v[v.length - 1])}
-                placeholder="Graduation, Easter, a trip"
-              />
-            )}
-          </section>
+          )}
 
           {message && <p className="error" role="alert">{message}</p>}
-
-          <div className="tag-actions">
-            <button type="button" className="btn" onClick={skip}>Skip <kbd>S</kbd></button>
-            <button type="button" className="btn btn-primary" onClick={saveAndNext}>Save and next <kbd>Enter</kbd></button>
-          </div>
         </div>
       </div>
 
       {filmstrip}
-      <p className="hint tag-keys">Keyboard: 1 to 9 toggles people · Enter saves and goes to the next photo · S skips · ← goes back</p>
+      <p className="hint tag-keys">Keyboard: 1 to 9 toggle the first nine people · Enter saves and goes on · S skips · ← goes back</p>
     </div>
   );
 }

@@ -22,6 +22,8 @@ export type Filters = {
   occasions?: number[];
   year?: number;
   decade?: number;
+  /** Any of these decades (browse lets you check several). */
+  decades?: number[];
   months?: number[];
   season?: { months: number[]; occasionId?: number };
   untagged?: boolean;
@@ -45,6 +47,7 @@ function build(f: Filters) {
     where.push(`exists (select 1 from photo_occasions x where x.photo_id = p.id and x.occasion_id = ${$(id)})`);
   if (f.year) where.push(`p.year = ${$(f.year)}`);
   if (f.decade) where.push(`coalesce(p.decade, (p.year / 10) * 10) = ${$(f.decade)}`);
+  if (f.decades?.length) where.push(`coalesce(p.decade, (p.year / 10) * 10) = any(${$(f.decades)}::int[])`);
   if (f.months?.length) where.push(`p.month = any(${$(f.months)}::int[])`);
   if (f.season)
     where.push(

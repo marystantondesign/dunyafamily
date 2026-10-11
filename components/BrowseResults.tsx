@@ -77,7 +77,7 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
       </div>
       {message && !selecting && <p className="small muted" role="status">{message}</p>}
 
-      <Gallery photos={photos} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} />
+      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} />
 
       {selecting && (
         <div className="select-bar-wrap">

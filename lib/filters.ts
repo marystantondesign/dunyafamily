@@ -10,7 +10,7 @@ export function filtersFrom(sp: SP, occasions: Occasion[]): Filters {
   const f: Filters = {
     people: ids(sp.people),
     occasions: ids(sp.occasions),
-    decade: Number(sp.decade) || undefined,
+    decades: ids(sp.decade),
     year: Number(sp.year) || undefined,
     months: sp.month ? [Number(sp.month)] : undefined,
     untagged: sp.untagged === "1",

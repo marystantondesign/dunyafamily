@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Figtree, Young_Serif } from "next/font/google";
+import { Caveat, Figtree, Libre_Caslon_Text } from "next/font/google";
+import { SiteHeader } from "@/components/SiteHeader";
 import { getSession } from "@/lib/auth";
 import "./globals.css";
 
-const serif = Young_Serif({ subsets: ["latin"], weight: "400", variable: "--font-serif" });
-const sans = Figtree({ subsets: ["latin"], variable: "--font-sans" });
+const serif = Libre_Caslon_Text({ subsets: ["latin"], weight: ["400", "700"], style: ["normal", "italic"], variable: "--font-serif" });
+const sans = Figtree({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-sans" });
+const hand = Caveat({ subsets: ["latin"], weight: "500", variable: "--font-hand" });
 
 export const metadata: Metadata = {
   title: "Dunya Family",
@@ -15,20 +16,9 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const s = await getSession();
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="en" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>
       <body>
-        {s && (
-          <header className="site-header">
-            <Link href="/" className="brand">Dunya Family</Link>
-            <nav aria-label="Main">
-              <Link href="/browse">Browse</Link>
-              <Link href="/people">Family</Link>
-              <Link href="/calendar">Birthdays and gatherings</Link>
-              <span className="hello">Hi, {s.name}</span>
-              <Link href="/upload" className="btn btn-primary">Add photos</Link>
-            </nav>
-          </header>
-        )}
+        {s && <SiteHeader name={s.name} />}
         <main className="wrap">{children}</main>
       </body>
     </html>

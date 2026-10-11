@@ -1,7 +1,8 @@
 "use client";
 import exifr from "exifr";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type Item = {
@@ -54,8 +55,9 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState<{ count: number; batch: string; cover?: string } | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -120,10 +122,15 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       const { batch } = (await res.json()) as { batch: string };
-      setDone({ count: uploaded.length, batch, cover: uploaded[0].item.preview });
-      // Keep any that failed so they can be tried again.
-      setItems((prev) => prev.filter((i) => failed.has(i.key)).map((i) => ({ ...i, state: "ready", message: undefined })));
-      setOcc([]); setYear(""); setDecade(""); setCaption(""); setShowAll(false);
+      if (failed.size) {
+        // Keep the ones that failed so they can be tried again, and say where the rest went.
+        setItems((prev) => prev.filter((i) => failed.has(i.key)).map((i) => ({ ...i, state: "ready", message: undefined })));
+        setError(`${uploaded.length} added. ${failed.size} didn't upload. Try those again, then tag them all.`);
+        return;
+      }
+      // Straight into tagging this batch.
+      setLeaving(true);
+      router.push(`/tag?batch=${batch}`);
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : "Something went wrong. Your photos weren't saved. Try again.");
     } finally {
@@ -131,48 +138,34 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
     }
   }
 
-  if (done) {
-    return (
-      <div className="card done-card">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {done.cover && <img src={done.cover} alt="" className="done-cover" />}
-        <h2 className="section-title">{done.count} {done.count === 1 ? "photo" : "photos"} added</h2>
-        <p className="muted">Next, tag who&apos;s in each one. It takes a click or two per photo, and you can stop any time.</p>
-        <div className="actions">
-          <Link className="btn btn-primary" href={`/tag?batch=${done.batch}`}>Tag who&apos;s in them</Link>
-          <button className="btn" onClick={() => setDone(null)}>Add more photos</button>
-          <Link className="btn" href="/">Go home</Link>
-        </div>
-      </div>
-    );
-  }
-
   const withDates = items.filter((i) => i.takenOn).length;
   const readyCount = items.filter(retryable).length;
   const shown = showAll ? items : items.slice(0, SHOWN);
 
+  const dropzone = (big: boolean) => (
+    <div
+      className={`dropzone${big ? "" : " compact"}${over ? " over" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => { e.preventDefault(); setOver(false); addFiles(e.dataTransfer.files); }}
+    >
+      {big && <Icon name="upload" size={56} stroke={1.3} style={{ color: "var(--ink-2)" }} />}
+      {big && <h2>Drop photos here</h2>}
+      <p className="dz-sub">{big ? "or choose from your device" : "Drop more here, or"}</p>
+      <button type="button" className={`btn${big ? " btn-primary" : ""}`} onClick={() => input.current?.click()}>{big ? "Choose photos" : "Choose more"}</button>
+      {big && <p className="hint">Up to 300 at a time</p>}
+      <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+    </div>
+  );
+
+  if (leaving) return <p className="lede" role="status" style={{ marginTop: 24 }}>Opening tagging for these photos.</p>;
+  if (!items.length) return dropzone(true);
+
   return (
     <div className="upload-layout">
       <div>
-        <div
-          className={`dropzone${over ? " over" : ""}`}
-          role="button"
-          tabIndex={0}
-          onClick={() => input.current?.click()}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-          onDragLeave={() => setOver(false)}
-          onDrop={(e) => { e.preventDefault(); setOver(false); addFiles(e.dataTransfer.files); }}
-        >
-          <p style={{ margin: 0, fontWeight: 600 }}>Drop photos here or choose from your device</p>
-          <p className="hint" style={{ margin: "6px 0 0" }}>Up to 300 at a time</p>
-          <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
-        </div>
-        {items.length > 0 && (
-          <>
-            <p className="small muted" style={{ margin: "12px 0 0" }}>
-              {items.length} selected{!scans && withDates > 0 && `, ${withDates} with a date from the camera`}
-            </p>
+        <h2 className="section-title">{items.length} {items.length === 1 ? "photo" : "photos"} selected</h2>
+        {!scans && withDates > 0 && <p className="small muted" style={{ margin: 0 }}>{withDates} with a date from the camera</p>}
             <div className="thumbs">
               {shown.map((i) => (
                 <figure key={i.key} title={i.message ?? i.file.name}>
@@ -188,21 +181,20 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
             {items.length > SHOWN && !showAll && (
               <button className="link-button small muted" onClick={() => setShowAll(true)}>and {items.length - SHOWN} more</button>
             )}
-          </>
-        )}
+            {!busy && dropzone(false)}
       </div>
 
       <div className="card form-grid">
         <div>
-          <p className="label" style={{ margin: 0 }}>What&apos;s true for all of these</p>
+          <h2 className="panel-title">What&apos;s true for all of these</h2>
           <p className="hint" style={{ margin: "4px 0 0" }}>Leave anything blank that varies. You can fill it in per photo later.</p>
         </div>
         <label className="check-card">
-          <input type="checkbox" checked={scans} onChange={(e) => chooseScans(e.target.checked)} />
           <span>
             <strong>These are scans or photos of old prints</strong>
             <span className="hint">We&apos;ll ignore the date your phone or scanner saved, since it&apos;s not when the photo was taken.</span>
           </span>
+          <input type="checkbox" role="switch" className="switch" checked={scans} onChange={(e) => chooseScans(e.target.checked)} />
         </label>
         <div className="row-2">
           <div className="field">
@@ -225,7 +217,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
         </div>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn btn-primary" onClick={save} disabled={busy || !readyCount}>
-          {busy ? "Adding photos" : `Add ${readyCount || ""} ${readyCount === 1 ? "photo" : "photos"}`}
+          {busy ? "Uploading" : `Upload ${readyCount || ""} ${readyCount === 1 ? "photo" : "photos"}`}
         </button>
       </div>
     </div>

@@ -16,10 +16,10 @@ export default async function CalendarPage() {
 
   return (
     <>
-      <h1 className="display" style={{ marginTop: 32 }}>Birthdays and gatherings</h1>
+      <div className="page-head"><h1 className="display">Birthdays &amp; gatherings</h1><p>Celebrating our people and the moments that bring us together.</p></div>
 
       {feed && (
-        <div className="card" style={{ marginTop: 24 }}>
+        <div id="subscribe" className="card" style={{ marginTop: 24 }}>
           <h2 className="section-title" style={{ marginBottom: 6 }}>Put these on your calendar</h2>
           <p className="muted" style={{ marginTop: 0 }}>
             Every birthday and gathering shows up in your own calendar and stays updated as the family adds more.

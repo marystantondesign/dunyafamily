@@ -1,9 +1,19 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+/** Opens a form when the Add menu links straight to it, like /calendar#add-birthday. */
+function useOpenFromHash(id: string, setOpen: (open: boolean) => void) {
+  useEffect(() => {
+    const check = () => { if (window.location.hash === `#${id}`) setOpen(true); };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [id, setOpen]);
+}
 
 function usePost() {
   const router = useRouter();
@@ -23,11 +33,13 @@ function usePost() {
 
 export function AddBirthday({ people }: { people: Option[] }) {
   const [open, setOpen] = useState(false);
+  useOpenFromHash("add-birthday", setOpen);
   const [who, setWho] = useState<Picked[]>([]);
   const { post, error, busy } = usePost();
-  if (!open) return <button className="btn" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Add a birthday</button>;
+  if (!open) return <button id="add-birthday" className="btn" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Add a birthday</button>;
   return (
     <form
+      id="add-birthday"
       className="card form-grid"
       style={{ marginTop: 16, maxWidth: 520 }}
       onSubmit={async (e) => {
@@ -63,10 +75,12 @@ export function AddBirthday({ people }: { people: Option[] }) {
 
 export function AddGathering() {
   const [open, setOpen] = useState(false);
+  useOpenFromHash("add-gathering", setOpen);
   const { post, error, busy } = usePost();
-  if (!open) return <button className="btn" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Add a gathering</button>;
+  if (!open) return <button id="add-gathering" className="btn" style={{ marginTop: 16 }} onClick={() => setOpen(true)}>Add a gathering</button>;
   return (
     <form
+      id="add-gathering"
       className="card form-grid"
       style={{ marginTop: 16, maxWidth: 520 }}
       onSubmit={async (e) => {
