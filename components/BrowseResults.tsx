@@ -82,6 +82,9 @@ export function BrowseResults({ photos, query, tagHref, people, occasions, album
     <>
       <div className="browse-tools">
         <Link className="btn" href={tagHref}>Tag these</Link>
+        {selecting && (selected.length < photos.length
+          ? <button type="button" className="btn" onClick={() => { setSelected(photos.map((p) => p.id)); setMessage(""); }}>Select all {photos.length}</button>
+          : <button type="button" className="btn" onClick={() => setSelected([])}>Unselect all</button>)}
         {selecting
           ? <button type="button" className="btn btn-dark-outline" onClick={stop}>Done selecting</button>
           : <button type="button" className="btn" onClick={() => { setSelecting(true); setMessage(""); }}>Select</button>}
