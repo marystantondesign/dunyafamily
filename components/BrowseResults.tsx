@@ -105,6 +105,11 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
           )}
           <div className="select-bar" role="toolbar" aria-label="Selected photos">
             <strong>{selected.length} selected</strong>
+            {selected.length < photos.length && (
+              <button type="button" onClick={() => { setSelected(photos.map((p) => p.id)); setMessage(""); }}>
+                Select all{photos.length > 1 ? ` ${photos.length}` : ""}
+              </button>
+            )}
             {selected.length > 0 ? (
               <>
                 <span className="bar-divider" aria-hidden="true" />
