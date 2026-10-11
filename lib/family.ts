@@ -1,4 +1,5 @@
 import { canRemove } from "./auth";
+import { displayName } from "./names";
 import { q } from "./db";
 import { findDunya } from "./featured";
 import { signGet } from "./r2";
@@ -23,7 +24,7 @@ export async function loadFamily() {
   ]);
   const byId = new Map<number, FPerson>();
   await Promise.all(people.map(async (p) => byId.set(p.id, {
-    id: p.id, name: p.name, aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend,
+    id: p.id, name: displayName(p.name), aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend,
     avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null,
   })));
   const parentsOf = new Map<number, number[]>(), childrenOf = new Map<number, number[]>(), partnersOf = new Map<number, number[]>();

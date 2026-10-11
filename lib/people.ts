@@ -1,4 +1,5 @@
 import { canRemove, isAdmin } from "./auth";
+import { displayName } from "./names";
 import { q } from "./db";
 import type { Session } from "./session";
 
@@ -34,7 +35,7 @@ export async function importantDates(now = new Date()): Promise<UpcomingDate[]> 
        from person_dates d join people pe on pe.id = d.person_id
       where d.deleted_at is null and pe.deleted_at is null`,
   );
-  return rows.map((r) => ({ ...r, ...nextOccurrence(r.month, r.day, now) })).sort((a, b) => a.inDays - b.inDays);
+  return rows.map((r) => ({ ...r, name: displayName(r.name), ...nextOccurrence(r.month, r.day, now) })).sort((a, b) => a.inDays - b.inDays);
 }
 
 export type PersonDetails = {
@@ -74,7 +75,7 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
   const ownsPerson = canRemove(s, p.created_by_device);
   return {
     id,
-    name: p.name,
+    name: displayName(p.name),
     avatarPhotoId: p.avatar_photo_id,
     canRename: ownsPerson,
     canRemovePerson: ownsPerson,
@@ -110,7 +111,7 @@ export async function addressBook(s: Session | null): Promise<AddressRow[]> {
   );
   return rows.map((r) => {
     const visible = r.share_address || isAdmin(s);
-    return { id: r.id, name: r.name, address: visible ? r.address : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
+    return { id: r.id, name: displayName(r.name), address: visible ? r.address : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
   });
 }
 

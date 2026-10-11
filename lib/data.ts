@@ -1,4 +1,5 @@
 import { q } from "./db";
+import { displayName } from "./names";
 import { signGet } from "./r2";
 
 export type Person = { id: number; name: string; aliases: string[]; avatar_url: string | null; in_memory: boolean };
@@ -13,7 +14,7 @@ export async function listPeople(): Promise<Person[]> {
   return Promise.all(
     rows.map(async (r) => ({
       id: r.id,
-      name: r.name,
+      name: displayName(r.name),
       aliases: r.aliases ?? [],
       avatar_url: r.thumb_key ? await signGet(r.thumb_key) : null,
       in_memory: !!r.in_memory,
@@ -49,7 +50,7 @@ export async function birthdays(now = new Date()): Promise<Birthday[]> {
     .map((r) => {
       let next = new Date(today.getFullYear(), r.month - 1, r.day);
       if (next < today) next = new Date(today.getFullYear() + 1, r.month - 1, r.day);
-      return { ...r, next, inDays: Math.round((next.getTime() - today.getTime()) / 86_400_000) };
+      return { ...r, name: displayName(r.name), next, inDays: Math.round((next.getTime() - today.getTime()) / 86_400_000) };
     })
     .sort((a, b) => a.inDays - b.inDays);
 }

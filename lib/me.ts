@@ -1,4 +1,5 @@
 import { q } from "./db";
+import { displayName } from "./names";
 import { signGet } from "./r2";
 import type { Session } from "./session";
 import { capitalizeName } from "./tags";
@@ -11,9 +12,9 @@ export async function whoAmI(s: Session): Promise<Me> {
     const [p] = await q<{ name: string; thumb_key: string | null }>(
       `select pe.name, ph.thumb_key from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
         where pe.id = $1 and pe.deleted_at is null`, [s.pid]);
-    if (p) return { pid: s.pid, name: p.name, avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null, role: s.role };
+    if (p) return { pid: s.pid, name: displayName(p.name), avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null, role: s.role };
   }
-  return { pid: null, name: s.name, avatarUrl: null, role: s.role };
+  return { pid: null, name: displayName(s.name), avatarUrl: null, role: s.role };
 }
 
 /** People someone can pick as themselves: everyone in the family except those in memory. */
@@ -22,7 +23,7 @@ export async function pickablePeople() {
     `select pe.id, pe.name, ph.thumb_key from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
       where pe.deleted_at is null and not pe.in_memory order by lower(pe.name)`,
   );
-  return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, avatarUrl: r.thumb_key ? await signGet(r.thumb_key) : null })));
+  return Promise.all(rows.map(async (r) => ({ id: r.id, name: displayName(r.name), avatarUrl: r.thumb_key ? await signGet(r.thumb_key) : null })));
 }
 
 /** The person this device picked, or a new person for "I'm not on the list yet". */

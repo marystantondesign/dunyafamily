@@ -1,8 +1,10 @@
 import { q } from "./db";
 import type { Session } from "./session";
 
+import { displayName } from "./names";
+
 /** "aunt rose" becomes "Aunt Rose". Leaves the rest of each word alone, so "McKay" stays "McKay". */
-export const capitalizeName = (name: string) => name.replace(/(^|[\s-])(\p{Ll})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+export const capitalizeName = displayName;
 
 /** Accepts existing ids (numbers) or new names (strings). Returns ids, creating people as needed. */
 export async function resolvePeople(items: (number | string)[], s: Session) {

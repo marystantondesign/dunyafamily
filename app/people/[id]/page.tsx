@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
 import { relationsFor } from "@/lib/family";
+import { displayName } from "@/lib/names";
 import { comingUp, monthDay, personDetails, shortMonthDay, updatedLabel } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
 import { whenLabel } from "@/lib/when";
@@ -101,7 +102,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <p className="often small">
           <span className="muted">Often photographed with</span>{" "}
           {often.map((o, i) => (
-            <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{o.name}</Link> <span className="muted">{o.n}</span></span>
+            <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{displayName(o.name)}</Link> <span className="muted">{o.n}</span></span>
           ))}
         </p>
       )}

@@ -1,4 +1,5 @@
 import { canRemove } from "./auth";
+import { displayName } from "./names";
 import { q } from "./db";
 import { withThumbs, type Photo, type PhotoRow } from "./photos";
 import type { Session } from "./session";
@@ -21,7 +22,7 @@ export async function listAlbums(): Promise<AlbumSummary[]> {
       order by greatest(a.created_at, (select max(x.added_at) from album_photos x where x.album_id = a.id)) desc nulls last, a.id desc`,
   );
   return Promise.all(rows.map(async (a) => ({
-    id: a.id, title: a.title, count: a.count, createdByName: a.created_by_name,
+    id: a.id, title: a.title, count: a.count, createdByName: a.created_by_name ? displayName(a.created_by_name) : null,
     photos: await withThumbs(await q<PhotoRow>(
       `select ${COLS} from album_photos x join photos p on p.id = x.photo_id and p.deleted_at is null
         where x.album_id = $1 order by (p.id = $2) desc, x.added_at desc, p.id desc limit 3`, [a.id, a.cover_photo_id ?? -1])),
@@ -36,7 +37,7 @@ export async function albumOptions(): Promise<AlbumOption[]> {
 export async function getAlbum(id: number) {
   const [a] = await q<{ id: number; title: string; created_by_device: string | null; created_by_name: string | null; created_at: string; cover_photo_id: number | null }>(
     `select id, title, created_by_device, created_by_name, created_at, cover_photo_id from albums where id = $1 and deleted_at is null`, [id]);
-  return a ?? null;
+  return a ? { ...a, created_by_name: a.created_by_name ? displayName(a.created_by_name) : null } : null;
 }
 
 /** The albums a photo is in. */

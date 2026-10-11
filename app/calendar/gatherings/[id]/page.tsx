@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { byName } from "@/lib/names";
 import { EditGathering } from "@/components/EditGathering";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { q } from "@/lib/db";
@@ -14,7 +15,7 @@ export default async function GatheringPage({ params }: { params: Promise<{ id: 
   if (!g) notFound();
   const mine = !!g.created_by_device && g.created_by_device === s?.did;
   const canEdit = canRemove(s, g.created_by_device);
-  const by = g.created_by_name ?? "someone";
+  const by = byName(g.created_by_name);
   const note = mine ? `Added by you.` : canEdit && isAdmin(s) ? `Added by ${by}. You can edit this because you're an admin.` : `Added by ${by}. Only ${by} or Mary can change it.`;
   return (
     <EditGathering

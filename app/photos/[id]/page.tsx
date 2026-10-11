@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { byName, displayName } from "@/lib/names";
 import { PhotoEditor } from "@/components/PhotoEditor";
 import { PhotoNav } from "@/components/PhotoNav";
 import { PhotoView } from "@/components/PhotoView";
@@ -19,7 +20,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   if (!photo) notFound();
   const s = await getSession();
 
-  const [url, thumb, tagged, occasionTags, people, occasions, owners, albums, inAlbums] = await Promise.all([
+  const [url, thumb, taggedRaw, occasionTags, people, occasions, owners, albums, inAlbums] = await Promise.all([
     signGet(photo.original_key),
     signGet(photo.thumb_key),
     q<{ id: number; name: string; added_by_device: string | null }>(
@@ -32,6 +33,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
     albumOptions(),
     albumsFor(id),
   ]);
+  const tagged = taggedRaw.map((t) => ({ ...t, name: displayName(t.name) }));
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
   const qs = filterQuery(sp);
@@ -65,7 +67,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
         width={photo.width}
         height={photo.height}
         title={title}
-        addedBy={`Added by ${photo.uploaded_by_name ?? "someone"}, ${added}`}
+        addedBy={`Added by ${byName(photo.uploaded_by_name)}, ${added}`}
         caption={photo.caption}
         heading={onlyPerson ? `${onlyPerson.name} · ${pos}` : pos}
         closeHref={backHref}

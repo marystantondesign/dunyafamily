@@ -1,4 +1,5 @@
 import { q } from "./db";
+import { byName, displayName } from "./names";
 import { monthDay } from "./people";
 import { signGet } from "./r2";
 
@@ -34,21 +35,21 @@ export async function listDeleted(): Promise<DeletedItem[]> {
   ]);
   const items: DeletedItem[] = [
     ...(await Promise.all(photos.map(async (p) => ({
-      type: "photo" as const, id: p.id, title: p.year ? `Photo from ${p.year}` : "Photo", sub: `Added by ${p.uploaded_by_name ?? "someone"}`,
-      deletedAt: p.deleted_at, deletedBy: p.deleted_by_name, thumbUrl: await signGet(p.thumb_key),
+      type: "photo" as const, id: p.id, title: p.year ? `Photo from ${p.year}` : "Photo", sub: `Added by ${byName(p.uploaded_by_name)}`,
+      deletedAt: p.deleted_at, deletedBy: p.deleted_by_name ? displayName(p.deleted_by_name) : null, thumbUrl: await signGet(p.thumb_key),
     })))),
-    ...people.map((p) => ({ type: "person" as const, id: p.id, title: p.name, sub: "Person. Their photo tags come back too.", deletedAt: p.deleted_at, deletedBy: p.deleted_by_name, thumbUrl: null })),
-    ...albums.map((a) => ({ type: "album" as const, id: a.id, title: a.title, sub: "Album", deletedAt: a.deleted_at, deletedBy: a.deleted_by_name, thumbUrl: null })),
-    ...birthdays.map((b) => ({ type: "birthday" as const, id: b.id, title: `${b.name}'s birthday`, sub: monthDay(b.month, b.day, b.year), deletedAt: b.deleted_at, deletedBy: b.deleted_by_name, thumbUrl: null })),
+    ...people.map((p) => ({ type: "person" as const, id: p.id, title: displayName(p.name), sub: "Person. Their photo tags come back too.", deletedAt: p.deleted_at, deletedBy: p.deleted_by_name ? displayName(p.deleted_by_name) : null, thumbUrl: null })),
+    ...albums.map((a) => ({ type: "album" as const, id: a.id, title: a.title, sub: "Album", deletedAt: a.deleted_at, deletedBy: a.deleted_by_name ? displayName(a.deleted_by_name) : null, thumbUrl: null })),
+    ...birthdays.map((b) => ({ type: "birthday" as const, id: b.id, title: `${displayName(b.name)}'s birthday`, sub: monthDay(b.month, b.day, b.year), deletedAt: b.deleted_at, deletedBy: b.deleted_by_name ? displayName(b.deleted_by_name) : null, thumbUrl: null })),
     ...gatherings.map((g) => ({
       type: "gathering" as const, id: g.id, title: g.title,
       sub: `Gathering, ${new Date(`${g.date}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`,
-      deletedAt: g.deleted_at, deletedBy: g.deleted_by_name, thumbUrl: null,
+      deletedAt: g.deleted_at, deletedBy: g.deleted_by_name ? displayName(g.deleted_by_name) : null, thumbUrl: null,
     })),
-    ...dates.map((d) => ({ type: "date" as const, id: d.id, title: d.label || `${d.name}'s date`, sub: `${d.name}, ${monthDay(d.month, d.day)}`, deletedAt: d.deleted_at, deletedBy: d.deleted_by_name, thumbUrl: null })),
+    ...dates.map((d) => ({ type: "date" as const, id: d.id, title: d.label || `${displayName(d.name)}'s date`, sub: `${displayName(d.name)}, ${monthDay(d.month, d.day)}`, deletedAt: d.deleted_at, deletedBy: d.deleted_by_name ? displayName(d.deleted_by_name) : null, thumbUrl: null })),
     ...rels.map((r) => ({
-      type: "relationship" as const, id: r.id, title: r.kind === "partner" ? `${r.a} and ${r.b}` : `${r.a}, parent of ${r.b}`,
-      sub: r.kind === "partner" ? "Partners, in the family tree" : "In the family tree", deletedAt: r.deleted_at, deletedBy: r.deleted_by_name, thumbUrl: null,
+      type: "relationship" as const, id: r.id, title: r.kind === "partner" ? `${displayName(r.a)} and ${displayName(r.b)}` : `${displayName(r.a)}, parent of ${displayName(r.b)}`,
+      sub: r.kind === "partner" ? "Partners, in the family tree" : "In the family tree", deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
     })),
   ];
   return items.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
