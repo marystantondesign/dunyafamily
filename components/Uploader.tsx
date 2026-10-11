@@ -7,7 +7,8 @@ import { Icon } from "./Icon";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type Item = {
-  key: string; file: File; preview?: string; thumb?: Blob; width?: number; height?: number;
+  // body is what gets uploaded: the file itself, or a JPEG copy of an iPhone HEIC photo so every browser can show it.
+  key: string; file: File; body?: Blob; preview?: string; thumb?: Blob; width?: number; height?: number;
   takenOn?: string | null; state: "ready" | "uploading" | "done" | "error"; message?: string;
 };
 const THUMB_MAX = 800;
@@ -16,16 +17,36 @@ const SCANS_KEY = "df_scans";
 // Ready, or failed to upload and worth trying again. Files the browser couldn't read have no thumbnail.
 const retryable = (i: Item) => i.state === "ready" || (i.state === "error" && !!i.thumb);
 
+const isHeic = (f: File) => /^image\/hei[cf]/.test(f.type) || /\.hei[cf]$/i.test(f.name);
+const toBlob = (c: HTMLCanvasElement, quality: number) =>
+  new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", quality));
+
+/** iPhone photos (HEIC) become a full-size JPEG. Safari can draw them itself; other browsers load a converter. */
+async function heicToJpeg(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
+    return await toBlob(canvas, 0.92);
+  } catch {
+    const { heicTo } = await import("heic-to");
+    return heicTo({ blob: file, type: "image/jpeg", quality: 0.92 });
+  }
+}
+
 async function prepare(file: File): Promise<Item> {
   const key = `${file.name}-${file.size}-${file.lastModified}`;
   try {
-    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const body = isHeic(file) ? await heicToJpeg(file) : undefined;
+    const bitmap = await createImageBitmap(body ?? file, { imageOrientation: "from-image" });
     const scale = Math.min(1, THUMB_MAX / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
     canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const thumb = await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej()), "image/jpeg", 0.82));
+    const thumb = await toBlob(canvas, 0.82);
     let takenOn: string | null = null;
     try {
       const exif = await exifr.parse(file, ["DateTimeOriginal", "CreateDate"]);
@@ -33,7 +54,7 @@ async function prepare(file: File): Promise<Item> {
       if (d instanceof Date && !isNaN(d.getTime()) && d.getFullYear() > 1900)
         takenOn = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     } catch { /* scans and screenshots usually have no date */ }
-    return { key, file, thumb, preview: URL.createObjectURL(thumb), width: bitmap.width, height: bitmap.height, takenOn, state: "ready" };
+    return { key, file, body, thumb, preview: URL.createObjectURL(thumb), width: bitmap.width, height: bitmap.height, takenOn, state: "ready" };
   } catch {
     return { key, file, state: "error", message: "This browser can't read that file type. Try saving it as JPEG." };
   }
@@ -58,6 +79,7 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
   const [over, setOver] = useState(false);
   const [error, setError] = useState("");
   const [leaving, setLeaving] = useState(false);
+  const [reading, setReading] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -77,8 +99,11 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
 
   async function addFiles(list: FileList | null) {
     if (!list) return;
-    const files = Array.from(list).filter((f) => f.type.startsWith("image/") && !items.some((i) => i.key === `${f.name}-${f.size}-${f.lastModified}`));
-    const prepared = await Promise.all(files.map(prepare));
+    const files = Array.from(list).filter((f) => (f.type.startsWith("image/") || isHeic(f)) && !items.some((i) => i.key === `${f.name}-${f.size}-${f.lastModified}`));
+    setReading((r) => r + files.length);
+    // A few at a time: iPhone photos are converted at full size, which takes memory.
+    const prepared: Item[] = new Array(files.length);
+    await pool(files.map((f, n) => ({ f, n })), 4, async ({ f, n }) => { prepared[n] = await prepare(f); setReading((r) => r - 1); });
     setItems((prev) => [...prev, ...prepared]);
   }
 
@@ -93,7 +118,7 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
     try {
       const signRes = await fetch("/api/uploads/sign", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: ready.map((i) => ({ type: i.file.type })) }),
+        body: JSON.stringify({ files: ready.map((i) => ({ type: i.body ? "image/jpeg" : i.file.type })) }),
       });
       if (!signRes.ok) throw new Error((await signRes.json()).error);
       const signed: { originalKey: string; thumbKey: string; originalUrl: string; thumbUrl: string; contentType: string }[] = await signRes.json();
@@ -103,7 +128,7 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
       await pool(pairs, 3, async ({ item, s }) => {
         update(item.key, { state: "uploading" });
         try {
-          const a = await fetch(s.originalUrl, { method: "PUT", body: item.file, headers: { "Content-Type": s.contentType } });
+          const a = await fetch(s.originalUrl, { method: "PUT", body: item.body ?? item.file, headers: { "Content-Type": s.contentType } });
           const b = await fetch(s.thumbUrl, { method: "PUT", body: item.thumb, headers: { "Content-Type": "image/jpeg" } });
           if (!a.ok || !b.ok) throw new Error();
           update(item.key, { state: "done" });
@@ -157,8 +182,8 @@ export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[
       {big && <h2>Drop photos here</h2>}
       <p className="dz-sub">{big ? "or choose from your device" : "Drop more here, or"}</p>
       <button type="button" className={`btn${big ? " btn-primary" : ""}`} onClick={() => input.current?.click()}>{big ? "Choose photos" : "Choose more"}</button>
-      {big && <p className="hint">Up to 300 at a time</p>}
-      <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+      {reading > 0 ? <p className="hint" role="status">Getting {reading} {reading === 1 ? "photo" : "photos"} ready</p> : big && <p className="hint">Up to 300 at a time</p>}
+      <input ref={input} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
     </div>
   );
 
