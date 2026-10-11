@@ -5,9 +5,8 @@ Private family photo site named after Mary's mom, Dunya. Built by Mary (senior p
 ## Working with Mary
 
 - Explain what you're doing in plain language. Never ask her to paste secret keys into chat; tell her which line in .env to paste them into.
-- Work on a branch. Pushing to main publishes (Vercel deploys main automatically), so only push to main when she says publish.
-- After each change: typecheck, commit, tell her what to click, and wait for her OK.
-- Database changes: before publishing anything that changes the database, tell her exactly what it adds and wait for her to make a Neon backup branch and say OK. Migrations only add tables and columns or copy data. Never drop or rename.
+- Work on a branch, then publish (push to main; Vercel deploys main automatically) once a change is built and tested. Mary asked (October 2026) for everything to be published automatically, without waiting for her OK or a Neon backup each time. Tell her afterward what changed and what to click.
+- Database changes: migrations only add tables and columns or copy data. Never drop, rename, or rewrite existing data without asking her first; that rule still stands. Neon's restore history is the safety net.
 - Mary wants to see visual mockups before big UI changes. The approved designs live outside the repo (DESIGN.md and screens 01 to 24 from the dunya-design zip, then round 2: round2-changes.md with mockups 1 to 12). Follow them closely and don't invent layouts.
 
 ## Stack
