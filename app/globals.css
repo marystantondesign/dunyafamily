@@ -1109,22 +1109,36 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .react-chip { min-height: 36px; }
   .comment-form { bottom: calc(-24px - env(safe-area-inset-bottom)); }
 }
-.react-any input { width: 64px; height: 40px; border: 1px dashed var(--input); border-radius: 999px; background: var(--paper); font: inherit; font-size: 16px; text-align: center; margin-left: 4px; color: var(--ink); }
-.react-any input:focus { outline: none; border-color: var(--plum); border-style: solid; }
 .react-more { width: 40px; height: 40px; margin-left: 2px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .react-more:hover { border-color: var(--plum-line); color: var(--plum); }
 .emoji-backdrop { position: fixed; inset: 0; z-index: 39; }
-.emoji-panel { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 32px rgba(43, 29, 26, 0.2); border: 1px solid var(--line); background: var(--paper); }
-.emoji-panel emoji-picker {
-  --background: var(--paper); --border-color: var(--line); --input-border-color: var(--input); --input-font-color: var(--ink);
-  --input-placeholder-color: var(--muted); --outline-color: var(--plum); --indicator-color: var(--plum); --button-hover-background: var(--wash);
-  --button-active-background: var(--plum-wash); --category-font-color: var(--ink-3); --border-radius: 8px; --input-border-radius: 8px;
-  --emoji-size: 1.6rem; --num-columns: 8; width: 340px; height: 380px;
+.emoji-panel {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; width: 392px; height: 440px; display: flex; flex-direction: column;
+  border-radius: 12px; overflow: hidden; box-shadow: 0 12px 32px rgba(43, 29, 26, 0.2); border: 1px solid var(--line); background: var(--paper);
 }
+.ep-top { display: flex; gap: 6px; align-items: center; padding: 10px 10px 6px; }
+.ep-search { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--input); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 16px; }
+.ep-search:focus { outline: none; border-color: var(--plum); box-shadow: 0 0 0 1px var(--plum); }
+.ep-tone { position: relative; }
+.ep-tones { position: absolute; right: 0; top: calc(100% + 4px); z-index: 2; display: flex; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 6px 18px rgba(43, 29, 26, 0.16); }
+.ep-tones .on { background: var(--plum-wash); }
+.ep-tabs { display: flex; justify-content: space-between; padding: 0 8px; border-bottom: 1px solid var(--line); }
+.ep-tabs button { flex: 1; height: 38px; border: 0; border-bottom: 3px solid transparent; background: none; font-size: 20px; line-height: 1; cursor: pointer; opacity: 0.55; filter: grayscale(0.6); }
+.ep-tabs button:hover, .ep-tabs button.on { opacity: 1; filter: none; }
+.ep-tabs button.on { border-bottom-color: var(--plum); }
+.ep-list { position: relative; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 6px 8px; }
+.ep-section h3 { position: sticky; top: 0; z-index: 1; margin: 0; padding: 8px 6px 4px; background: var(--paper); font-size: 13px; font-weight: 600; color: var(--ink-3); }
+.ep-section { margin: 0; content-visibility: auto; contain-intrinsic-size: auto 600px; }
+.ep-grid { display: grid; grid-template-columns: repeat(9, 1fr); }
+.ep-list > .ep-grid { padding-top: 8px; }
+.ep-emoji { aspect-ratio: 1; min-width: 38px; border: 0; border-radius: 8px; background: none; font-size: 26px; line-height: 1; padding: 0; cursor: pointer; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.ep-emoji:hover { background: var(--plum-wash); }
+.ep-empty { padding: 24px 8px; color: var(--muted); text-align: center; }
 @media (max-width: 760px) {
   .emoji-backdrop { background: rgba(43, 29, 26, 0.45); }
-  .emoji-panel { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
-  .emoji-panel emoji-picker { width: 100%; height: 55dvh; --num-columns: 8; --emoji-size: 1.7rem; }
+  .emoji-panel { position: fixed; left: 0; right: 0; bottom: 0; width: auto; height: 62dvh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .ep-grid { grid-template-columns: repeat(8, 1fr); }
+  .ep-emoji { min-width: 0; font-size: 28px; }
 }
 
 /* In memory (Option A): sky-blue ring and a gold halo. */
