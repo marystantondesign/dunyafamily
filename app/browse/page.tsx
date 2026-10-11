@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BrowseFilters, SortSelect } from "@/components/BrowseFilters";
+import { BrowseFilters } from "@/components/BrowseFilters";
 import { BrowseResults } from "@/components/BrowseResults";
 import { Icon } from "@/components/Icon";
 import { albumOptions } from "@/lib/albums";
 import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
-import { filterQuery, filtersFrom, ids, type SP } from "@/lib/filters";
+import { filterQuery, filtersFrom, hasFilters, ids, resolveOrder, type SP } from "@/lib/filters";
+import { shuffleSeed } from "@/lib/shuffle";
 import { countPhotos, findPhotos } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +41,12 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   const page = Math.max(1, Number(sp.page) || 1);
   const s = await getSession();
   const qs = filterQuery(sp);
+  // No filters: everything, shuffled once per visit. With filters: newest first, unless a sort was picked.
+  const order = resolveOrder(sp, filters);
+  const fallback = hasFilters(filters) ? "newest" : "shuffled";
+  const seed = await shuffleSeed();
   const [photos, total] = await Promise.all([
-    findPhotos(filters, { order: sp.order === "oldest" ? "oldest" : "newest", limit: PAGE, offset: (page - 1) * PAGE }),
+    findPhotos(filters, { order, seed, limit: PAGE, offset: (page - 1) * PAGE }),
     countPhotos(filters),
   ]);
   const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q")) as Record<string, string>;
@@ -69,6 +74,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
         albums={albums.map((a) => ({ id: a.id, name: a.title }))}
         selected={sel}
         params={params}
+        sort={{ value: order, fallback }}
       />
       <div className="browse-main">
         <form action="/browse" role="search">
@@ -86,8 +92,6 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             </Link>
           ))}
           {chips.length > 0 && <Link href="/browse" className="small">Clear filters</Link>}
-          <span className="small muted">{total} {total === 1 ? "photo" : "photos"}</span>
-          <SortSelect value={sp.order === "oldest" ? "oldest" : "newest"} params={params} />
         </div>
 
         {photos.length ? (
@@ -95,7 +99,8 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             // Only what the browser needs: no file keys or device ids.
             photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
             query={qs}
-            tagHref={`/tag${qs ? `?${qs}` : ""}`}
+            total={total}
+            sort={{ value: order, fallback, params, filtered: hasFilters(filters) }}
             people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
             occasions={occasions}
             albums={albums}

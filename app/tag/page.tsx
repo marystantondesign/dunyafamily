@@ -2,7 +2,8 @@ import { TagMode } from "@/components/TagMode";
 import { canRemove, getSession } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
-import { filterQuery, filtersFrom, type SP } from "@/lib/filters";
+import { filterQuery, filtersFrom, resolveOrder, type SP } from "@/lib/filters";
+import { shuffleSeed } from "@/lib/shuffle";
 import { findForTagging } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,10 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
   const [people, occasions] = await Promise.all([listPeople(), listOccasions()]);
   const filters = filtersFrom(sp, occasions);
   // A batch or the needs-tags pile goes in upload order; anything else follows the browse order it came from.
-  const order = filters.batch || filters.untagged ? "uploaded" : sp.order === "oldest" ? "oldest" : "newest";
+  const order = filters.batch || filters.untagged ? "uploaded" : resolveOrder(sp, filters);
 
   const [photos, personOrder, occasionUse] = await Promise.all([
-    findForTagging(filters, order, MAX),
+    findForTagging(filters, order, MAX, await shuffleSeed()),
     // People you tagged most recently first, then whoever is in the most photos.
     // Falls back to most photos if the database hasn't been given the added_at column yet.
     q<{ id: number }>(

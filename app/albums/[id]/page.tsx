@@ -39,7 +39,7 @@ export default async function AlbumPage({ params, searchParams }: { params: Prom
         <BrowseResults
           photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
           query={query}
-          tagHref={`/tag?${query}`}
+          total={total}
           people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
           occasions={occasions}
           albums={albums}

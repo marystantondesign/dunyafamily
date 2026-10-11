@@ -71,15 +71,22 @@ const ORDER = {
   recent: "p.created_at desc",
   uploaded: "p.id asc",
   random: "random()",
+  // Random, but the same for the whole visit: the seed comes from the df_shuffle cookie (see lib/shuffle).
+  shuffled: "SHUFFLED",
 };
+export type Order = keyof typeof ORDER;
 
-export async function findPhotos(f: Filters, opts: { order?: keyof typeof ORDER; limit?: number; offset?: number } = {}) {
+function orderBy(order: Order, $: (v: unknown) => string, seed?: string) {
+  return order === "shuffled" ? `md5(p.id::text || ${$(seed ?? "0")}), p.id` : ORDER[order];
+}
+
+export async function findPhotos(f: Filters, opts: { order?: Order; seed?: string; limit?: number; offset?: number } = {}) {
   const { where, params, $ } = build(f);
   const rows = await q<PhotoRow>(
     `select p.id, p.original_key, p.thumb_key, p.width, p.height, p.year, p.month, p.decade, p.caption,
             p.uploaded_by_device, p.uploaded_by_name, p.created_at
        from photos p where ${where}
-      order by ${ORDER[opts.order ?? "newest"]}
+      order by ${orderBy(opts.order ?? "newest", $, opts.seed)}
       limit ${$(opts.limit ?? 120)} offset ${$(opts.offset ?? 0)}`,
     params,
   );
@@ -107,7 +114,7 @@ export type TagTarget = {
 };
 
 /** Everything tagging mode needs for each photo, with links that last long enough for a long session. */
-export async function findForTagging(f: Filters, order: keyof typeof ORDER, limit = 1000): Promise<TagTarget[]> {
+export async function findForTagging(f: Filters, order: Order, limit = 1000, seed?: string): Promise<TagTarget[]> {
   const { where, params, $ } = build(f);
   const rows = await q<Omit<TagTarget, "thumb" | "url"> & { original_key: string; thumb_key: string }>(
     `select p.id, p.width, p.height, p.year, p.decade, p.uploaded_by_device, p.original_key, p.thumb_key,
@@ -117,7 +124,7 @@ export async function findForTagging(f: Filters, order: keyof typeof ORDER, limi
             coalesce((select json_agg(json_build_object('id', x.occasion_id, 'by', x.added_by_device))
                         from photo_occasions x where x.photo_id = p.id), '[]') as occasions
        from photos p where ${where}
-      order by ${ORDER[order]} limit ${$(limit)}`,
+      order by ${orderBy(order, $, seed)} limit ${$(limit)}`,
     params,
   );
   const hours6 = 6 * 60 * 60;
@@ -131,13 +138,13 @@ export async function findForTagging(f: Filters, order: keyof typeof ORDER, limi
 }
 
 /** The photos on either side of this one, in the same filtered and ordered list the person came from. */
-export async function neighbors(f: Filters, order: keyof typeof ORDER, id: number) {
+export async function neighbors(f: Filters, order: Order, id: number, seed?: string) {
   const { where, params, $ } = build(f);
   const [row] = await q<{ prev: number | null; next: number | null; pos: number; total: number }>(
     `select prev, next, pos::int, total::int from (
        select p.id, lag(p.id) over w as prev, lead(p.id) over w as next,
               row_number() over w as pos, count(*) over () as total
-         from photos p where ${where} window w as (order by ${ORDER[order]})
+         from photos p where ${where} window w as (order by ${orderBy(order, $, seed)})
      ) t where id = ${$(id)}`,
     params,
   );

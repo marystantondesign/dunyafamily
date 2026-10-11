@@ -7,8 +7,10 @@ type Item = { id: number; name: string };
 const SHOW = 8;
 
 /** Sidebar checkboxes. Each change updates the URL, so filters can be shared and the back button works. */
-export function BrowseFilters({ people, occasions, decades, albums, selected, params }: {
+export function BrowseFilters({ people, occasions, decades, albums, selected, params, sort }: {
   people: Item[]; occasions: Item[]; decades: number[]; albums: Item[];
+  /** On phones, Sort lives in the filters panel. */
+  sort?: { value: string; fallback: string };
   selected: { people: number[]; occasions: number[]; decades: number[]; albums: number[] };
   params: Record<string, string>;
 }) {
@@ -38,10 +40,11 @@ export function BrowseFilters({ people, occasions, decades, albums, selected, pa
           <h2>Filters</h2>
           <a href="/browse" className="small">Clear all</a>
         </div>
+        {sort && <div className="phone-only"><SortSelect value={sort.value} fallback={sort.fallback} params={params} /></div>}
         {group("People", "people", people, selected.people)}
+        {albums.length > 0 && group("Albums", "albums", albums, selected.albums)}
         {group("Occasions", "occasions", occasions, selected.occasions)}
         {decades.length > 0 && group("Decades", "decade", decades.map((d) => ({ id: d, name: `${d}s` })), selected.decades)}
-        {albums.length > 0 && group("Albums", "albums", albums, selected.albums)}
       </aside>
     </>
   );
@@ -71,20 +74,21 @@ function FilterGroup({ title, items, checked, onToggle }: { title: string; items
   );
 }
 
-export function SortSelect({ value, params }: { value: string; params: Record<string, string> }) {
+export function SortSelect({ value, fallback, params }: { value: string; fallback: string; params: Record<string, string> }) {
   const router = useRouter();
   return (
     <label className="sort">
-      <span>Sort:</span>
+      <span>Sort</span>
       <select
         value={value}
         onChange={(e) => {
           const qs = new URLSearchParams(params);
           qs.delete("page");
-          if (e.target.value === "oldest") qs.set("order", "oldest"); else qs.delete("order");
+          if (e.target.value === fallback) qs.delete("order"); else qs.set("order", e.target.value);
           router.push(`/browse${qs.size ? `?${qs}` : ""}`, { scroll: false });
         }}
       >
+        <option value="shuffled">Shuffled</option>
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
       </select>

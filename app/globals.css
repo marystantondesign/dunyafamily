@@ -951,3 +951,41 @@ section { margin-top: 48px; }
   .hp-grid { grid-template-columns: repeat(3, 1fr); }
   .hp-picker-actions .btn { flex: 1; }
 }
+
+/* Round 2 browse (mockups 2 and 7): count with shuffle, sort, select, slideshow. */
+.browse-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.browse-count { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; color: var(--ink-2); white-space: nowrap; }
+.shuffle-btn { width: 36px; height: 36px; }
+.browse-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.browse-actions .sort { margin-left: 0; gap: 8px; color: var(--ink-3); }
+.browse-actions .sort select { border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); color: var(--ink); min-height: 44px; padding: 0 10px; min-width: 150px; }
+.slideshow-start { position: relative; }
+.slideshow-start > .btn { gap: 10px; }
+.ss-panel { position: absolute; right: 0; top: calc(100% + 12px); z-index: 30; width: 330px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: 0 12px 32px rgba(43, 29, 26, 0.16); display: flex; flex-direction: column; gap: 10px; }
+.ss-panel h2 { font-family: var(--serif); font-weight: 400; font-size: 22px; margin: 0; }
+.ss-panel p { margin: 0 0 6px; font-size: 14px; color: var(--ink-2); }
+.ss-speeds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ss-speeds button { font: inherit; font-size: 14px; min-height: 40px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); color: var(--ink); cursor: pointer; }
+.ss-speeds button.on { background: var(--plum-wash); border-color: var(--plum); color: var(--plum); font-weight: 600; }
+.ss-labels { display: flex; align-items: center; gap: 10px; font-size: 14px; margin: 4px 0; }
+.ss-labels input { width: 18px; height: 18px; accent-color: var(--plum); }
+.ss-go { width: 100%; min-height: 44px; }
+.ss-backdrop { position: fixed; inset: 0; background: rgba(43, 29, 26, 0.45); z-index: 40; }
+@media (max-width: 760px) {
+  .browse-tools { flex-wrap: nowrap; }
+  .browse-actions .sort { display: none; }
+  .browse-actions { gap: 6px; flex-wrap: nowrap; }
+  .browse-actions .btn { min-height: 40px; padding: 0 12px; }
+  .browse-count { font-size: 14px; gap: 0; }
+  .shuffle-btn { width: 32px; height: 32px; }
+  .filters .sort { margin: 0 0 12px; }
+  .ss-panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; z-index: 41; border-radius: 16px 16px 0 0; padding: 10px 20px calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
+  .ss-panel p { font-size: 15px; }
+  .ss-speeds button { min-height: 48px; font-size: 16px; }
+  .ss-go { min-height: 52px; }
+  .browse-main .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .browse-main .gallery::after { display: none; }
+  .browse-main .gallery > a, .browse-main .gallery > button { aspect-ratio: 1; border-radius: 0; }
+  .browse-main .gallery > a > span.ratio, .browse-main .gallery > button > span.ratio { display: none; }
+  .browse-main .gallery .when { display: none; }
+}

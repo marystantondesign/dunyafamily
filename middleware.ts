@@ -14,6 +14,16 @@ export async function middleware(req: NextRequest) {
     if (path !== "/") url.searchParams.set("next", path + req.nextUrl.search);
     return NextResponse.redirect(url);
   }
+  // One shuffle order per visit, so browse pages and Previous and Next on a photo stay in step.
+  // A session cookie: it lasts until the browser is closed. The request gets it too, so this first page uses it.
+  if (!req.cookies.get("df_shuffle") && !path.startsWith("/api/")) {
+    const seed = Math.random().toString(36).slice(2, 10);
+    const headers = new Headers(req.headers);
+    headers.set("cookie", [req.headers.get("cookie"), `df_shuffle=${seed}`].filter(Boolean).join("; "));
+    const res = NextResponse.next({ request: { headers } });
+    res.cookies.set("df_shuffle", seed, { path: "/", sameSite: "lax" });
+    return res;
+  }
   return NextResponse.next();
 }
 

@@ -3,15 +3,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlbumAdd, type AlbumOption } from "./AlbumPicker";
+import { SortSelect } from "./BrowseFilters";
 import { Gallery } from "./Gallery";
+import { Icon } from "./Icon";
+import { SlideshowStart } from "./SlideshowStart";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type BrowsePhoto = { id: number; url: string; width: number | null; height: number | null; year: number | null; decade: number | null; month: number | null; removable: boolean };
 type Panel = "date" | "occasion" | "person" | "album" | null;
 
 /** The browse gallery, plus select mode: check photos, then change them all at once. */
-export function BrowseResults({ photos, query, tagHref, people, occasions, albums, inAlbum }: {
-  photos: BrowsePhoto[]; query: string; tagHref: string; people: Option[]; occasions: Option[];
+export function BrowseResults({ photos, query, people, occasions, albums, inAlbum, total, sort }: {
+  photos: BrowsePhoto[]; query: string; people: Option[]; occasions: Option[];
+  total: number;
+  /** Browse only: the sort control, count, and slideshow. Album pages leave it out. */
+  sort?: { value: string; fallback: string; params: Record<string, string>; filtered: boolean };
   albums: AlbumOption[];
   /** On an album page: select mode can also take photos out of this album. */
   inAlbum?: { id: number; title: string };
@@ -81,13 +87,27 @@ export function BrowseResults({ photos, query, tagHref, people, occasions, album
   return (
     <>
       <div className="browse-tools">
-        <Link className="btn" href={tagHref}>Tag these</Link>
-        {selecting && (selected.length < photos.length
-          ? <button type="button" className="btn" onClick={() => { setSelected(photos.map((p) => p.id)); setMessage(""); }}>Select all {photos.length}</button>
-          : <button type="button" className="btn" onClick={() => setSelected([])}>Unselect all</button>)}
-        {selecting
-          ? <button type="button" className="btn btn-dark-outline" onClick={stop}>Done selecting</button>
-          : <button type="button" className="btn" onClick={() => { setSelecting(true); setMessage(""); }}>Select</button>}
+        <span className="browse-count">
+          {total} {total === 1 ? "photo" : "photos"}{sort?.value === "shuffled" ? ", shuffled" : ""}
+          {sort?.value === "shuffled" && (
+            <button type="button" className="icon-btn shuffle-btn" aria-label="Shuffle again" title="Shuffle again" onClick={() => {
+              document.cookie = `df_shuffle=${Math.random().toString(36).slice(2, 10)}; path=/; samesite=lax`;
+              const qs = new URLSearchParams(sort.params); qs.delete("page");
+              router.push(`${window.location.pathname}${qs.size ? `?${qs}` : ""}`, { scroll: false });
+              router.refresh();
+            }}><Icon name="shuffle" size={18} /></button>
+          )}
+        </span>
+        <span className="browse-actions">
+          {sort && <SortSelect value={sort.value} fallback={sort.fallback} params={sort.params} />}
+          {selecting
+            ? <button type="button" className="btn btn-dark-outline" onClick={stop}>Done selecting</button>
+            : <button type="button" className="btn select-btn" onClick={() => { setSelecting(true); setMessage(""); }}>Select</button>}
+          {selecting && (selected.length < photos.length
+            ? <button type="button" className="btn" onClick={() => { setSelected(photos.map((p) => p.id)); setMessage(""); }}>Select all {photos.length}</button>
+            : <button type="button" className="btn" onClick={() => setSelected([])}>Unselect all</button>)}
+          {!selecting && <SlideshowStart total={total} filtered={sort ? sort.filtered : true} query={query} />}
+        </span>
       </div>
       {message && !selecting && <p className="small muted" role="status">{message}</p>}
 

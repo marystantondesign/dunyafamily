@@ -9,7 +9,8 @@ import { homepageEntry, MAX_SPOTS, spotsUsed } from "@/lib/homepage";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
-import { filterQuery, filtersFrom, type SP } from "@/lib/filters";
+import { filterQuery, filtersFrom, resolveOrder, type SP } from "@/lib/filters";
+import { shuffleSeed } from "@/lib/shuffle";
 import { neighbors, whenLabel, type PhotoRow } from "@/lib/photos";
 import { signGet } from "@/lib/r2";
 
@@ -41,9 +42,9 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
   const qs = filterQuery(sp);
-  const order = sp.order === "oldest" ? "oldest" : sp.order === "recent" ? "recent" : "newest";
   const filters = filtersFrom(sp, occasions);
-  const near = await neighbors(filters, order, id);
+  const order = resolveOrder(sp, filters);
+  const near = await neighbors(filters, order, id, await shuffleSeed());
   const link = (pid: number | null | undefined) => (pid ? `/photos/${pid}${qs ? `?${qs}` : ""}` : undefined);
   const onlyPerson = filters.people?.length === 1 ? people.find((p) => p.id === filters.people![0]) : undefined;
   const onlyAlbum = filters.albums?.length === 1 && !filters.people?.length && !filters.occasions?.length && !filters.decades?.length ? filters.albums[0] : undefined;
