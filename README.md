@@ -6,23 +6,26 @@ A private family site for photos, birthdays, and gatherings. One shared family p
 
 - **Come in:** the family password, then "Which one is you?" Pick yourself from the family, or add your name. A device id cookie records who added what. Five wrong passwords from one place in 15 minutes means a 15-minute wait.
 - **Account menu and You page:** your page, your details, your calendar, switch person (same device, someone else), and log out.
-- **Home:** a polaroid of Mamaw, featured albums (Mamaw through the years, shared albums, then albums built from occasions and seasons), recently added, and a needs-tags nudge.
-- **Browse:** sidebar filters for people, occasions, decades, and albums, shown as removable chips. Checking several people means photos with all of them. Free-text search turns names, occasions, years, and decades into filters. Select mode changes many photos at once: set a year or decade, add an occasion, a person, or an album, or remove.
-- **Add photos:** drag in a batch, set a shared album, year, and occasion for all of them. The "scans or photos of old prints" switch ignores camera dates. Thumbnails are made in the browser. After upload, tagging opens for that batch.
+- **Home:** a Polaroid that fades through up to 10 photos Mary chooses, each with a handwritten caption (or Dunya's photo until she picks some), the headline (HOME_COPY in lib/home.ts), featured albums mixing shared albums with automatic collections (a decade, Summers), and Everyone with photo counts.
+- **Browse:** with no filters, every photo in a shuffled order that holds for the visit (Shuffle again for a new one). Sidebar filters for people, albums, occasions, and decades, shown as removable chips. Checking several people means photos with all of them. Sort: Shuffled, Newest first, Oldest first. Select mode changes many photos at once. Slideshow starts a slideshow of whatever is showing.
+- **Slideshow:** full screen and dark, playing the view it came from at 3, 5, or 10 seconds, with names and dates, pause, previous and next, keyboard controls, and full screen. Tap to hide controls on phones.
+- **Add photos:** drag in a batch, set a shared album, year, occasion, and a first comment for all of them. The "scans or photos of old prints" switch ignores camera dates. Thumbnails are made in the browser. After upload, tagging opens for that batch.
 - **Tag photos:** one photo at a time, with people as chips, year, occasion, and Previous, Skip, and Save & next.
-- **Photo page:** who's here, year and occasion, a note, albums it's in, add to an album, use as a profile photo, download the original, and delete. Previous and next follow the view you came from.
+- **Photo page:** the photo fitted to the window with round previous and next buttons (arrow keys and swiping work too), its name (or occasion and year), who's in it, who added it and when, emoji reactions (any emoji), and comments. Edit details opens beside the photo: photo name, who's here, occasion, year or decade, albums, and for Mary, Show on the homepage with a Polaroid caption. The more menu has download, use as profile photo, and delete.
 - **Albums:** shared albums like "Memrie's wedding." Anyone can start one or add to one.
-- **Family:** a tree growing from Dunya (children with partners, grandchildren, and deeper branches on request), earlier generations, find a person, groups for extended family, family friends, and people not in the tree yet, and everyone A to Z. Relationships are added on Edit a person or when adding someone.
+- **Family:** a tree growing from Dunya (children with partners, grandchildren, and deeper branches on request), earlier generations, find a person, and groups for extended family, family friends, and people not in the tree yet. Relationships are added on Edit a person or when adding someone.
 - **Person pages:** profile photo, birthday, mailing address with copy, anniversary, coming up, family, often photographed with, and their photos. Edit a person covers name, birthday with optional year, address with a share switch, important dates, family, in memory, and removing them.
 - **Birthdays and gatherings:** a month calendar with colored dots, upcoming birthday cards ("Turns 52" when a birth year is saved), gatherings with edit and delete, an address book, and a calendar feed for Google, Apple, and Outlook.
-- **Admin (Mary):** Recently deleted with Restore, and changing the family password.
+- **Admin (Mary):** Homepage photos, Recently deleted with Restore, and changing the family password.
 
 ## Permissions
 
-- Anyone with the family password can add photos, tags, people, birthdays, dates, gatherings, albums, and family relationships.
+- Anyone with the family password can add photos, tags, people, birthdays, dates, gatherings, albums, family relationships, comments, and reactions.
 - People can edit or remove what their own device added. Filling in something blank (a year, a first profile photo) is open to everyone; changing what someone else set is not.
 - Whoever started an album, or Mary, can rename or delete it. Taking a photo out of an album is for whoever put it there, whoever started the album, or Mary. The photo stays on the site.
-- The admin password (Mary) can edit and remove anything, and sees the Admin section.
+- Comments can be deleted by whoever wrote them, or Mary. Reactions belong to the device that added them; tapping one again takes it back.
+- Naming a photo is open while it has no name; renaming it is for whoever added the photo, or Mary.
+- The admin password (Mary) can edit and remove anything, and sees the Admin section (Homepage photos, Recently deleted, Family password).
 - Removals are soft deletes (deleted_at, deleted_by_name). Mary can restore anything from Recently deleted for 30 days, and older removals are still in the database. Photo files are never deleted from R2.
 
 ## Setup

@@ -8,7 +8,7 @@ Private family photo site named after Mary's mom, Dunya. Built by Mary (senior p
 - Work on a branch. Pushing to main publishes (Vercel deploys main automatically), so only push to main when she says publish.
 - After each change: typecheck, commit, tell her what to click, and wait for her OK.
 - Database changes: before publishing anything that changes the database, tell her exactly what it adds and wait for her to make a Neon backup branch and say OK. Migrations only add tables and columns or copy data. Never drop or rename.
-- Mary wants to see visual mockups before big UI changes. The approved design lives outside the repo (DESIGN.md and screens 01 to 24 from the dunya-design zip).
+- Mary wants to see visual mockups before big UI changes. The approved designs live outside the repo (DESIGN.md and screens 01 to 24 from the dunya-design zip, then round 2: round2-changes.md with mockups 1 to 12). Follow them closely and don't invent layouts.
 
 ## Stack
 
@@ -25,12 +25,15 @@ npm run build runs scripts/setup-db.ts first, which applies db/schema.sql (idemp
 - Route files may only export handlers. Shared helpers go in lib/ (Next fails the build otherwise).
 - After a save that changes server data, client components use window.location.assign or router.refresh so pages aren't stale.
 - UI copy: sentence case, plain verbs, no em dashes, no exclamation points.
+- Show names through displayName or byName (lib/names). Stored names can be lowercase ("mary"); the site always shows them capitalized.
+- On phones, inputs stay 16px so iOS doesn't zoom. Use the .desktop-only and .phone-only classes (760px breakpoint) for layout differences.
 
 ## Sessions and coming in
 
 - Come in is the family password, then "Which one is you?" (pick yourself from the family, or "I'm not on the list yet"). The session is { role, did, name, pid, v }: did is the device id (also kept in the df_device cookie across logouts), pid the person this device picked.
 - The family password hash lives in settings (family_password_hash), falling back to FAMILY_PASSWORD_HASH. Changing it bumps family_password_version; family sessions with an older v are signed out (lib/auth sessionState, and the root layout redirects to /api/logout). The admin password is only ADMIN_PASSWORD_HASH.
 - /api/enter allows five wrong passwords per IP per 15 minutes (login_attempts table).
+- Browse with no filters is shuffled with a seed from the df_shuffle session cookie (set in middleware, replaced by Shuffle again), ordered by md5(id || seed) so paging, Previous and Next, and slideshows agree. lib/filters resolveOrder picks the order for every view.
 
 ## Data model
 
@@ -41,13 +44,13 @@ See db/schema.sql.
 - birthdays (month, day, optional year), person_dates (anniversary, remembrance, other), gatherings.
 - albums and album_photos: shared albums, separate from occasions. Anyone can add; whoever started one, or the admin, can rename or delete it.
 - relationships: kind 'parent' (person_id is the parent of related_id) or 'partner' (lower id first). The tree grows from Dunya (lib/featured findDunya); lib/family builds it and blocks someone becoming their own ancestor.
-- settings: key and value (home_photo_id, family password hash and version).
+- photos.title: an optional photo name. Without one, the occasion and year show. (photos.caption is the old note; notes were copied into comments.)
+- photo_comments (soft delete, restorable) and photo_reactions (any single emoji, one of each per device; removing one is a hard delete of that row).
+- homepage_photos: up to 10 photos with captions and positions for the Home Polaroid; settings.homepage_interval is the speed.
+- settings: key and value (home_photo_id from before homepage_photos, homepage_interval, family password hash and version).
 
 ## Roadmap
 
-1. Import script for Mary's existing 500 to 2,000 photos. Depends on how they are organized now (folders, filenames). Should upload originals plus 800px thumbnails to R2 and create rows with tags parsed from folder names.
-2. Manage people screen: rename, merge duplicates (move photo_people rows, add the old name as an alias), and manage occasions. Mary cleaned up names by hand for now.
-3. Homepage: birthday takeover ("Happy birthday, Lena" with photos through the years) and an "On this day" row for exact-dated photos.
-4. HEIC: iPhone Safari converts to JPEG on upload. Chrome on desktop can't decode HEIC; consider server-side conversion if relatives hit this.
-5. Old scan dates: npm run migrate:scan-dates shows how many early uploads still carry a camera date from scanning. Run with --apply only after Mary's OK.
-6. Maybe later: prayer requests. A place for the family to share what they'd like prayer for. Not designed yet.
+In progress, one phase at a time with Mary's OK: Manage people (rename, merge duplicates like Duny and Dunya, aliases), a birthday takeover and "On this day" on Home, HEIC photos from iPhones, importing Mary's existing photos (depends on how they're organized), and prayer requests (not designed yet).
+
+Old scan dates: npm run migrate:scan-dates shows how many early uploads still carry a camera date from scanning. Run with --apply only after Mary's OK.
