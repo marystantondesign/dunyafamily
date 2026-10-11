@@ -46,6 +46,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const [person] = await q<{ created_by_device: string | null }>(`select created_by_device from people where id = $1 and deleted_at is null`, [id]);
   if (!person) return NextResponse.json({ ok: true });
   if (!canRemove(s, person.created_by_device)) return forbidden();
-  await q(`update people set deleted_at = now() where id = $1`, [id]);
+  await q(`update people set deleted_at = now(), deleted_by_name = $2 where id = $1`, [id, s?.name ?? null]);
   return NextResponse.json({ ok: true });
 }

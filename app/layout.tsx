@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Caveat, Figtree, Libre_Caslon_Text } from "next/font/google";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { sessionState } from "@/lib/auth";
 import { whoAmI } from "@/lib/me";
 import "./globals.css";
 
@@ -15,7 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const s = await getSession();
+  const { session: s, stale } = await sessionState();
+  // A family device from before the last password change: sign it out.
+  if (stale) redirect("/api/logout");
   const me = s ? await whoAmI(s) : null;
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>

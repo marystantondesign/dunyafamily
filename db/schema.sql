@@ -166,3 +166,20 @@ create unique index if not exists relationships_unique on relationships (kind, p
 -- Friends of the family have no relatives in the tree but still belong here.
 alter table people add column if not exists family_friend boolean not null default false;
 alter table people add column if not exists family_friend_by_device text;
+
+-- Who removed something, for Recently deleted.
+alter table photos add column if not exists deleted_by_name text;
+alter table people add column if not exists deleted_by_name text;
+alter table albums add column if not exists deleted_by_name text;
+alter table birthdays add column if not exists deleted_by_name text;
+alter table gatherings add column if not exists deleted_by_name text;
+alter table person_dates add column if not exists deleted_by_name text;
+alter table relationships add column if not exists deleted_by_name text;
+
+-- Wrong family passwords in the last little while, so repeated guessing gets slowed down.
+create table if not exists login_attempts (
+  id serial primary key,
+  key text not null,
+  at timestamptz not null default now()
+);
+create index if not exists login_attempts_key on login_attempts (key, at);

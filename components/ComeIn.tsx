@@ -15,7 +15,7 @@ export function Sprig({ size = 48 }: { size?: number }) {
 }
 
 /** Come in (screen 05): the family password, then "Which one is you?". */
-export function ComeIn({ next }: { next: string }) {
+export function ComeIn({ next, changed }: { next: string; changed?: boolean }) {
   const [password, setPassword] = useState("");
   const [people, setPeople] = useState<Pickable[] | null>(null);
   const [picked, setPicked] = useState<Picked>(null);
@@ -57,6 +57,7 @@ export function ComeIn({ next }: { next: string }) {
         <h1>Dunya Family</h1>
         <p>Our photos, birthdays, and gatherings, all in one place.</p>
       </div>
+      {changed && !people && <p className="notice" role="status">The family password has changed. Ask a family member for the new one.</p>}
       <div className="field">
         <label htmlFor="pw">Family password</label>
         <div className={`pw-field${people ? " ok" : ""}`}>

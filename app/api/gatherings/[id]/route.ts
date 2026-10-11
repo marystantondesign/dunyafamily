@@ -36,6 +36,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const g = await load(id);
   if (!g) return NextResponse.json({ ok: true });
   if (!canRemove(s, g.created_by_device)) return forbidden();
-  await q(`update gatherings set deleted_at = now() where id = $1`, [id]);
+  await q(`update gatherings set deleted_at = now(), deleted_by_name = $2 where id = $1`, [id, s?.name ?? null]);
   return NextResponse.json({ ok: true });
 }

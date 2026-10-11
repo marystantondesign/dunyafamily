@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
   if (body.action === "remove") {
     const allowed = photos.filter((p) => canRemove(s, p.uploaded_by_device)).map((p) => p.id);
-    if (allowed.length) await q(`update photos set deleted_at = now() where id = any($1::int[])`, [allowed]);
+    if (allowed.length) await q(`update photos set deleted_at = now(), deleted_by_name = $2 where id = any($1::int[])`, [allowed, s?.name ?? null]);
     const skipped = all.length - allowed.length;
     const message = !allowed.length
       ? "Nothing was removed. Only the person who added a photo, or Mary, can remove it."

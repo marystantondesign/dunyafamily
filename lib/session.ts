@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 
 export type Role = "family" | "admin";
-/** pid links this device to a person in the family ("Which one is you?"). Older sessions may not have one yet. */
-export type Session = { role: Role; did: string; name: string; pid?: number };
+/** v is the family password version a family session came in with (see lib/auth). pid links this device to a person in the family ("Which one is you?"). Older sessions may not have one yet. */
+export type Session = { role: Role; did: string; name: string; pid?: number; v?: number };
 
 export const SESSION_COOKIE = "df_session";
 export const DEVICE_COOKIE = "df_device";
@@ -22,9 +22,9 @@ export async function verifySession(token: string | undefined): Promise<Session 
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    const { role, did, name, pid } = payload as Record<string, unknown>;
+    const { role, did, name, pid, v } = payload as Record<string, unknown>;
     if ((role !== "family" && role !== "admin") || typeof did !== "string" || typeof name !== "string") return null;
-    return { role, did, name, ...(typeof pid === "number" ? { pid } : {}) };
+    return { role, did, name, ...(typeof pid === "number" ? { pid } : {}), ...(typeof v === "number" ? { v } : {}) };
   } catch {
     return null;
   }

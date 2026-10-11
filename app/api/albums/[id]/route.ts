@@ -37,6 +37,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const album = await getAlbum(Number((await params).id));
   if (!album) return badRequest("That album isn't here anymore.");
   if (!canRemove(s, album.created_by_device)) return forbidden();
-  await q(`update albums set deleted_at = now() where id = $1`, [album.id]);
+  await q(`update albums set deleted_at = now(), deleted_by_name = $2 where id = $1`, [album.id, s?.name ?? null]);
   return NextResponse.json({ ok: true });
 }

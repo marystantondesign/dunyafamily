@@ -10,6 +10,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     `select id, created_by_device from relationships where id = $1 and deleted_at is null`, [Number((await params).id)]);
   if (!r) return badRequest("That's already been taken off.");
   if (!canRemove(s, r.created_by_device)) return forbidden();
-  await q(`update relationships set deleted_at = now() where id = $1`, [r.id]);
+  await q(`update relationships set deleted_at = now(), deleted_by_name = $2 where id = $1`, [r.id, s?.name ?? null]);
   return NextResponse.json({ ok: true });
 }

@@ -40,6 +40,26 @@ export default async function YouPage() {
         </li>
       </ul>
 
+      {me.role === "admin" && (
+        <>
+          <h2 className="you-label">Admin</h2>
+          <ul className="you-list">
+            <li>
+              <Link href="/admin/deleted">
+                <span><strong>Recently deleted</strong><span>Restore photos, people, and events</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/password">
+                <span><strong>Family password</strong><span>Change it. Everyone will need the new one.</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+          </ul>
+        </>
+      )}
+
       <h2 className="you-label">This phone</h2>
       <ul className="you-list">
         <li>

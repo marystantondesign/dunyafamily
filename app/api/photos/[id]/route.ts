@@ -20,7 +20,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (!p) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
   if (!canRemove(s, p.uploaded_by_device)) return forbidden();
   // Soft delete, so Mary can restore anything removed by mistake.
-  await q(`update photos set deleted_at = now() where id = $1`, [id]);
+  await q(`update photos set deleted_at = now(), deleted_by_name = $2 where id = $1`, [id, s?.name ?? null]);
   return NextResponse.json({ ok: true });
 }
 

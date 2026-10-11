@@ -88,7 +88,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     vals.push(id);
     await q(`update people set ${people.join(", ")} where id = $${vals.length}`, vals);
   }
-  if (birthday === "remove") await q(`update birthdays set deleted_at = now() where id = $1`, [bday!.id]);
+  if (birthday === "remove") await q(`update birthdays set deleted_at = now(), deleted_by_name = $2 where id = $1`, [bday!.id, s?.name ?? null]);
   else if (birthday !== "keep") {
     if (bday) await q(`update birthdays set month = $1, day = $2, year = $3 where id = $4`, [birthday.month, birthday.day, birthday.year, bday.id]);
     else await q(`insert into birthdays (person_id, month, day, year, created_by_device, created_by_name) values ($1,$2,$3,$4,$5,$6)`,

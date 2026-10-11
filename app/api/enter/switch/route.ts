@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { unauthorized } from "@/lib/auth";
+import { getSession, unauthorized } from "@/lib/auth";
 import { resolveMe } from "@/lib/me";
-import { cookieOptions, SESSION_COOKIE, signSession, verifySession } from "@/lib/session";
+import { cookieOptions, SESSION_COOKIE, signSession } from "@/lib/session";
 
 /** "Not Mary? Switch person": same device, same password, a different person. */
 export async function POST(req: NextRequest) {
-  const s = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const s = await getSession();
   if (!s) return unauthorized();
   const me = await resolveMe((await req.json()) as { personId?: number; newName?: string }, s.did);
   if ("error" in me) return NextResponse.json({ error: me.error }, { status: 400 });

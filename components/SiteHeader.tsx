@@ -80,6 +80,13 @@ function AccountMenu({ me }: { me: Me }) {
             <Link role="menuitem" href="/you"><Icon name="gear" size={20} /> Settings</Link>
             <Link role="menuitem" href="/enter/who"><Icon name="swap" size={20} /> Not {first}? Switch person</Link>
           </div>
+          {me.role === "admin" && (
+            <div className="account-group">
+              <span className="account-label">Admin</span>
+              <Link role="menuitem" href="/admin/deleted"><Icon name="trash" size={20} /> Recently deleted</Link>
+              <Link role="menuitem" href="/admin/password"><Icon name="lock" size={20} /> Family password</Link>
+            </div>
+          )}
           <div className="account-group">
             <button type="button" role="menuitem" onClick={logOut}><Icon name="logout" size={20} /> Log out</button>
           </div>
