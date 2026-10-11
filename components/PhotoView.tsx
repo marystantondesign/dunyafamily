@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AlbumAdd, type AlbumOption } from "./AlbumPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon, type IconName } from "./Icon";
 
@@ -18,9 +19,11 @@ export function PhotoView(props: {
   heading: string; closeHref: string; prevHref?: string; nextHref?: string;
   people: Chip[]; avatarFor: { id: number; name: string }[];
   canDelete: boolean; isAdmin: boolean; children: React.ReactNode;
+  albums: AlbumOption[]; inAlbums: { id: number; title: string; canTakeOut: boolean }[];
 }) {
   const router = useRouter();
-  const [sheet, setSheet] = useState<"menu" | "edit" | null>(null);
+  const [sheet, setSheet] = useState<"menu" | "edit" | "album" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
 
@@ -38,10 +41,26 @@ export function PhotoView(props: {
   const run = async (fn: () => Promise<void>, done: string) => {
     try { await fn(); setNote(done); setSheet(null); router.refresh(); } catch (e) { setNote((e as Error).message); }
   };
+  async function addToAlbum(pick: { albumId: number } | { newTitle: string }) {
+    setBusy(true);
+    try {
+      const res = await fetch("albumId" in pick ? `/api/albums/${pick.albumId}/photos` : "/api/albums", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify("albumId" in pick ? { photoIds: [props.photoId] } : { title: pick.newTitle, photoIds: [props.photoId] }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error ?? "That didn't work. Try again.");
+      setNote(out.message);
+      setSheet(null);
+      router.refresh();
+    } catch (e) { setNote((e as Error).message); }
+    setBusy(false);
+  }
 
   const options: { icon: IconName; label: string; sub?: string; onClick?: () => void; href?: string; danger?: boolean }[] = [
     { icon: "family", label: "Edit who's here", sub: "Add or remove names", onClick: () => setSheet("edit") },
     { icon: "calendar", label: "Edit year and occasion", onClick: () => setSheet("edit") },
+    { icon: "album", label: "Add to an album", onClick: () => setSheet("album") },
     ...props.avatarFor.map((p) => ({
       icon: "person" as const, label: `Use as ${p.name}'s profile photo`,
       onClick: () => run(() => post(`/api/people/${p.id}`, "PATCH", { avatarPhotoId: props.photoId }), `Now ${p.name}'s profile photo.`),
@@ -107,6 +126,24 @@ export function PhotoView(props: {
         <p className="small muted photo-added">{props.addedBy}</p>
         {props.caption && <p className="photo-caption">{props.caption}</p>}
         {props.children}
+        {props.inAlbums.length > 0 && (
+          <div className="photo-albums">
+            <h2 className="side-label">In albums</h2>
+            <ul>
+              {props.inAlbums.map((a) => (
+                <li key={a.id}>
+                  <Link href={`/albums/${a.id}`}><Icon name="album" size={18} /> {a.title}</Link>
+                  {a.canTakeOut && (
+                    <button type="button" className="text-btn quiet small" onClick={() => run(async () => {
+                      const res = await fetch(`/api/albums/${a.id}/photos`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoIds: [props.photoId] }) });
+                      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "That didn't work. Try again.");
+                    }, `Taken out of ${a.title}. The photo stays on the site.`)}>Take out</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="desktop-options">
           {optionList}
           {note && <p className="small" role="status">{note}</p>}
@@ -119,6 +156,19 @@ export function PhotoView(props: {
             <div className="sheet-grip" aria-hidden="true" />
             <p className="small muted" style={{ margin: "4px 4px 12px" }}>{props.addedBy}</p>
             {optionList}
+          </div>
+        </div>
+      )}
+
+      {sheet === "album" && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <div className="sheet sheet-centered" role="dialog" aria-modal="true" aria-labelledby="album-sheet-title" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" aria-hidden="true" />
+            <div className="sheet-head">
+              <h2 id="album-sheet-title">Add to an album</h2>
+              <button type="button" className="icon-btn" aria-label="Close" onClick={() => setSheet(null)}><Icon name="x" size={22} /></button>
+            </div>
+            <AlbumAdd albums={props.albums} inAlbums={props.inAlbums.map((a) => a.id)} busy={busy} onAdd={addToAlbum} />
           </div>
         </div>
       )}

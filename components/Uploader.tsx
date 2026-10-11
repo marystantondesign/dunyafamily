@@ -2,6 +2,7 @@
 import exifr from "exifr";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { AlbumPicker, type AlbumOption, type AlbumPick } from "./AlbumPicker";
 import { Icon } from "./Icon";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
@@ -43,8 +44,9 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
-export function Uploader({ occasions }: { occasions: Option[] }) {
+export function Uploader({ occasions, albums, startAlbum }: { occasions: Option[]; albums: AlbumOption[]; startAlbum?: number }) {
   const [items, setItems] = useState<Item[]>([]);
+  const [album, setAlbum] = useState<AlbumPick>(startAlbum && albums.some((a) => a.id === startAlbum) ? { albumId: startAlbum } : null);
   const [occ, setOcc] = useState<Picked[]>([]);
   const [year, setYear] = useState("");
   const [decade, setDecade] = useState("");
@@ -85,6 +87,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
     if (!ready.length) return setError("Add at least one photo.");
     const y = year.trim() ? Number(year) : null;
     if (y !== null && (isNaN(y) || y < 1850 || y > new Date().getFullYear())) return setError("That year doesn't look right.");
+    if (album && "newTitle" in album && !album.newTitle.trim()) return setError("Give the new album a name, or choose No album.");
     setBusy(true);
     setError("");
     try {
@@ -118,6 +121,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
           photos: uploaded.map(({ item, s }) => ({ originalKey: s.originalKey, thumbKey: s.thumbKey, width: item.width, height: item.height, takenOn: scans ? null : item.takenOn })),
           tags: { people: [], occasions: occ, year: y, decade: !y && decade ? Number(decade) : null, caption },
           scans,
+          album,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -189,6 +193,7 @@ export function Uploader({ occasions }: { occasions: Option[] }) {
           <h2 className="panel-title">What&apos;s true for all of these</h2>
           <p className="hint" style={{ margin: "4px 0 0" }}>Leave anything blank that varies. You can fill it in per photo later.</p>
         </div>
+        <AlbumPicker albums={albums} value={album} onChange={setAlbum} />
         <label className="check-card">
           <span>
             <strong>These are scans or photos of old prints</strong>

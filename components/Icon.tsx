@@ -25,6 +25,7 @@ const PATHS: Record<string, React.ReactNode> = {
   more: <><circle cx="5.5" cy="12" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" /><circle cx="18.5" cy="12" r="1.3" fill="currentColor" stroke="none" /></>,
   download: <><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19.5h14" /></>,
   trash: <><path d="M5 7h14M10 4h4M7 7l1 13h8l1-13" /><path d="M10.5 11v6M13.5 11v6" /></>,
+  album: <><rect x="3" y="7" width="14" height="13" rx="1.5" /><path d="M7 4h12.5a1.5 1.5 0 0 1 1.5 1.5V16" /><path d="M3 17l4-4 3 3 2-2 5 5" /></>,
   lock: <><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></>,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></>,
   swap: <path d="M4 8h14l-3-3M20 16H6l3 3" />,

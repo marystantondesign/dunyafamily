@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PhotoEditor } from "@/components/PhotoEditor";
 import { PhotoNav } from "@/components/PhotoNav";
 import { PhotoView } from "@/components/PhotoView";
+import { albumOptions, albumsFor, canTakeOut } from "@/lib/albums";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
@@ -18,7 +19,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   if (!photo) notFound();
   const s = await getSession();
 
-  const [url, thumb, tagged, occasionTags, people, occasions, owners] = await Promise.all([
+  const [url, thumb, tagged, occasionTags, people, occasions, owners, albums, inAlbums] = await Promise.all([
     signGet(photo.original_key),
     signGet(photo.thumb_key),
     q<{ id: number; name: string; added_by_device: string | null }>(
@@ -28,6 +29,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
     listPeople(),
     listOccasions(),
     q<{ id: number; avatar_photo_id: number | null; created_by_device: string | null }>(`select id, avatar_photo_id, created_by_device from people where deleted_at is null`),
+    albumOptions(),
+    albumsFor(id),
   ]);
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
@@ -37,7 +40,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const near = await neighbors(filters, order, id);
   const link = (pid: number | null | undefined) => (pid ? `/photos/${pid}${qs ? `?${qs}` : ""}` : undefined);
   const onlyPerson = filters.people?.length === 1 ? people.find((p) => p.id === filters.people![0]) : undefined;
-  const backHref = onlyPerson && !filters.occasions?.length && !filters.decades?.length ? `/people/${onlyPerson.id}` : `/browse${qs ? `?${qs}` : ""}`;
+  const onlyAlbum = filters.albums?.length === 1 && !filters.people?.length && !filters.occasions?.length && !filters.decades?.length ? filters.albums[0] : undefined;
+  const backHref = onlyAlbum ? `/albums/${onlyAlbum}` : onlyPerson && !filters.occasions?.length && !filters.decades?.length && !filters.albums?.length ? `/people/${onlyPerson.id}` : `/browse${qs ? `?${qs}` : ""}`;
   const tagHref = `/tag?${qs ? `${qs}&` : ""}start=${id}`;
 
   const owner = canRemove(s, photo.uploaded_by_device);
@@ -71,6 +75,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
         avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
         canDelete={owner}
         isAdmin={isAdmin(s)}
+        albums={albums}
+        inAlbums={inAlbums.map((a) => ({ id: a.id, title: a.title, canTakeOut: canTakeOut(s, a.added_by_device, a.created_by_device) }))}
       >
         <PhotoEditor
           photoId={id}

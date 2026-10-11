@@ -15,13 +15,14 @@ export function filtersFrom(sp: SP, occasions: Occasion[]): Filters {
     months: sp.month ? [Number(sp.month)] : undefined,
     untagged: sp.untagged === "1",
     batch: sp.batch || undefined,
+    albums: ids(sp.albums),
   };
   if (sp.season && seasonMonths(sp.season))
     f.season = { months: seasonMonths(sp.season), occasionId: occasions.find((o) => o.name === sp.season)?.id };
   return f;
 }
 
-const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "order"];
+const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "order"];
 const ORDERS = new Set(["oldest", "newest", "recent"]);
 
 /** Just the filter params, in a stable order, for links and for remembering a place. */

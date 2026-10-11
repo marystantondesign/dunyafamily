@@ -1,6 +1,7 @@
 import { q } from "./db";
 import { countPhotos, findPhotos, withThumbs, type Filters, type Photo, type PhotoRow } from "./photos";
 import { seasonMonths } from "./hero";
+import { listAlbums } from "./albums";
 
 /** Dunya is the root of the family. She may be saved as "Dunya" or "Mamaw", or have one as an alias. */
 export async function findDunya() {
@@ -48,8 +49,8 @@ async function throughTheYears(personId: number) {
 }
 
 /**
- * Featured albums are built from tags until shared albums exist: Mamaw through the years, Christmas, and Summer,
- * then other occasions with the most photos if any of those are empty.
+ * Featured albums: Mamaw through the years, then the shared albums added to most recently,
+ * then albums built from tags (Christmas, Summer, then other occasions with the most photos) to fill the row.
  */
 export async function featuredAlbums(limit = 3): Promise<Album[]> {
   const albums: Album[] = [];
@@ -57,6 +58,11 @@ export async function featuredAlbums(limit = 3): Promise<Album[]> {
   if (dunya) {
     const photos = await throughTheYears(dunya.id);
     if (photos.length) albums.push({ title: "Mamaw through the years", text: "A lifetime of love.", href: `/people/${dunya.id}`, photos });
+  }
+
+  for (const a of await listAlbums()) {
+    if (albums.length >= limit) break;
+    if (a.count) albums.push({ title: a.title, text: `${a.count} ${a.count === 1 ? "photo" : "photos"}${a.createdByName ? `, started by ${a.createdByName}` : ""}.`, href: `/albums/${a.id}`, photos: a.photos });
   }
 
   const occasions = await q<{ id: number; name: string; kind: string; n: number }>(

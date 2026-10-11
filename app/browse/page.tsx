@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BrowseFilters, SortSelect } from "@/components/BrowseFilters";
 import { BrowseResults } from "@/components/BrowseResults";
 import { Icon } from "@/components/Icon";
+import { albumOptions } from "@/lib/albums";
 import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
 import { filterQuery, filtersFrom, ids, type SP } from "@/lib/filters";
@@ -22,7 +23,7 @@ const toggle = (list: number[], id: number) => (list.includes(id) ? list.filter(
 
 export default async function Browse({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const [people, occasions, decades] = await Promise.all([listPeople(), listOccasions(), decadesInUse()]);
+  const [people, occasions, decades, albums] = await Promise.all([listPeople(), listOccasions(), decadesInUse(), albumOptions()]);
 
   // Free-text search becomes pills: names, occasions, years ("1994"), and decades ("1990s", "90s").
   if (sp.q !== undefined) {
@@ -34,7 +35,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     redirect(href({}, { people: pIds.join(",") || undefined, occasions: oIds.join(",") || undefined, decade, year }));
   }
 
-  const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decades: ids(sp.decade) };
+  const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decades: ids(sp.decade), albums: ids(sp.albums) };
   const filters = filtersFrom(sp, occasions);
   const page = Math.max(1, Number(sp.page) || 1);
   const s = await getSession();
@@ -47,7 +48,8 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
 
   // Everything that's filtering the photos, as removable chips above the grid.
   const nameOf = (list: { id: number; name: string }[], id: number) => list.find((x) => x.id === id)?.name ?? "Unknown";
-  const chips: { key: string; label: string; icon: "person" | "calendar" | "photo"; clear: SP }[] = [
+  const chips: { key: string; label: string; icon: "person" | "calendar" | "photo" | "album"; clear: SP }[] = [
+    ...sel.albums.map((id) => ({ key: `a${id}`, label: albums.find((a) => a.id === id)?.title ?? "Album", icon: "album" as const, clear: { albums: toggle(sel.albums, id) } })),
     ...sel.people.map((id) => ({ key: `p${id}`, label: nameOf(people, id), icon: "person" as const, clear: { people: toggle(sel.people, id) } })),
     ...sel.occasions.map((id) => ({ key: `o${id}`, label: nameOf(occasions, id), icon: "calendar" as const, clear: { occasions: toggle(sel.occasions, id) } })),
     ...sel.decades.map((d) => ({ key: `d${d}`, label: `${d}s`, icon: "calendar" as const, clear: { decade: toggle(sel.decades, d) } })),
@@ -64,6 +66,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
         people={people.map(({ id, name }) => ({ id, name }))}
         occasions={occasions.map(({ id, name }) => ({ id, name }))}
         decades={decades}
+        albums={albums.map((a) => ({ id: a.id, name: a.title }))}
         selected={sel}
         params={params}
       />
@@ -95,6 +98,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             tagHref={`/tag${qs ? `?${qs}` : ""}`}
             people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
             occasions={occasions}
+            albums={albums}
           />
         ) : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
 

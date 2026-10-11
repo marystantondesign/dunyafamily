@@ -7,15 +7,15 @@ type Item = { id: number; name: string };
 const SHOW = 8;
 
 /** Sidebar checkboxes. Each change updates the URL, so filters can be shared and the back button works. */
-export function BrowseFilters({ people, occasions, decades, selected, params }: {
-  people: Item[]; occasions: Item[]; decades: number[];
-  selected: { people: number[]; occasions: number[]; decades: number[] };
+export function BrowseFilters({ people, occasions, decades, albums, selected, params }: {
+  people: Item[]; occasions: Item[]; decades: number[]; albums: Item[];
+  selected: { people: number[]; occasions: number[]; decades: number[]; albums: number[] };
   params: Record<string, string>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  function toggle(key: "people" | "occasions" | "decade", list: number[], id: number) {
+  function toggle(key: "people" | "occasions" | "decade" | "albums", list: number[], id: number) {
     const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
     const qs = new URLSearchParams(params);
     qs.delete("page");
@@ -24,7 +24,7 @@ export function BrowseFilters({ people, occasions, decades, selected, params }: 
     router.push(`/browse${qs.size ? `?${qs}` : ""}`, { scroll: false });
   }
 
-  const group = (title: string, key: "people" | "occasions" | "decade", items: Item[], list: number[]) => (
+  const group = (title: string, key: "people" | "occasions" | "decade" | "albums", items: Item[], list: number[]) => (
     <FilterGroup title={title} items={items} checked={list} onToggle={(id) => toggle(key, list, id)} />
   );
 
@@ -41,6 +41,7 @@ export function BrowseFilters({ people, occasions, decades, selected, params }: 
         {group("People", "people", people, selected.people)}
         {group("Occasions", "occasions", occasions, selected.occasions)}
         {decades.length > 0 && group("Decades", "decade", decades.map((d) => ({ id: d, name: `${d}s` })), selected.decades)}
+        {albums.length > 0 && group("Albums", "albums", albums, selected.albums)}
       </aside>
     </>
   );

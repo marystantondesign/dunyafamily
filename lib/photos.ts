@@ -29,6 +29,8 @@ export type Filters = {
   untagged?: boolean;
   /** One upload, by its upload_batch id. */
   batch?: string;
+  /** Photos in any of these shared albums. */
+  albums?: number[];
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,6 +59,8 @@ function build(f: Filters) {
     where.push(
       `p.year is null and p.decade is null and not exists (select 1 from photo_people x where x.photo_id = p.id) and not exists (select 1 from photo_occasions x where x.photo_id = p.id)`,
     );
+  if (f.albums?.length)
+    where.push(`exists (select 1 from album_photos x where x.photo_id = p.id and x.album_id = any(${$(f.albums)}::int[]))`);
   if (f.batch) where.push(UUID.test(f.batch) ? `p.upload_batch = ${$(f.batch)}::uuid` : "false");
   return { where: where.join(" and "), params, $ };
 }

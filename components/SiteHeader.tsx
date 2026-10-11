@@ -21,6 +21,7 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
+  { href: "/albums", title: "Album", text: "Start a shared album everyone can add to", icon: "album" },
   { href: "/people/new", title: "Person", text: "Add family or a loved one", icon: "person" },
   { href: "/calendar#add-birthday", title: "Birthday", text: "Add a birthday to someone's profile", icon: "cake" },
   { href: "/people/new-date?kind=anniversary", title: "Anniversary", text: "Remember an important date", icon: "heart" },

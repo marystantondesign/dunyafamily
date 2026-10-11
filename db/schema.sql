@@ -129,3 +129,22 @@ create table if not exists settings (
   value text,
   updated_at timestamptz not null default now()
 );
+
+-- Shared albums, like "Memrie's wedding". Separate from occasions. Anyone can add photos to any album.
+create table if not exists albums (
+  id serial primary key,
+  title text not null,
+  cover_photo_id int,
+  created_by_device text,
+  created_by_name text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create table if not exists album_photos (
+  album_id int not null references albums(id),
+  photo_id int not null references photos(id),
+  added_by_device text,
+  added_at timestamptz not null default now(),
+  primary key (album_id, photo_id)
+);
+create index if not exists album_photos_photo on album_photos (photo_id);

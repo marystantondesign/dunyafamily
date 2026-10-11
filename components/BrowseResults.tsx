@@ -2,15 +2,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AlbumAdd, type AlbumOption } from "./AlbumPicker";
 import { Gallery } from "./Gallery";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type BrowsePhoto = { id: number; url: string; width: number | null; height: number | null; year: number | null; decade: number | null; month: number | null; removable: boolean };
-type Panel = "date" | "occasion" | "person" | null;
+type Panel = "date" | "occasion" | "person" | "album" | null;
 
 /** The browse gallery, plus select mode: check photos, then change them all at once. */
-export function BrowseResults({ photos, query, tagHref, people, occasions }: {
+export function BrowseResults({ photos, query, tagHref, people, occasions, albums, inAlbum }: {
   photos: BrowsePhoto[]; query: string; tagHref: string; people: Option[]; occasions: Option[];
+  albums: AlbumOption[];
+  /** On an album page: select mode can also take photos out of this album. */
+  inAlbum?: { id: number; title: string };
 }) {
   const router = useRouter();
   const [selecting, setSelecting] = useState(false);
@@ -32,12 +36,12 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
   const removable = photos.filter((p) => selected.includes(p.id) && p.removable).length;
   const stop = () => { setSelecting(false); setSelected([]); setPanel(null); setError(""); };
 
-  async function run(body: Record<string, unknown>) {
+  async function run(body: Record<string, unknown>, url = "/api/photos/bulk", method = "POST") {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/photos/bulk", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, ...body }),
+      const res = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected, photoIds: selected, ...body }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error);
@@ -63,6 +67,13 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
     const others = selected.length - removable;
     const text = `Remove ${removable} ${removable === 1 ? "photo" : "photos"} from the site?${others ? ` ${others} added by someone else will stay.` : ""} Mary can restore anything removed by mistake.`;
     if (confirm(text)) run({ action: "remove" });
+  }
+
+  const addToAlbum = (p: { albumId: number } | { newTitle: string }) =>
+    "albumId" in p ? run({}, `/api/albums/${p.albumId}/photos`) : run({ title: p.newTitle }, "/api/albums").then(() => undefined);
+  function takeOut() {
+    if (inAlbum && confirm(`Take ${selected.length === 1 ? "this photo" : `these ${selected.length} photos`} out of ${inAlbum.title}? They stay on the site.`))
+      run({}, `/api/albums/${inAlbum.id}/photos`, "DELETE");
   }
 
   const pick = (action: "person" | "occasion") => (v: Picked[]) => { const last = v[v.length - 1]; if (last !== undefined) run({ action, value: last }); };
@@ -100,6 +111,7 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
                 </form>
               )}
               {panel === "occasion" && <TagPicker label="Add occasion" options={occasions} value={[]} onChange={pick("occasion")} placeholder="Christmas, Birthday, Summer" />}
+              {panel === "album" && <AlbumAdd albums={albums.filter((a) => a.id !== inAlbum?.id)} busy={busy} onAdd={addToAlbum} />}
               {panel === "person" && <TagPicker label="Add person" options={people} value={[]} onChange={pick("person")} placeholder="Start typing a name" />}
             </div>
           )}
@@ -116,6 +128,8 @@ export function BrowseResults({ photos, query, tagHref, people, occasions }: {
                 <button type="button" aria-pressed={panel === "date"} onClick={() => setPanel(panel === "date" ? null : "date")} disabled={busy}>Set year or decade</button>
                 <button type="button" aria-pressed={panel === "occasion"} onClick={() => setPanel(panel === "occasion" ? null : "occasion")} disabled={busy}>Add occasion</button>
                 <button type="button" aria-pressed={panel === "person"} onClick={() => setPanel(panel === "person" ? null : "person")} disabled={busy}>Add person</button>
+                <button type="button" aria-pressed={panel === "album"} onClick={() => setPanel(panel === "album" ? null : "album")} disabled={busy}>Add to album</button>
+                {inAlbum && <button type="button" onClick={takeOut} disabled={busy}>Take out of album</button>}
                 {removable > 0 && <button type="button" className="danger" onClick={remove} disabled={busy}>Remove</button>}
                 <button type="button" className="clear" onClick={() => { setSelected([]); setPanel(null); }}>Clear</button>
               </>

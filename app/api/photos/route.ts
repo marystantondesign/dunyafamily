@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { badRequest, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
+import { addToAlbum, resolveAlbum } from "@/lib/albums";
 import { resolveOccasions, resolvePeople } from "@/lib/tags";
 
 type Body = {
@@ -8,6 +9,8 @@ type Body = {
   tags: { people: (number | string)[]; occasions: (number | string)[]; year?: number | null; decade?: number | null; caption?: string };
   /** Scans and phone photos of old prints: the camera date is when the print was copied, not when the photo was taken. */
   scans?: boolean;
+  /** A shared album for the whole batch: one that exists, or a new one by name. */
+  album?: { albumId?: number; newTitle?: string } | null;
 };
 
 const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
@@ -15,9 +18,12 @@ const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return unauthorized();
-  const { photos, tags, scans } = (await req.json()) as Body;
+  const { photos, tags, scans, album: albumPick } = (await req.json()) as Body;
   if (!photos?.length) return badRequest("No photos to save.");
   if (photos.some((p) => !KEY.test(p.originalKey) || !KEY.test(p.thumbKey))) return badRequest("Unexpected file keys.");
+  // Settle the album first, so a problem with it doesn't leave photos half-saved.
+  const album = await resolveAlbum(albumPick, s);
+  if (album && "error" in album) return badRequest(album.error);
 
   const peopleIds = await resolvePeople(tags.people ?? [], s);
   const occasionIds = await resolveOccasions(tags.occasions ?? [], s);
@@ -52,5 +58,7 @@ export async function POST(req: Request) {
       [ids, occasionIds, s.did],
     );
 
-  return NextResponse.json({ ids, batch });
+  if (album) await addToAlbum(album.id, ids, s);
+
+  return NextResponse.json({ ids, batch, albumId: album?.id ?? null });
 }

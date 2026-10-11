@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlbumCard } from "@/components/AlbumCard";
 import { Gallery } from "@/components/Gallery";
 import { Icon } from "@/components/Icon";
 import { featuredAlbums, heroPortrait } from "@/lib/featured";
@@ -62,22 +63,11 @@ export default async function Home() {
         <section className="featured">
           <div className="section-head">
             <h2 className="section-title">Featured albums</h2>
-            <Link href="/browse" className="text-link small">See all photos <span aria-hidden="true">→</span></Link>
+            <Link href="/albums" className="text-link small">See all albums <span aria-hidden="true">→</span></Link>
           </div>
           <div className="album-grid">
             {albums.map((a) => (
-              <Link key={a.title} href={a.href} className="album-card">
-                <span>
-                  <span className="album-title">{a.title}</span>
-                  <span className="album-text">{a.text}</span>
-                </span>
-                <span className="album-photos">
-                  {a.photos.map((p) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={p.id} src={p.url} alt="" loading="lazy" />
-                  ))}
-                </span>
-              </Link>
+              <AlbumCard key={a.href} href={a.href} title={a.title} text={a.text} photos={a.photos} />
             ))}
           </div>
         </section>
