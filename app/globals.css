@@ -1148,3 +1148,5 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .react-chip { min-height: 36px; }
   .comment-form { bottom: calc(-24px - env(safe-area-inset-bottom)); }
 }
+.react-any input { width: 64px; height: 40px; border: 1px dashed var(--input); border-radius: 999px; background: var(--paper); font: inherit; font-size: 16px; text-align: center; margin-left: 4px; color: var(--ink); }
+.react-any input:focus { outline: none; border-color: var(--plum); border-style: solid; }

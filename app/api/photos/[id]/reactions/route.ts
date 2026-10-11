@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { badRequest, getSession, unauthorized } from "@/lib/auth";
-import { EMOJI } from "@/lib/comments";
+import { isEmoji } from "@/lib/comments";
 import { q } from "@/lib/db";
 
-/** Tap an emoji to react; tap it again to take it back. One of each per device. */
+/** React with any emoji; the same emoji again takes it back. One of each per device. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const s = await getSession();
   if (!s) return unauthorized();
   const id = Number((await params).id);
-  const { emoji } = (await req.json().catch(() => ({}))) as { emoji?: string };
-  if (!emoji || !EMOJI.includes(emoji)) return badRequest("Pick one of the reactions.");
+  const raw = ((await req.json().catch(() => ({}))) as { emoji?: string }).emoji ?? "";
+  if (!isEmoji(raw)) return badRequest("Reactions are one emoji.");
+  const emoji = raw.trim();
   const [photo] = await q(`select 1 from photos where id = $1 and deleted_at is null`, [id]);
   if (!photo) return badRequest("That photo isn't here anymore.");
   const gone = await q(`delete from photo_reactions where photo_id = $1 and emoji = $2 and created_by_device = $3 returning 1`, [id, emoji, s.did]);

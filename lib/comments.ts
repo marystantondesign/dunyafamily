@@ -3,7 +3,16 @@ import { q } from "./db";
 import { byName, displayName } from "./names";
 import type { Session } from "./session";
 
+/** The quick picks. Any other emoji works too. */
 export const EMOJI = ["❤️", "😂", "😍", "😢", "🙏", "👏"];
+
+/** One emoji, including skin tones, flags, keycaps, and joined ones like 👨‍👩‍👧. Nothing else. */
+export function isEmoji(text: string) {
+  const t = text.trim();
+  if (!t || t.length > 32) return false;
+  const parts = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(t)];
+  return parts.length === 1 && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(t);
+}
 
 export type CommentView = { id: number; author: string; body: string; createdAt: string; canDelete: boolean };
 export type ReactionView = { emoji: string; count: number; names: string[]; mine: boolean };
@@ -18,10 +27,11 @@ export async function photoTalk(photoId: number, s: Session | null): Promise<{ c
   ]);
   return {
     comments: comments.map((c) => ({ id: c.id, author: byName(c.author_name), body: c.body, createdAt: c.created_at, canDelete: canRemove(s, c.created_by_device) })),
-    reactions: EMOJI.map((emoji) => {
+    // In the order each emoji was first used.
+    reactions: [...new Set(reactions.map((r) => r.emoji))].map((emoji) => {
       const rows = reactions.filter((r) => r.emoji === emoji);
       return { emoji, count: rows.length, names: rows.map((r) => (r.author_name ? displayName(r.author_name) : "Someone")), mine: rows.some((r) => r.created_by_device === s?.did) };
-    }).filter((r) => r.count > 0),
+    }),
   };
 }
 

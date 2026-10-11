@@ -37,7 +37,7 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
       const r = prev.find((x) => x.emoji === emoji);
       if (r?.mine) return prev.map((x) => (x.emoji === emoji ? { ...x, count: x.count - 1, mine: false, names: x.names.slice(0, -1) } : x)).filter((x) => x.count > 0);
       if (r) return prev.map((x) => (x.emoji === emoji ? { ...x, count: x.count + 1, mine: true, names: [...x.names, "You"] } : x));
-      return [...prev, { emoji, count: 1, mine: true, names: ["You"] }].sort((a, b) => EMOJI.indexOf(a.emoji) - EMOJI.indexOf(b.emoji));
+      return [...prev, { emoji, count: 1, mine: true, names: ["You"] }];
     });
     await fetch(`/api/photos/${photoId}/reactions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji }) }).catch(() => undefined);
     router.refresh();
@@ -48,7 +48,7 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
     <div className="talk-row">
       {shown.map((r) => (
         <button key={r.emoji} type="button" className={`react-chip${r.mine ? " mine" : ""}`} disabled={busy} onClick={() => toggle(r.emoji)}
-          title={names(r.names)} aria-pressed={r.mine} aria-label={`${LABEL[r.emoji]}, ${r.count}: ${names(r.names)}${r.mine ? ". Tap to take yours back." : ""}`}>
+          title={names(r.names)} aria-pressed={r.mine} aria-label={`${LABEL[r.emoji] ?? r.emoji}, ${r.count}: ${names(r.names)}${r.mine ? ". Tap to take yours back." : ""}`}>
           <span aria-hidden="true">{r.emoji}</span> {r.count}
         </button>
       ))}
@@ -62,6 +62,7 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
               <button key={e} type="button" role="menuitem" aria-label={LABEL[e]} title={LABEL[e]} onClick={() => toggle(e)}
                 className={shown.some((r) => r.emoji === e && r.mine) ? "mine" : undefined}>{e}</button>
             ))}
+            <AnyEmoji onPick={toggle} />
           </div>
         )}
       </div>
@@ -69,6 +70,24 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
         <Icon name="comment" size={18} /> {comments ? `${comments} ${comments === 1 ? "comment" : "comments"}` : "Comment"}
       </button>
     </div>
+  );
+}
+
+/** Any emoji: tap the box and use the emoji keyboard (on a Mac, Control Command Space). It sends as soon as one is typed. */
+function AnyEmoji({ onPick }: { onPick: (e: string) => void }) {
+  const [value, setValue] = useState("");
+  function change(v: string) {
+    // Look at the last character typed, counting joined emoji like 👨‍👩‍👧 as one.
+    const parts = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v.trim())].map((x) => x.segment);
+    const last = parts[parts.length - 1];
+    if (last && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(last)) { setValue(""); onPick(last); }
+    else setValue(v);
+  }
+  return (
+    <label className="react-any">
+      <span className="sr-only">Any emoji</span>
+      <input value={value} placeholder="Any" autoComplete="off" onChange={(e) => change(e.target.value)} />
+    </label>
   );
 }
 
