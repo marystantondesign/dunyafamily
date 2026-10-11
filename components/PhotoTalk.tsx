@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { EmojiPicker } from "./EmojiPicker";
 import { Icon } from "./Icon";
 
 export type Reaction = { emoji: string; count: number; names: string[]; mine: boolean };
@@ -18,6 +19,7 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
 }) {
   const router = useRouter();
   const [picking, setPicking] = useState(false);
+  const [full, setFull] = useState(false);
   const [busy, setBusy] = useState(false);
   // Shown right away; the page catches up with everyone else's reactions on refresh.
   const [shown, setShown] = useState(reactions);
@@ -29,6 +31,12 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
   }, [picking]);
+
+  const closeFull = useCallback(() => setFull(false), []);
+  // Picking from the full panel always adds (or, if it's already yours, takes it back), then closes.
+  const pickFull = useCallback((emoji: string) => { setFull(false); toggleRef.current(emoji); }, []);
+  const toggleRef = useRef<(emoji: string) => void>(() => undefined);
+  toggleRef.current = (emoji: string) => { toggle(emoji); };
 
   async function toggle(emoji: string) {
     setBusy(true);
@@ -62,32 +70,22 @@ export function Reactions({ photoId, reactions, comments, onComments }: {
               <button key={e} type="button" role="menuitem" aria-label={LABEL[e]} title={LABEL[e]} onClick={() => toggle(e)}
                 className={shown.some((r) => r.emoji === e && r.mine) ? "mine" : undefined}>{e}</button>
             ))}
-            <AnyEmoji onPick={toggle} />
+            <button type="button" className="react-more" aria-label="More emoji" title="More emoji" onClick={() => { setPicking(false); setFull(true); }}>
+              <Icon name="plus" size={18} stroke={2} />
+            </button>
           </div>
+        )}
+        {full && (
+          <>
+            <div className="emoji-backdrop" onClick={() => setFull(false)} aria-hidden="true" />
+            <EmojiPicker onPick={pickFull} onClose={closeFull} />
+          </>
         )}
       </div>
       <button type="button" className="talk-comments" onClick={onComments}>
         <Icon name="comment" size={18} /> {comments ? `${comments} ${comments === 1 ? "comment" : "comments"}` : "Comment"}
       </button>
     </div>
-  );
-}
-
-/** Any emoji: tap the box and use the emoji keyboard (on a Mac, Control Command Space). It sends as soon as one is typed. */
-function AnyEmoji({ onPick }: { onPick: (e: string) => void }) {
-  const [value, setValue] = useState("");
-  function change(v: string) {
-    // Look at the last character typed, counting joined emoji like 👨‍👩‍👧 as one.
-    const parts = [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(v.trim())].map((x) => x.segment);
-    const last = parts[parts.length - 1];
-    if (last && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(last)) { setValue(""); onPick(last); }
-    else setValue(v);
-  }
-  return (
-    <label className="react-any">
-      <span className="sr-only">Any emoji</span>
-      <input value={value} placeholder="Any" autoComplete="off" onChange={(e) => change(e.target.value)} />
-    </label>
   );
 }
 

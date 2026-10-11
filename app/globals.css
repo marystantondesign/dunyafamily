@@ -1111,3 +1111,18 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
 }
 .react-any input { width: 64px; height: 40px; border: 1px dashed var(--input); border-radius: 999px; background: var(--paper); font: inherit; font-size: 16px; text-align: center; margin-left: 4px; color: var(--ink); }
 .react-any input:focus { outline: none; border-color: var(--plum); border-style: solid; }
+.react-more { width: 40px; height: 40px; margin-left: 2px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.react-more:hover { border-color: var(--plum-line); color: var(--plum); }
+.emoji-backdrop { position: fixed; inset: 0; z-index: 39; }
+.emoji-panel { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; border-radius: 12px; overflow: hidden; box-shadow: 0 12px 32px rgba(43, 29, 26, 0.2); border: 1px solid var(--line); background: var(--paper); }
+.emoji-panel emoji-picker {
+  --background: var(--paper); --border-color: var(--line); --input-border-color: var(--input); --input-font-color: var(--ink);
+  --input-placeholder-color: var(--muted); --outline-color: var(--plum); --indicator-color: var(--plum); --button-hover-background: var(--wash);
+  --button-active-background: var(--plum-wash); --category-font-color: var(--ink-3); --border-radius: 8px; --input-border-radius: 8px;
+  --emoji-size: 1.6rem; --num-columns: 8; width: 340px; height: 380px;
+}
+@media (max-width: 760px) {
+  .emoji-backdrop { background: rgba(43, 29, 26, 0.45); }
+  .emoji-panel { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .emoji-panel emoji-picker { width: 100%; height: 55dvh; --num-columns: 8; --emoji-size: 1.7rem; }
+}
