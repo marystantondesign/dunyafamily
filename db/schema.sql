@@ -193,3 +193,6 @@ create table if not exists homepage_photos (
   created_by_device text,
   created_at timestamptz not null default now()
 );
+
+-- An optional name for a photo ("Afreen at the bead shop"). When blank, the occasion and year show instead.
+alter table photos add column if not exists title text;

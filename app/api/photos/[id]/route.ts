@@ -5,8 +5,8 @@ import { q } from "@/lib/db";
 type Ctx = { params: Promise<{ id: string }> };
 
 async function load(id: number) {
-  const [p] = await q<{ uploaded_by_device: string; year: number | null; decade: number | null; caption: string | null }>(
-    `select uploaded_by_device, year, decade, caption from photos where id = $1 and deleted_at is null`,
+  const [p] = await q<{ uploaded_by_device: string; year: number | null; decade: number | null; caption: string | null; title: string | null }>(
+    `select uploaded_by_device, year, decade, caption, title from photos where id = $1 and deleted_at is null`,
     [id],
   );
   return p;
@@ -31,7 +31,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const id = Number((await params).id);
   const p = await load(id);
   if (!p) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
-  const body = (await req.json()) as { year?: number | null; decade?: number | null; caption?: string | null };
+  const body = (await req.json()) as { year?: number | null; decade?: number | null; caption?: string | null; title?: string | null };
   const owner = canRemove(s, p.uploaded_by_device);
 
   const sets: string[] = [];
@@ -54,6 +54,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ("caption" in body) {
     if (p.caption && !owner) return forbidden();
     set("caption", body.caption?.trim().slice(0, 500) || null);
+  }
+  if ("title" in body) {
+    if (p.title && !owner) return forbidden();
+    set("title", body.title?.replace(/\s+/g, " ").trim().slice(0, 120) || null);
   }
   if (!sets.length) return badRequest("Nothing to change.");
   vals.push(id);

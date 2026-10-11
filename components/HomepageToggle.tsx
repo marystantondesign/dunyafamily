@@ -21,7 +21,11 @@ export function HomepageToggle({ photoId, entry, used, max }: { photoId: number;
 
   return (
     <div className="meta-block homepage-toggle">
-      <label className="switch-row">
+      <label className="hp-toggle-row">
+        <span>
+          <strong>Show on the homepage</strong>
+          <span className="hint">Admin only. {used} of {max} spots used.{full ? " Remove one from Homepage photos first." : ""}</span>
+        </span>
         <input type="checkbox" role="switch" className="switch" checked={on} disabled={full}
           onChange={async (e) => {
             const next = e.target.checked;
@@ -29,9 +33,7 @@ export function HomepageToggle({ photoId, entry, used, max }: { photoId: number;
             const ok = await send(next ? { action: "add", photoIds: [photoId], caption } : { action: "remove", photoId });
             if (!ok) setOn(!next);
           }} />
-        Show on the homepage
       </label>
-      <p className="hint">{used} of {max} spots used{full ? ". Remove one from Homepage photos to add this one." : ""}</p>
       {on && (
         <div className="field">
           <label htmlFor="polaroid-caption">Polaroid caption</label>

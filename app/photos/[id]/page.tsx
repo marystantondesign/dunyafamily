@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
 import { byName, displayName } from "@/lib/names";
-import { PhotoEditor } from "@/components/PhotoEditor";
-import { PhotoNav } from "@/components/PhotoNav";
-import { PhotoView } from "@/components/PhotoView";
+import { PhotoScreen } from "@/components/PhotoScreen";
 import { albumOptions, albumsFor, canTakeOut } from "@/lib/albums";
-import { HomepageToggle } from "@/components/HomepageToggle";
-import { homepageEntry, MAX_SPOTS, spotsUsed } from "@/lib/homepage";
+import { homepageEntry, spotsUsed } from "@/lib/homepage";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
@@ -50,58 +47,54 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const onlyAlbum = filters.albums?.length === 1 && !filters.people?.length && !filters.occasions?.length && !filters.decades?.length ? filters.albums[0] : undefined;
   const backHref = onlyAlbum ? `/albums/${onlyAlbum}` : onlyPerson && !filters.occasions?.length && !filters.decades?.length && !filters.albums?.length ? `/people/${onlyPerson.id}` : `/browse${qs ? `?${qs}` : ""}`;
   const tagHref = `/tag?${qs ? `${qs}&` : ""}start=${id}`;
+  const slideshowHref = `/slideshow?${qs ? `${qs}&` : ""}start=${id}`;
+  const backLabel = onlyAlbum ? albums.find((a) => a.id === onlyAlbum)?.title ?? "Album" : backHref.startsWith("/people/") && onlyPerson ? onlyPerson.name : "Browse";
 
   const owner = canRemove(s, photo.uploaded_by_device);
   const removable = (dev: string | null) => owner || canRemove(s, dev);
   const personInfo = new Map(owners.map((o) => [o.id, o]));
   const canSetAvatar = (pid: number) => { const o = personInfo.get(pid); return !o?.avatar_photo_id || canRemove(s, o.created_by_device); };
   const when = whenLabel(photo);
-  const title = [occasionTags[0]?.name, when].filter(Boolean).join(", ") || "Date unknown";
-  const added = new Date(photo.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const avatarUrl = new Map(people.map((p) => [p.id, p.avatar_url]));
-  const pos = near ? `Photo ${near.pos} of ${near.total}` : "Photo";
+  // A photo name wins. Otherwise the occasion and year, like "NYC, 2026".
+  const fallback = [occasionTags[0]?.name, when].filter(Boolean).join(", ");
+  const title = (photo as PhotoRow & { title: string | null }).title || fallback || "Date unknown";
+  const added = new Date(photo.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
-    <>
-      <PhotoNav prev={link(near?.prev)} next={link(near?.next)} pos={near?.pos} total={near?.total} tagHref={tagHref} />
-      <PhotoView
-        photoId={id}
-        imgUrl={url}
-        thumbUrl={thumb}
-        alt={tagged.length ? `${tagged.map((t) => t.name).join(", ")}${when ? `, ${when}` : ""}` : when ? `Family photo from ${when}` : "Family photo"}
-        width={photo.width}
-        height={photo.height}
-        title={title}
-        addedBy={`Added by ${byName(photo.uploaded_by_name)}, ${added}`}
-        caption={photo.caption}
-        heading={onlyPerson ? `${onlyPerson.name} · ${pos}` : pos}
-        closeHref={backHref}
-        prevHref={link(near?.prev)}
-        nextHref={link(near?.next)}
-        people={tagged.map((t) => ({ id: t.id, name: t.name, avatarUrl: avatarUrl.get(t.id) ?? null }))}
-        avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
-        canDelete={owner}
-        isAdmin={isAdmin(s)}
-        albums={albums}
-        inAlbums={inAlbums.map((a) => ({ id: a.id, title: a.title, canTakeOut: canTakeOut(s, a.added_by_device, a.created_by_device) }))}
-      >
-        <PhotoEditor
-          photoId={id}
-          people={tagged.map((t) => ({
-            id: t.id,
-            name: t.name,
-            removable: removable(t.added_by_device),
-            canSetAvatar: canSetAvatar(t.id),
-            isAvatar: personInfo.get(t.id)?.avatar_photo_id === id,
-          }))}
-          occasions={occasionTags.map((t) => ({ id: t.id, name: t.name, removable: removable(t.added_by_device) }))}
-          allPeople={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
-          allOccasions={occasions}
-          meta={{ year: photo.year, decade: photo.decade, caption: photo.caption }}
-          canEditMeta={owner}
-        />
-        {admin && <HomepageToggle key={`${hpEntry ? 1 : 0}-${hpUsed}`} photoId={id} entry={hpEntry} used={hpUsed} max={MAX_SPOTS} />}
-      </PhotoView>
-    </>
+    <PhotoScreen
+      photoId={id}
+      imgUrl={url}
+      thumbUrl={thumb}
+      alt={tagged.length ? `${tagged.map((t) => t.name).join(", ")}${when ? `, ${when}` : ""}` : when ? `Family photo from ${when}` : "Family photo"}
+      title={title}
+      people={tagged.map(({ id, name }) => ({ id, name }))}
+      addedBy={`Added by ${byName(photo.uploaded_by_name)}, ${added}`}
+      pos={near?.pos ?? null}
+      total={near?.total ?? null}
+      prevHref={link(near?.prev)}
+      nextHref={link(near?.next)}
+      backHref={backHref}
+      backLabel={backLabel}
+      slideshowHref={slideshowHref}
+      tagHref={tagHref}
+      canDelete={owner}
+      avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
+      details={{
+        photoId: id,
+        title: (photo as PhotoRow & { title: string | null }).title,
+        fallback,
+        addedBy: `Added by ${byName(photo.uploaded_by_name)}, ${added}`,
+        people: tagged.map((t) => ({ id: t.id, name: t.name, removable: removable(t.added_by_device) })),
+        occasions: occasionTags.map((t) => ({ id: t.id, name: t.name, removable: removable(t.added_by_device) })),
+        albums: inAlbums.map((a) => ({ id: a.id, name: a.title, removable: canTakeOut(s, a.added_by_device, a.created_by_device) })),
+        year: photo.year,
+        decade: photo.decade,
+        canEditMeta: owner,
+        allPeople: people.map(({ id, name, aliases }) => ({ id, name, aliases })),
+        allOccasions: occasions.map(({ id, name }) => ({ id, name })),
+        allAlbums: albums.map((a) => ({ id: a.id, name: a.title })),
+        homepage: admin ? { entry: hpEntry, used: hpUsed } : null,
+      }}
+    />
   );
 }
