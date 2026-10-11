@@ -4,6 +4,8 @@ import { PhotoEditor } from "@/components/PhotoEditor";
 import { PhotoNav } from "@/components/PhotoNav";
 import { PhotoView } from "@/components/PhotoView";
 import { albumOptions, albumsFor, canTakeOut } from "@/lib/albums";
+import { HomepageToggle } from "@/components/HomepageToggle";
+import { homepageEntry, MAX_SPOTS, spotsUsed } from "@/lib/homepage";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
@@ -33,6 +35,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
     albumOptions(),
     albumsFor(id),
   ]);
+  const admin = isAdmin(s);
+  const [hpEntry, hpUsed] = admin ? await Promise.all([homepageEntry(id), spotsUsed()]) : [null, 0];
   const tagged = taggedRaw.map((t) => ({ ...t, name: displayName(t.name) }));
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
@@ -95,6 +99,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
           meta={{ year: photo.year, decade: photo.decade, caption: photo.caption }}
           canEditMeta={owner}
         />
+        {admin && <HomepageToggle key={`${hpEntry ? 1 : 0}-${hpUsed}`} photoId={id} entry={hpEntry} used={hpUsed} max={MAX_SPOTS} />}
       </PhotoView>
     </>
   );

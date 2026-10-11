@@ -183,3 +183,13 @@ create table if not exists login_attempts (
   at timestamptz not null default now()
 );
 create index if not exists login_attempts_key on login_attempts (key, at);
+
+-- The photos that fade through the Polaroid on Home, in order, each with a handwritten caption. Up to 10, admin only.
+-- The speed lives in settings (homepage_interval, in seconds).
+create table if not exists homepage_photos (
+  photo_id int primary key references photos(id),
+  caption text,
+  position int not null default 0,
+  created_by_device text,
+  created_at timestamptz not null default now()
+);

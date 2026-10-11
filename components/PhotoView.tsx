@@ -65,7 +65,6 @@ export function PhotoView(props: {
       icon: "person" as const, label: `Use as ${p.name}'s profile photo`,
       onClick: () => run(() => post(`/api/people/${p.id}`, "PATCH", { avatarPhotoId: props.photoId }), `Now ${p.name}'s profile photo.`),
     })),
-    ...(props.isAdmin ? [{ icon: "home" as const, label: "Use as homepage photo", onClick: () => run(() => post("/api/settings/home-photo", "POST", { photoId: props.photoId }), "On the homepage now.") }] : []),
     { icon: "download", label: "Download original", href: `/api/photos/${props.photoId}/download` },
     ...(props.canDelete ? [{ icon: "trash" as const, label: "Delete photo", sub: "Kept in Recently deleted for 30 days", danger: true, onClick: () => { setSheet(null); setConfirming(true); } }] : []),
   ];

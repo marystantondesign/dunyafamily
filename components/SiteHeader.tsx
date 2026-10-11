@@ -83,6 +83,7 @@ function AccountMenu({ me }: { me: Me }) {
           {me.role === "admin" && (
             <div className="account-group">
               <span className="account-label">Admin</span>
+              <Link role="menuitem" href="/admin/homepage"><Icon name="home" size={20} /> Homepage photos</Link>
               <Link role="menuitem" href="/admin/deleted"><Icon name="trash" size={20} /> Recently deleted</Link>
               <Link role="menuitem" href="/admin/password"><Icon name="lock" size={20} /> Family password</Link>
             </div>

@@ -45,6 +45,12 @@ export default async function YouPage() {
           <h2 className="you-label">Admin</h2>
           <ul className="you-list">
             <li>
+              <Link href="/admin/homepage">
+                <span><strong>Homepage photos</strong><span>Choose the photos and captions on the Polaroid</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/deleted">
                 <span><strong>Recently deleted</strong><span>Restore photos, people, and events</span></span>
                 <Icon name="chevronRight" className="chev" />
