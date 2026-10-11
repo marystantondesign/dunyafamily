@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
 
 const NAV: { href: string; label: string; also?: string }[] = [
@@ -30,7 +30,65 @@ const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
 
 const current = (path: string, href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
 
-export function SiteHeader({ name }: { name: string }) {
+type Me = { pid: number | null; name: string; avatarUrl: string | null; role: "family" | "admin" };
+
+export function Avatar({ me, className = "me" }: { me: Pick<Me, "name" | "avatarUrl">; className?: string }) {
+  return (
+    <span className={className} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {me.avatarUrl ? <img src={me.avatarUrl} alt="" /> : me.name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+export async function logOut() {
+  await fetch("/api/logout", { method: "POST" }).catch(() => undefined);
+  window.location.href = "/enter";
+}
+
+/** Account menu (screen 23): who this device is, their page, settings, switch person, and log out. */
+function AccountMenu({ me }: { me: Me }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const path = usePathname();
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onClick = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("mousedown", onClick); };
+  }, [open]);
+  const first = me.name.split(" ")[0];
+  return (
+    <div className="account" ref={box}>
+      {/* On phones the avatar opens the You page instead of a menu. */}
+      <Link href="/you" className="me-link me-phone" aria-label={`You: ${me.name}`}><Avatar me={me} /></Link>
+      <button type="button" className="me-link me-desktop" aria-label={`You: ${me.name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Avatar me={me} />
+      </button>
+      {open && (
+        <div className="account-menu" role="menu">
+          <div className="account-head">
+            <Avatar me={me} />
+            <span><strong>{me.name}</strong><span className="small">{me.role === "admin" ? "Admin" : "Family"}</span></span>
+          </div>
+          <div className="account-group">
+            <Link role="menuitem" href={me.pid ? `/people/${me.pid}` : "/enter/who"}><Icon name="person" size={20} /> Your page</Link>
+            <Link role="menuitem" href="/you"><Icon name="gear" size={20} /> Settings</Link>
+            <Link role="menuitem" href="/enter/who"><Icon name="swap" size={20} /> Not {first}? Switch person</Link>
+          </div>
+          <div className="account-group">
+            <button type="button" role="menuitem" onClick={logOut}><Icon name="logout" size={20} /> Log out</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SiteHeader({ me }: { me: Me }) {
   const path = usePathname();
   const [adding, setAdding] = useState(false);
   useEffect(() => setAdding(false), [path]);
@@ -56,8 +114,7 @@ export function SiteHeader({ name }: { name: string }) {
           </nav>
           <div className="header-tools">
             <Link href="/browse" className="icon-btn" aria-label="Search"><Icon name="search" size={22} /></Link>
-            {/* The account menu arrives with "Which one is you?". For now this shows who this device is. */}
-            <span className="me" role="img" aria-label={`You: ${name}`} title={name}>{name.trim().charAt(0).toUpperCase()}</span>
+            <AccountMenu me={me} />
           </div>
         </div>
       </header>
