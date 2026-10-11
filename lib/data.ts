@@ -1,12 +1,12 @@
 import { q } from "./db";
 import { signGet } from "./r2";
 
-export type Person = { id: number; name: string; aliases: string[]; avatar_url: string | null };
+export type Person = { id: number; name: string; aliases: string[]; avatar_url: string | null; in_memory: boolean };
 export type Occasion = { id: number; name: string; kind: string };
 
 export async function listPeople(): Promise<Person[]> {
-  const rows = await q<{ id: number; name: string; aliases: string[]; thumb_key: string | null }>(
-    `select pe.id, pe.name, pe.aliases, ph.thumb_key
+  const rows = await q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean }>(
+    `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory
        from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
       where pe.deleted_at is null order by lower(pe.name)`,
   );
@@ -16,6 +16,7 @@ export async function listPeople(): Promise<Person[]> {
       name: r.name,
       aliases: r.aliases ?? [],
       avatar_url: r.thumb_key ? await signGet(r.thumb_key) : null,
+      in_memory: !!r.in_memory,
     })),
   );
 }
@@ -35,11 +36,11 @@ export async function decadesInUse() {
   return rows.map((r) => r.d);
 }
 
-export type Birthday = { id: number; person_id: number; name: string; month: number; day: number; created_by_device: string | null; next: Date; inDays: number };
+export type Birthday = { id: number; person_id: number; name: string; in_memory: boolean; month: number; day: number; created_by_device: string | null; next: Date; inDays: number };
 
 export async function birthdays(now = new Date()): Promise<Birthday[]> {
   const rows = await q<Omit<Birthday, "next" | "inDays">>(
-    `select b.id, b.person_id, pe.name, b.month, b.day, b.created_by_device
+    `select b.id, b.person_id, pe.name, pe.in_memory, b.month, b.day, b.created_by_device
        from birthdays b join people pe on pe.id = b.person_id
       where b.deleted_at is null and pe.deleted_at is null`,
   );

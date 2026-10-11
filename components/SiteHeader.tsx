@@ -19,10 +19,11 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/calendar", label: "Calendar", icon: "calendar" },
 ];
 
-/** Only what works today. Person and Anniversary join this list when people pages are rebuilt. */
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
+  { href: "/people/new", title: "Person", text: "Add family or a loved one", icon: "person" },
   { href: "/calendar#add-birthday", title: "Birthday", text: "Add a birthday to someone's profile", icon: "cake" },
+  { href: "/people/new-date?kind=anniversary", title: "Anniversary", text: "Remember an important date", icon: "heart" },
   { href: "/calendar#add-gathering", title: "Gathering or event", text: "Bring everyone together", icon: "family" },
   { href: "/calendar#subscribe", title: "Connect a calendar", text: "Google Calendar or Apple Calendar", icon: "link" },
 ];

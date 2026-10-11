@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { birthdays } from "@/lib/data";
 import { q } from "@/lib/db";
+import { importantDates } from "@/lib/people";
 
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -27,6 +28,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     const start = new Date(2020, b.month - 1, b.day);
     const end = new Date(2020, b.month - 1, b.day + 1);
     lines.push("BEGIN:VEVENT", `UID:birthday-${b.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${esc(`${b.name}'s birthday`)}`, "TRANSP:TRANSPARENT", "END:VEVENT");
+  }
+
+  // Anniversaries, remembrances, and other important dates repeat every year. Names and dates only.
+  for (const d of await importantDates()) {
+    const start = new Date(2020, d.month - 1, d.day);
+    const end = new Date(2020, d.month - 1, d.day + 1);
+    const summary = d.kind === "anniversary" ? `${d.name}'s anniversary`
+      : d.kind === "remembrance" ? (d.label || `Remembering ${d.name}`)
+      : d.label.toLowerCase().includes(d.name.toLowerCase()) ? d.label : `${d.label}, ${d.name}`;
+    lines.push("BEGIN:VEVENT", `UID:date-${d.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${esc(summary)}`, "TRANSP:TRANSPARENT", "END:VEVENT");
   }
 
   const gatherings = await q<{ id: number; title: string; date: string; time_note: string | null }>(

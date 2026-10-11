@@ -93,3 +93,39 @@ insert into occasions (name, kind) values
   ('Birthday','occasion'), ('Wedding','occasion'), ('Graduation','occasion'), ('Vacation','occasion'),
   ('Spring','season'), ('Summer','season'), ('Autumn','season'), ('Winter','season')
 on conflict do nothing;
+
+-- Person details (phase 4). Whoever adds a value owns it: anyone can fill in a blank,
+-- and changing or clearing it is for that device or the admin.
+alter table people add column if not exists address text;
+alter table people add column if not exists address_updated_at timestamptz;
+alter table people add column if not exists address_by_device text;
+-- When false, the address is hidden from everyone except the admin.
+alter table people add column if not exists share_address boolean not null default true;
+alter table people add column if not exists in_memory boolean not null default false;
+alter table people add column if not exists in_memory_by_device text;
+
+-- Important dates besides birthdays: anniversaries, remembrances, and anything else worth marking.
+create table if not exists person_dates (
+  id serial primary key,
+  person_id int not null references people(id),
+  kind text not null default 'other', -- anniversary | remembrance | other
+  label text not null,
+  month int not null check (month between 1 and 12),
+  day int not null check (day between 1 and 31),
+  year int,
+  created_by_device text,
+  created_by_name text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create index if not exists person_dates_person on person_dates (person_id);
+
+-- Optional birth year. Only used to show "Turns 52" on birthday cards when it's saved.
+alter table birthdays add column if not exists year int;
+
+-- Site-wide settings, like which photo leads the homepage. One row per setting.
+create table if not exists settings (
+  key text primary key,
+  value text,
+  updated_at timestamptz not null default now()
+);

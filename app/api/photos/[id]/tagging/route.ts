@@ -25,7 +25,9 @@ export async function POST(req: Request, { params }: Ctx) {
 
   // Check every removal and date change before changing anything.
   const [curPeople, curOccasions] = await Promise.all([
-    q<{ id: number; by: string | null }>(`select person_id as id, added_by_device as by from photo_people where photo_id = $1`, [id]),
+    // Tags for people who were removed from the family stay put (restoring them brings their tags back).
+    q<{ id: number; by: string | null }>(
+      `select t.person_id as id, t.added_by_device as by from photo_people t join people pe on pe.id = t.person_id and pe.deleted_at is null where t.photo_id = $1`, [id]),
     q<{ id: number; by: string | null }>(`select occasion_id as id, added_by_device as by from photo_occasions where photo_id = $1`, [id]),
   ]);
   const keepP = new Set(body.people.filter((v): v is number => typeof v === "number"));
@@ -56,7 +58,7 @@ export async function POST(req: Request, { params }: Ctx) {
   // Send back the saved state with real ids, so names typed in this session become regular people.
   const [people, occasions] = await Promise.all([
     q<{ id: number; name: string; by: string | null }>(
-      `select pe.id, pe.name, t.added_by_device as by from photo_people t join people pe on pe.id = t.person_id where t.photo_id = $1`, [id]),
+      `select pe.id, pe.name, t.added_by_device as by from photo_people t join people pe on pe.id = t.person_id and pe.deleted_at is null where t.photo_id = $1`, [id]),
     q<{ id: number; name: string; by: string | null }>(
       `select o.id, o.name, t.added_by_device as by from photo_occasions t join occasions o on o.id = t.occasion_id where t.photo_id = $1`, [id]),
   ]);

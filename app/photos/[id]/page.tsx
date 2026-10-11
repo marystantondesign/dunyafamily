@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PhotoEditor } from "@/components/PhotoEditor";
 import { PhotoNav } from "@/components/PhotoNav";
+import { HomePhotoButton } from "@/components/HomePhotoButton";
 import { RemoveButton } from "@/components/RemoveButton";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople, relativeDays } from "@/lib/data";
@@ -22,7 +23,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const [url, tagged, occasionTags, people, occasions, avatars] = await Promise.all([
     signGet(photo.original_key),
     q<{ id: number; name: string; added_by_device: string | null }>(
-      `select pe.id, pe.name, t.added_by_device from photo_people t join people pe on pe.id = t.person_id where t.photo_id = $1 order by pe.name`, [id]),
+      `select pe.id, pe.name, t.added_by_device from photo_people t join people pe on pe.id = t.person_id and pe.deleted_at is null where t.photo_id = $1 order by pe.name`, [id]),
     q<{ id: number; name: string; added_by_device: string | null }>(
       `select o.id, o.name, t.added_by_device from photo_occasions t join occasions o on o.id = t.occasion_id where t.photo_id = $1 order by o.name`, [id]),
     listPeople(),
@@ -73,6 +74,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
         />
         <div className="meta-block" style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <Link href={backHref} className="small">Back to browse</Link>
+          {isAdmin(s) && <HomePhotoButton photoId={id} />}
           {owner && <RemoveButton url={`/api/photos/${id}`} label="Remove photo" confirmText="Remove this photo from the site?" redirectTo={backHref} />}
         </div>
       </div>

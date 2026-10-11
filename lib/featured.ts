@@ -15,9 +15,16 @@ export async function findDunya() {
 
 const COLS = `p.id, p.original_key, p.thumb_key, p.width, p.height, p.year, p.month, p.decade, p.caption, p.uploaded_by_device, p.uploaded_by_name, p.created_at`;
 
-/** The polaroid on Home: Dunya's profile photo, or else the photo of her with the fewest other people in it. */
+/**
+ * The polaroid on Home: the photo the admin chose, else Dunya's profile photo,
+ * else the photo of her with the fewest other people in it.
+ */
 export async function heroPortrait(): Promise<{ photo: Photo | null; personId: number | null }> {
   const dunya = await findDunya();
+  const chosen = await q<PhotoRow>(
+    `select ${COLS} from photos p join settings s on s.key = 'home_photo_id' and s.value = p.id::text where p.deleted_at is null`,
+  ).catch(() => []);
+  if (chosen.length) return { photo: (await withThumbs(chosen))[0], personId: dunya?.id ?? null };
   if (!dunya) return { photo: null, personId: null };
   const rows = await q<PhotoRow>(
     `select ${COLS} from photos p

@@ -3,6 +3,12 @@ import { readFileSync } from "fs";
 import { neon } from "@neondatabase/serverless";
 
 async function main() {
+  // Vercel also builds preview copies of other branches, and they share the live database.
+  // Only a real publish (or running this yourself) may change the database.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    console.log(`Skipping database setup for a ${process.env.VERCEL_ENV} build.`);
+    return;
+  }
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   const sql = neon(url);

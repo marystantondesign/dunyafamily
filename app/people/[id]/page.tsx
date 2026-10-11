@@ -1,21 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Avatar } from "@/components/Avatar";
-import { Gallery } from "@/components/Gallery";
+import { Icon } from "@/components/Icon";
+import { CopyButton, ProfilePhotoPicker } from "@/components/PeopleBits";
+import { getSession } from "@/lib/auth";
+import { listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
-import { birthdays, listPeople } from "@/lib/data";
-import { findPhotos, type Photo } from "@/lib/photos";
+import { comingUp, monthDay, personDetails, shortMonthDay, updatedLabel } from "@/lib/people";
+import { findPhotos } from "@/lib/photos";
+import { whenLabel } from "@/lib/when";
 
 export const dynamic = "force-dynamic";
 
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
-  const person = (await listPeople()).find((p) => p.id === id);
-  if (!person) notFound();
+  const s = await getSession();
+  const [person, det] = await Promise.all([listPeople().then((all) => all.find((p) => p.id === id)), personDetails(id, s)]);
+  if (!person || !det) notFound();
 
-  const [photos, bdays, often] = await Promise.all([
+  const [photos, often] = await Promise.all([
     findPhotos({ people: [id] }, { order: "oldest", limit: 1000 }),
-    birthdays(),
     q<{ id: number; name: string; n: number }>(
       `select pe.id, pe.name, count(*)::int as n
          from photo_people a
@@ -26,47 +29,85 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       [id],
     ),
   ]);
-  const bday = bdays.find((b) => b.person_id === id);
-
-  // Group into decades so the page reads like watching them grow up.
-  const groups = new Map<string, Photo[]>();
-  for (const p of photos) {
-    const d = p.decade ?? (p.year ? Math.floor(p.year / 10) * 10 : null);
-    const key = d ? `${d}s` : "Date unknown";
-    groups.set(key, [...(groups.get(key) ?? []), p]);
-  }
+  const anniversary = det.dates.find((d) => d.kind === "anniversary");
+  const soon = comingUp(det);
+  const query = `people=${id}&order=oldest`;
 
   return (
     <>
-      <div style={{ display: "flex", gap: 24, alignItems: "center", marginTop: 32, flexWrap: "wrap" }}>
-        <Avatar name={person.name} url={person.avatar_url} size="lg" />
-        <div>
-          <h1 className="display">{person.name}</h1>
-          <p className="muted" style={{ margin: "6px 0 0" }}>
-            {photos.length} {photos.length === 1 ? "photo" : "photos"}
-            {bday && <> · Birthday {new Date(2000, bday.month - 1, bday.day).toLocaleDateString("en-US", { month: "long", day: "numeric" })}</>}
-          </p>
+      <div className="person-top">
+        <div className="person-id">
+          <div className="portrait">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {person.avatar_url ? <img src={person.avatar_url} alt={person.name} /> : <span aria-hidden="true">{person.name.charAt(0)}</span>}
+          </div>
+          <div className="person-name">
+            <h1>{person.name}</h1>
+            {det.inMemory && <p className="in-memory">In memory</p>}
+            {det.birthday && (
+              <p className="person-bday"><Icon name="cake" size={20} /> Birthday, {monthDay(det.birthday.month, det.birthday.day)}</p>
+            )}
+            <div className="person-actions">
+              {det.canChangePhoto && (
+                <ProfilePhotoPicker personId={id} name={person.name} photos={photos.map((p) => ({ id: p.id, url: p.url }))} current={det.avatarPhotoId} />
+              )}
+              <Link href={`/people/${id}/edit`} className="btn btn-primary">Edit details</Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="details-card">
+          <div className="detail">
+            <p className="detail-label"><Icon name="mail" size={20} /> Mailing address</p>
+            {det.address ? (
+              <>
+                <p className="address">{det.address}</p>
+                <p className="small muted">{updatedLabel(det.addressUpdatedAt)}{!det.shareAddress && " · Not shared with the family"}</p>
+                <div className="detail-copy"><CopyButton text={`${person.name}\n${det.address}`} label="Copy address" iconOnly /></div>
+              </>
+            ) : det.addressHidden ? (
+              <p className="muted">Not shared</p>
+            ) : (
+              <Link href={`/people/${id}/edit#address`} className="small">Add an address</Link>
+            )}
+          </div>
+          <div className="detail">
+            <p className="detail-label"><Icon name="heart" size={20} /> Anniversary</p>
+            {anniversary
+              ? <p>{monthDay(anniversary.month, anniversary.day)}{anniversary.label && `, ${anniversary.label.replace(/^with /i, "with ")}`}</p>
+              : <Link href={`/people/${id}/edit#dates`} className="small">Add a date</Link>}
+          </div>
+          <div className="detail">
+            <p className="detail-label"><Icon name="calendar" size={20} /> Coming up</p>
+            {soon ? <p>{soon.title}, {shortMonthDay(soon.month, soon.day)}</p> : <p className="muted">Nothing in the next two months</p>}
+          </div>
         </div>
       </div>
 
       {often.length > 0 && (
-        <section style={{ marginTop: 32 }}>
-          <h2 className="small muted" style={{ marginBottom: 8 }}>Often photographed with</h2>
-          <div className="pills">
-            {often.map((o) => (
-              <Link key={o.id} className="pill" href={`/browse?people=${id},${o.id}`}>{o.name} <span className="muted">{o.n}</span></Link>
-            ))}
-          </div>
-        </section>
+        <p className="often small">
+          <span className="muted">Often photographed with</span>{" "}
+          {often.map((o, i) => (
+            <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{o.name}</Link> <span className="muted">{o.n}</span></span>
+          ))}
+        </p>
       )}
 
-      {[...groups.entries()].map(([label, list]) => (
-        <div key={label} className="decade">
-          <h2>{label}</h2>
-          <Gallery photos={list} showWhen query={`people=${id}&order=oldest`} />
+      {photos.length ? (
+        <div className="photo-grid">
+          {photos.map((p) => {
+            const when = whenLabel(p);
+            return (
+              <Link key={p.id} href={`/photos/${p.id}?${query}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={when ? `${person.name}, ${when}` : person.name} loading="lazy" />
+              </Link>
+            );
+          })}
         </div>
-      ))}
-      {!photos.length && <p className="muted" style={{ marginTop: 32 }}>No photos of {person.name} yet.</p>}
+      ) : (
+        <p className="muted" style={{ marginTop: 32 }}>No photos of {person.name} yet. <Link href="/tag?untagged=1">Tag some photos</Link>.</p>
+      )}
     </>
   );
 }
