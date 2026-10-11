@@ -1,13 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "./Icon";
 import { MONTHS } from "./PeopleBits";
 
 /** Add a family member: name, and optionally a birthday and mailing address. A photo comes later, from photos they're tagged in. */
 export function AddPersonForm() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [bm, setBm] = useState("");
   const [bd, setBd] = useState("");
@@ -31,8 +29,7 @@ export function AddPersonForm() {
     const out = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setError(out.error ?? "That didn't save. Try again."); if (out.id) setExisting(out.id); return; }
-    router.push(`/people/${out.id}`);
-    router.refresh();
+    window.location.assign(`/people/${out.id}`);
   }
 
   const first = name.trim().split(" ")[0];

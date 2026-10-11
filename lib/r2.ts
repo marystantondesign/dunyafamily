@@ -21,9 +21,13 @@ function s3() {
 }
 const Bucket = () => process.env.R2_BUCKET ?? "";
 
-/** Short-lived read link. The bucket itself is never public. */
-export function signGet(key: string, expiresIn = 60 * 60) {
-  return getSignedUrl(s3(), new GetObjectCommand({ Bucket: Bucket(), Key: key }), { expiresIn });
+/** Short-lived read link. The bucket itself is never public. With `downloadAs`, the browser saves the file instead of showing it. */
+export function signGet(key: string, expiresIn = 60 * 60, downloadAs?: string) {
+  return getSignedUrl(
+    s3(),
+    new GetObjectCommand({ Bucket: Bucket(), Key: key, ...(downloadAs ? { ResponseContentDisposition: `attachment; filename="${downloadAs}"` } : {}) }),
+    { expiresIn },
+  );
 }
 
 export function signPut(key: string, contentType: string) {

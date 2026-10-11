@@ -47,8 +47,7 @@ export function EditPerson({ det, avatarUrl, photos }: { det: PersonDetails; ava
     setBusy(true);
     try {
       await send(`/api/people/${det.id}/details`, "PATCH", body);
-      router.push(back);
-      router.refresh();
+      window.location.assign(back);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -73,7 +72,7 @@ export function EditPerson({ det, avatarUrl, photos }: { det: PersonDetails; ava
 
   async function removePerson() {
     if (!confirm(`Remove ${det.name} from the family? Their photos stay on the site, and Mary can restore them.`)) return;
-    try { await send(`/api/people/${det.id}`, "DELETE"); router.push("/people"); router.refresh(); } catch (e) { setError((e as Error).message); }
+    try { await send(`/api/people/${det.id}`, "DELETE"); window.location.assign("/people"); } catch (e) { setError((e as Error).message); }
   }
 
   const dateForm = (

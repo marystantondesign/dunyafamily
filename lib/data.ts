@@ -36,11 +36,11 @@ export async function decadesInUse() {
   return rows.map((r) => r.d);
 }
 
-export type Birthday = { id: number; person_id: number; name: string; in_memory: boolean; month: number; day: number; created_by_device: string | null; next: Date; inDays: number };
+export type Birthday = { id: number; person_id: number; name: string; in_memory: boolean; month: number; day: number; year: number | null; created_by_device: string | null; next: Date; inDays: number };
 
 export async function birthdays(now = new Date()): Promise<Birthday[]> {
   const rows = await q<Omit<Birthday, "next" | "inDays">>(
-    `select b.id, b.person_id, pe.name, pe.in_memory, b.month, b.day, b.created_by_device
+    `select b.id, b.person_id, pe.name, pe.in_memory, b.month, b.day, b.year, b.created_by_device
        from birthdays b join people pe on pe.id = b.person_id
       where b.deleted_at is null and pe.deleted_at is null`,
   );
@@ -56,32 +56,12 @@ export async function birthdays(now = new Date()): Promise<Birthday[]> {
 
 export type Gathering = { id: number; title: string; date: string; time_note: string | null; location: string | null; notes: string | null; created_by_device: string | null; created_by_name: string | null };
 
-export function upcomingGatherings(limit = 50) {
+/** Gatherings from a year ago to two years out, for the month calendar. */
+export function calendarGatherings() {
   return q<Gathering>(
     `select id, title, to_char(date, 'YYYY-MM-DD') as date, time_note, location, notes, created_by_device, created_by_name
-       from gatherings where deleted_at is null and date >= current_date order by date limit $1`,
-    [limit],
+       from gatherings where deleted_at is null and date between current_date - interval '1 year' and current_date + interval '2 years' order by date`,
   );
 }
 
-export async function lastUpload() {
-  const [row] = await q<{ name: string | null; n: number; at: string }>(
-    `with latest as (select uploaded_by_device, uploaded_by_name, date_trunc('hour', created_at) as h
-                       from photos where deleted_at is null order by created_at desc limit 1)
-     select l.uploaded_by_name as name, count(*)::int as n, max(p.created_at) as at
-       from latest l join photos p on p.uploaded_by_device = l.uploaded_by_device
-        and date_trunc('hour', p.created_at) = l.h and p.deleted_at is null
-      group by l.uploaded_by_name`,
-  );
-  return row ?? null;
-}
 
-export const shortDate = (d: Date | string) =>
-  new Date(typeof d === "string" ? `${d}T12:00:00` : d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-export function relativeDays(at: string | Date) {
-  const days = Math.floor((Date.now() - new Date(at).getTime()) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
-  return `${days} days ago`;
-}

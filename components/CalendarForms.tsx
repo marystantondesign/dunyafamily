@@ -46,7 +46,8 @@ export function AddBirthday({ people }: { people: Option[] }) {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
         if (!who.length) return;
-        if (await post("/api/birthdays", { person: who[0], month: Number(f.get("month")), day: Number(f.get("day")) })) { setWho([]); setOpen(false); }
+        const year = String(f.get("year") ?? "").trim();
+        if (await post("/api/birthdays", { person: who[0], month: Number(f.get("month")), day: Number(f.get("day")), year: year ? Number(year) : null })) { setWho([]); setOpen(false); }
       }}
     >
       <TagPicker label="Whose birthday" options={people} value={who} onChange={(v) => setWho(v.slice(-1))} placeholder="Start typing a name" />
@@ -62,8 +63,12 @@ export function AddBirthday({ people }: { people: Option[] }) {
           <label htmlFor="bd">Day</label>
           <input id="bd" name="day" inputMode="numeric" required placeholder="14" />
         </div>
+        <div className="field">
+          <label htmlFor="by">Year <span className="opt">(optional)</span></label>
+          <input id="by" name="year" inputMode="numeric" placeholder="1974" />
+        </div>
       </div>
-      <span className="hint">Only the month and day are saved, so no one&apos;s age shows up anywhere.</span>
+      <span className="hint">The year is optional. It&apos;s only used to show ages on birthday cards.</span>
       {error && <p className="error" role="alert">{error}</p>}
       <div style={{ display: "flex", gap: 12 }}>
         <button className="btn btn-primary" disabled={busy || !who.length}>Save birthday</button>
@@ -99,8 +104,8 @@ export function AddGathering() {
           <input id="gd" name="date" type="date" required />
         </div>
         <div className="field">
-          <label htmlFor="gtn">Time (optional)</label>
-          <input id="gtn" name="timeNote" placeholder="Around 3pm" />
+          <label htmlFor="gtn">Time <span className="opt">(optional)</span></label>
+          <input id="gtn" name="timeNote" placeholder="6:00 PM to 9:00 PM" />
         </div>
       </div>
       <div className="field">
