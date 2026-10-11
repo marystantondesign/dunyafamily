@@ -50,8 +50,8 @@ export async function listDeleted(): Promise<DeletedItem[]> {
     })),
     ...dates.map((d) => ({ type: "date" as const, id: d.id, title: d.label || `${displayName(d.name)}'s date`, sub: `${displayName(d.name)}, ${monthDay(d.month, d.day)}`, deletedAt: d.deleted_at, deletedBy: d.deleted_by_name ? displayName(d.deleted_by_name) : null, thumbUrl: null })),
     ...rels.map((r) => ({
-      type: "relationship" as const, id: r.id, title: r.kind === "partner" ? `${displayName(r.a)} and ${displayName(r.b)}` : `${displayName(r.a)}, parent of ${displayName(r.b)}`,
-      sub: r.kind === "partner" ? "Partners, in the family tree" : "In the family tree", deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
+      type: "relationship" as const, id: r.id, title: r.kind === "parent" ? `${displayName(r.a)}, parent of ${displayName(r.b)}` : `${displayName(r.a)} and ${displayName(r.b)}`,
+      sub: r.kind === "partner" ? "Partners, in the family tree" : r.kind === "sibling" ? "Siblings, in the family tree" : "In the family tree", deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
     })),
     ...comments.map((c) => ({
       type: "comment" as const, id: c.id, title: `Comment by ${byName(c.author_name)}`, sub: c.body.length > 90 ? `${c.body.slice(0, 90)}...` : c.body,

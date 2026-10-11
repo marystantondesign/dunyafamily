@@ -228,3 +228,11 @@ create table if not exists photo_reactions (
   created_at timestamptz not null default now(),
   primary key (photo_id, emoji, created_by_device)
 );
+
+-- Family tree editing (admin). Gender only picks the word: mother or father, sister or brother, daughter or son.
+alter table people add column if not exists gender text;
+-- Birth year for ordering children and siblings oldest first; birth_order places anyone without a year.
+alter table people add column if not exists birth_year int;
+alter table people add column if not exists birth_order int;
+-- 'spouse' or 'partner' on partner links. Sibling links (kind 'sibling', lower id first) cover brothers and sisters whose parents aren't in the tree.
+alter table relationships add column if not exists label text;

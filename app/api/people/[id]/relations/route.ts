@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { badRequest, canRemove, forbidden, getSession, unauthorized } from "@/lib/auth";
+import { badRequest, canRemove, forbidden, getSession, isAdmin, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { addRelation } from "@/lib/family";
 
@@ -8,6 +8,8 @@ type Body = { kind: "parent" | "child" | "partner"; other: number | string } | {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const s = await getSession();
   if (!s) return unauthorized();
+  // The family tree is edited by Mary only, from Settings, Admin, Family tree.
+  if (!isAdmin(s)) return forbidden();
   const id = Number((await params).id);
   const body = (await req.json().catch(() => ({}))) as Body;
   if (body.kind === "friend") {

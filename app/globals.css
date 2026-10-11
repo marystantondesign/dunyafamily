@@ -1126,3 +1126,86 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .emoji-panel { position: fixed; left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
   .emoji-panel emoji-picker { width: 100%; height: 55dvh; --num-columns: 8; --emoji-size: 1.7rem; }
 }
+
+/* In memory (Option A): sky-blue ring and a gold halo. */
+:root { --memory: #9DC3E6; --halo-gold: #C8962E; }
+.halo { position: relative; display: inline-flex; flex: none; }
+.halo::before { content: ""; position: absolute; left: 50%; top: -15%; width: 40%; height: 11%; transform: translateX(-50%); border: 2px solid var(--halo-gold); border-radius: 50%; pointer-events: none; z-index: 1; }
+.halo > :first-child { border-color: var(--memory) !important; box-shadow: 0 0 0 1px var(--memory) !important; }
+.halo > .avatar { margin: 0 !important; }
+.member .halo { margin-bottom: 6px; }
+.person .halo { margin-bottom: 8px; }
+
+/* Family tree, round 3 (mockup): toolbar, and the earlier generations box. */
+.tree-tools { justify-content: flex-start; margin: 0 0 16px; align-items: center; }
+.tree-tools .tree-find { order: 0; flex: 0 1 240px; }
+.tree-tools .btn { min-height: 34px; padding: 0 12px; font-size: 14px; }
+.tree-tools .tree-address { margin-left: auto; }
+.tree-find { height: 34px; }
+.tree-find input { font-size: 14px; }
+.tree-earlier-box { display: flex; flex-direction: column; align-items: center; padding: 14px 40px 18px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 252, 246, 0.6); margin-bottom: 0; position: relative; }
+.tree-earlier-box::after { content: ""; position: absolute; left: 50%; bottom: -16px; height: 16px; border-left: 1px solid var(--check); }
+.tree-earlier-box + .tree-chart { margin-top: 16px; }
+.tree-gen-row { display: flex; gap: 28px; justify-content: center; position: relative; padding-bottom: 14px; }
+.tree-gen-row::after { content: ""; position: absolute; left: 50%; bottom: 0; height: 14px; border-left: 1px solid var(--check); }
+.tree-root-row { width: auto; overflow: visible; }
+.tree-root-row > ul { padding-top: 0; align-items: flex-start; }
+.tree-root-row > ul.no-parents li::before, .tree-root-row > ul.no-parents li::after { display: none; }
+.tree-root-row > ul.no-parents { gap: 24px; }
+
+@media (max-width: 760px) {
+  .tree-tools { flex-wrap: wrap; }
+  .tree-tools .tree-find { flex: 1 1 100%; }
+  .tree-tools .tree-address { margin-left: 0; }
+  .tree-earlier-box { padding: 12px 10px 14px; }
+  .tree-root-row { display: block; }
+  .tree-root-row > ul { display: flex; flex-wrap: wrap; justify-content: center; }
+}
+
+/* Family tree editor (admin). */
+.fa { max-width: 1040px; margin: 0 auto; }
+.fa-editing { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+.fa-friend { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; margin-left: 8px; }
+.fa-birth { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.fa-birth input, .fa-year { font: inherit; font-size: 14px; min-height: 38px; padding: 0 10px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); color: var(--ink); width: 170px; }
+.fa-year { width: 120px; }
+.fa-select { position: relative; }
+.fa-select-btn { display: inline-flex; align-items: center; gap: 10px; padding: 3px 12px 3px 3px; border: 1.5px solid var(--plum); border-radius: 999px; background: var(--paper); font-family: var(--serif); font-size: 18px; color: var(--ink); cursor: pointer; }
+.fa-select-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; width: 280px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 12px 32px rgba(43, 29, 26, 0.16); padding: 8px; }
+.fa-select-pop input { width: 100%; font: inherit; min-height: 38px; padding: 0 10px; border: 1px solid var(--input); border-radius: var(--radius); margin-bottom: 6px; }
+.fa-select-pop ul { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.fa-select-pop button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; border-radius: 6px; color: var(--ink); }
+.fa-select-pop button:hover, .fa-select-pop button[aria-selected="true"] { background: var(--plum-wash); }
+.fa-face { border-radius: 50%; background: #C9B79C; color: var(--paper); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; font-family: var(--serif); flex: none; border: 2px solid var(--photo-paper); box-shadow: 0 0 0 1px var(--line); }
+.fa-face img { width: 100%; height: 100%; object-fit: cover; }
+.fa-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+.fa-cards { display: flex; flex-direction: column; gap: 16px; }
+.fa-card { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+.fa-card h2 { font-family: var(--serif); font-weight: 400; font-size: 20px; margin: 0 0 8px; }
+.fa-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.fa-card ul { list-style: none; margin: 0; padding: 0; }
+.fa-card li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.fa-card li.dragging { background: var(--header); }
+.fa-name { flex: 1; min-width: 0; text-align: left; font-family: var(--serif); font-size: 18px; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; }
+.fa-name:hover { color: var(--plum); text-decoration: underline; text-underline-offset: 3px; }
+.fa-role { font: inherit; font-size: 14px; min-height: 38px; padding: 0 8px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); width: 120px; }
+.fa-remove { font: inherit; font-size: 14px; color: var(--plum); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px; }
+.fa-add { font: inherit; font-size: 14px; color: var(--plum); background: none; border: 0; border-top: 1px solid var(--line); width: 100%; text-align: left; padding: 12px 0 2px; cursor: pointer; }
+.fa-add span { text-decoration: underline; text-underline-offset: 3px; }
+.fa-connect form { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px; }
+.fa-connect select { font: inherit; min-height: 44px; padding: 0 10px; border: 1px solid var(--input); border-radius: var(--radius); background: var(--paper); }
+.fa-note { margin: 0; font-size: 13px; color: var(--ink-2); background: var(--wash); border-radius: 6px; padding: 10px 12px; }
+@media (max-width: 900px) {
+  .fa-layout { grid-template-columns: 1fr; }
+  .fa-connect { order: -1; }
+  .fa-connect form { position: static; }
+}
+@media (max-width: 760px) {
+  .fa-birth { margin-left: 0; width: 100%; }
+  .fa-birth input { flex: 1; }
+  .fa-card li { flex-wrap: wrap; row-gap: 8px; }
+  .fa-card li .fa-name { flex: 1 1 auto; min-width: 55%; }
+  .fa-year { width: 110px; }
+}
+/* Phone tree cards draw faces without a border, so the ring comes from a shadow there. */
+.tcard .halo > .tdot-face, .trow .halo > .tdot-face { box-shadow: 0 0 0 2.5px var(--memory) !important; }

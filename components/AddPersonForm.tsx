@@ -11,7 +11,7 @@ const REL_KINDS: { kind: RelKind; label: string }[] = [
 ];
 
 /** Add a family member (screen 19): name, how they're related, and optionally a birthday and mailing address. */
-export function AddPersonForm({ people, start }: { people: Option[]; start?: { kind: RelKind; other?: number } }) {
+export function AddPersonForm({ people, start, canRelate }: { people: Option[]; start?: { kind: RelKind; other?: number }; canRelate: boolean }) {
   const [name, setName] = useState("");
   const [relKind, setRelKind] = useState<RelKind | null>(start?.kind ?? null);
   const [relTo, setRelTo] = useState<Picked[]>(start?.other ? [start.other] : []);
@@ -58,6 +58,7 @@ export function AddPersonForm({ people, start }: { people: Option[]; start?: { k
         <label htmlFor="np-name">Name</label>
         <input id="np-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" autoFocus />
       </div>
+      {canRelate && (
       <div className="field">
         <span className="label" id="np-rel">How they&apos;re related <span className="opt">(optional)</span></span>
         <div className="rel-kinds" role="group" aria-labelledby="np-rel">
@@ -71,6 +72,7 @@ export function AddPersonForm({ people, start }: { people: Option[]; start?: { k
             onChange={(v) => setRelTo(v.slice(-1))} placeholder="Start typing a name" />
         )}
       </div>
+      )}
       <div className="field">
         <span className="label" id="np-bday">Birthday <span className="opt">(optional)</span></span>
         <div className="date-row" role="group" aria-labelledby="np-bday">

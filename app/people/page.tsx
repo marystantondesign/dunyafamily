@@ -5,23 +5,13 @@ import { familyTree, groupPhotos } from "@/lib/family";
 export const dynamic = "force-dynamic";
 
 export default async function People() {
-  const { tree, earlier, groups, everyone } = await familyTree();
+  const { tree, earlier, rootSiblings, groups, everyone } = await familyTree();
   const cards = await Promise.all(groups.filter((g) => g.people.length).map(async (g) => ({ ...g, photos: await groupPhotos(g.people.map((p) => p.id)) })));
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
     <>
-      <div className="page-head with-actions">
-        <div>
-          <h1 className="display">Our family</h1>
-          <p className="lede">Rooted in Dunya. Growing through generations.</p>
-        </div>
-        <div className="actions" style={{ marginTop: 0 }}>
-          <Link href="/people/addresses" className="btn">Address book</Link>
-          <Link href="/people/new" className="btn btn-primary">+ Add someone</Link>
-        </div>
-      </div>
-
-      <FamilyTree tree={tree} earlier={earlier} everyone={everyone.map(({ id, name }) => ({ id, name }))} />
+      <h1 className="sr-only">Our family</h1>
+      <FamilyTree tree={tree} earlier={earlier} siblings={rootSiblings} everyone={everyone.map(({ id, name }) => ({ id, name }))} />
 
       {cards.length > 0 && (
         <section className="family-groups">

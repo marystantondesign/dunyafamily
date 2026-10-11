@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { Halo } from "@/components/Halo";
 import { Icon } from "@/components/Icon";
 import { familyTree } from "@/lib/family";
 
@@ -22,9 +23,8 @@ export default async function GroupPage({ params }: { params: Promise<{ slug: st
         <div className="people">
           {group.people.map((p) => (
             <Link key={p.id} href={`/people/${p.id}`} className="person">
-              <Avatar name={p.name} url={p.avatarUrl} />
+              <Halo on={p.inMemory}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
               <span className="person-label">{p.name}</span>
-              {p.inMemory && <span className="in-memory small">In memory</span>}
             </Link>
           ))}
         </div>

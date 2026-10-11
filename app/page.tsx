@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlbumCard } from "@/components/AlbumCard";
 import { Avatar } from "@/components/Avatar";
+import { Halo } from "@/components/Halo";
 import { HeroPolaroid } from "@/components/HeroPolaroid";
 import { everyone, featuredCollections, heroSlides, HOME_COPY } from "@/lib/home";
 
@@ -55,10 +56,9 @@ export default async function Home() {
             {people.map((p) => (
               <li key={p.id}>
                 <Link href={`/people/${p.id}`} className="member">
-                  <Avatar name={p.name} url={p.avatarUrl} />
+                  <Halo on={p.inMemory}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
                   <span className="member-name">{p.name}</span>
-                  <span className="member-sub desktop-only">{photos(p.photos)}{p.inMemory ? ", in memory" : ""}</span>
-                  <span className="member-sub phone-only">{p.inMemory ? "In memory" : photos(p.photos)}</span>
+                  <span className="member-sub">{photos(p.photos)}</span>
                 </Link>
               </li>
             ))}

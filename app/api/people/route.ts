@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { badRequest, getSession, unauthorized } from "@/lib/auth";
+import { badRequest, getSession, isAdmin, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { validMonthDay } from "@/lib/people";
 import { capitalizeName } from "@/lib/tags";
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   if (m && d)
     await q(`insert into birthdays (person_id, month, day, year, created_by_device, created_by_name) values ($1,$2,$3,$4,$5,$6)`, [row.id, m, d, y, s.did, s.name]);
   // "Child of Danielle" means Danielle is their parent.
-  const rel = body.relation;
+  // Placing someone in the tree is for Mary only.
+  const rel = isAdmin(s) ? body.relation : null;
   let note: string | null = null;
   if (rel?.kind === "friend") await q(`update people set family_friend = true, family_friend_by_device = $1 where id = $2`, [s.did, row.id]);
   else if (rel && rel.other) {

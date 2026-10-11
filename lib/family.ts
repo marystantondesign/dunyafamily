@@ -6,18 +6,22 @@ import { signGet } from "./r2";
 import type { Session } from "./session";
 import { resolvePeople } from "./tags";
 
-export type FPerson = { id: number; name: string; aliases: string[]; avatarUrl: string | null; inMemory: boolean; friend: boolean };
-type Rel = { id: number; person_id: number; related_id: number; kind: "parent" | "partner"; created_by_device: string | null };
+export type Gender = "female" | "male" | null;
+export type FPerson = {
+  id: number; name: string; aliases: string[]; avatarUrl: string | null; inMemory: boolean; friend: boolean;
+  gender: Gender; birthYear: number | null; birthOrder: number | null;
+};
+type Rel = { id: number; person_id: number; related_id: number; kind: "parent" | "partner" | "sibling"; label: string | null; created_by_device: string | null };
 
 /** Everyone, and every relationship between two people who are still in the family. */
 export async function loadFamily() {
   const [people, rels] = await Promise.all([
-    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean }>(
-      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend
+    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean; gender: string | null; birth_year: number | null; birth_order: number | null }>(
+      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend, pe.gender, pe.birth_year, pe.birth_order
          from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
         where pe.deleted_at is null order by lower(pe.name)`),
     q<Rel>(
-      `select r.id, r.person_id, r.related_id, r.kind, r.created_by_device from relationships r
+      `select r.id, r.person_id, r.related_id, r.kind, r.label, r.created_by_device from relationships r
          join people a on a.id = r.person_id and a.deleted_at is null
          join people b on b.id = r.related_id and b.deleted_at is null
         where r.deleted_at is null order by r.id`),
@@ -25,20 +29,33 @@ export async function loadFamily() {
   const byId = new Map<number, FPerson>();
   await Promise.all(people.map(async (p) => byId.set(p.id, {
     id: p.id, name: displayName(p.name), aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend,
+    gender: p.gender === "female" || p.gender === "male" ? p.gender : null, birthYear: p.birth_year, birthOrder: p.birth_order,
     avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null,
   })));
-  const parentsOf = new Map<number, number[]>(), childrenOf = new Map<number, number[]>(), partnersOf = new Map<number, number[]>();
+  const parentsOf = new Map<number, number[]>(), childrenOf = new Map<number, number[]>(), partnersOf = new Map<number, number[]>(), siblingsOf = new Map<number, number[]>();
   const push = (m: Map<number, number[]>, k: number, v: number) => { const l = m.get(k) ?? []; if (!l.includes(v)) l.push(v); m.set(k, l); };
   for (const r of rels) {
     if (r.kind === "parent") { push(childrenOf, r.person_id, r.related_id); push(parentsOf, r.related_id, r.person_id); }
     else if (r.kind === "partner") { push(partnersOf, r.person_id, r.related_id); push(partnersOf, r.related_id, r.person_id); }
+    else if (r.kind === "sibling") { push(siblingsOf, r.person_id, r.related_id); push(siblingsOf, r.related_id, r.person_id); }
   }
   const sortByName = (ids: number[]) => ids.filter((i) => byId.has(i)).sort((a, b) => byId.get(a)!.name.localeCompare(byId.get(b)!.name));
+  // Oldest first: the order Mary set by dragging, then birth year, then name.
+  const sortByAge = (ids: number[]) => ids.filter((i) => byId.has(i)).sort((a, b) => {
+    const x = byId.get(a)!, y = byId.get(b)!;
+    return (x.birthOrder ?? 1e9) - (y.birthOrder ?? 1e9) || (x.birthYear ?? 1e9) - (y.birthYear ?? 1e9) || x.name.localeCompare(y.name);
+  });
+  const parents = (id: number) => sortByName(parentsOf.get(id) ?? []);
   return {
-    people: [...byId.values()], byId, rels,
-    parents: (id: number) => sortByName(parentsOf.get(id) ?? []),
-    children: (id: number) => sortByName(childrenOf.get(id) ?? []),
+    people: [...byId.values()], byId, rels, sortByAge,
+    parents,
+    children: (id: number) => sortByAge(childrenOf.get(id) ?? []),
     partners: (id: number) => sortByName(partnersOf.get(id) ?? []),
+    /** Brothers and sisters: linked directly, or sharing a parent. Oldest first. */
+    siblings: (id: number) => {
+      const viaParents = parents(id).flatMap((p) => childrenOf.get(p) ?? []);
+      return sortByAge([...new Set([...(siblingsOf.get(id) ?? []), ...viaParents])].filter((x) => x !== id));
+    },
   };
 }
 export type Family = Awaited<ReturnType<typeof loadFamily>>;
@@ -54,19 +71,32 @@ function descend(f: Family, id: number, seen: Set<number>): TreeNode {
   return {
     person: f.byId.get(id)!,
     partners: partners.map((p) => f.byId.get(p)!),
-    children: [...kids].filter((k) => !seen.has(k)).sort((a, b) => f.byId.get(a)!.name.localeCompare(f.byId.get(b)!.name)).map((k) => descend(f, k, seen)),
+    children: f.sortByAge([...kids].filter((k) => !seen.has(k))).map((k) => descend(f, k, seen)),
   };
 }
 
-/** Earlier generations: parents (with their partners), then grandparents, and so on. */
+export type Elder = FPerson & { role: string };
+
+const roleWord = (g: Gender, female: string, male: string, other: string) => (g === "female" ? female : g === "male" ? male : other);
+export const parentWord = (g: Gender) => roleWord(g, "Mother", "Father", "Parent");
+export const siblingWord = (g: Gender) => roleWord(g, "Sister", "Brother", "Sibling");
+export const childWord = (g: Gender) => roleWord(g, "Daughter", "Son", "Child");
+
+/** Earlier generations: parents, then grandparents, and so on, each with what they are to Dunya. */
 function ancestors(f: Family, id: number, seen: Set<number>) {
-  const gens: FPerson[][] = [];
+  const gens: Elder[][] = [];
   let level = [id];
   while (level.length && gens.length < 6) {
     const next = [...new Set(level.flatMap((p) => f.parents(p)))].filter((p) => !seen.has(p));
     if (!next.length) break;
     next.forEach((p) => seen.add(p));
-    gens.push(next.map((p) => f.byId.get(p)!));
+    const depth = gens.length;
+    gens.push(next.map((p) => {
+      const person = f.byId.get(p)!;
+      const word = parentWord(person.gender);
+      const role = depth === 0 ? word : `${"Great-".repeat(depth - 1)}grand${word.toLowerCase()}`;
+      return { ...person, role: role.charAt(0).toUpperCase() + role.slice(1) };
+    }));
     level = next;
   }
   return gens;
@@ -80,6 +110,10 @@ export async function familyTree() {
   const seen = new Set<number>();
   const tree = dunya && f.byId.has(dunya.id) ? descend(f, dunya.id, seen) : null;
   const earlier = dunya && tree ? ancestors(f, dunya.id, seen) : [];
+  // Dunya's brothers and sisters stand beside her, in the earlier generations box.
+  const rootSiblings: Elder[] = dunya && tree
+    ? f.siblings(dunya.id).filter((x) => !seen.has(x)).map((x) => { seen.add(x); const p = f.byId.get(x)!; return { ...p, role: siblingWord(p.gender) }; })
+    : [];
 
   // Everyone else connected to the tree by any relationship: brothers and sisters, cousins, in-laws' families.
   const extended = new Set<number>();
@@ -88,18 +122,18 @@ export async function familyTree() {
     const reached = new Set(queue);
     while (queue.length) {
       const id = queue.shift()!;
-      for (const n of [...f.parents(id), ...f.children(id), ...f.partners(id)]) if (!reached.has(n)) { reached.add(n); queue.push(n); extended.add(n); }
+      for (const n of [...f.parents(id), ...f.children(id), ...f.partners(id), ...f.siblings(id)]) if (!reached.has(n)) { reached.add(n); queue.push(n); extended.add(n); }
     }
   }
   const placed = (id: number) => seen.has(id) || extended.has(id);
   const list = (ids: Iterable<number>) => [...ids].map((i) => f.byId.get(i)!).sort((a, b) => a.name.localeCompare(b.name));
   const groups: Group[] = [
-    { slug: "earlier", title: "Earlier generations", text: "Dunya's parents, grandparents, and before", people: earlier.flat() },
+    { slug: "earlier", title: "Earlier generations", text: "Dunya's parents, grandparents, brothers, and sisters", people: [...earlier.flat(), ...rootSiblings] },
     { slug: "extended", title: "Extended family", text: "Brothers, sisters, cousins, and in-laws", people: list(extended) },
     { slug: "friends", title: "Family friends", text: "Loved ones who are family to us", people: f.people.filter((p) => p.friend && !placed(p.id)) },
     { slug: "unplaced", title: "Not in the tree yet", text: "Add their parents, partner, or children", people: f.people.filter((p) => !p.friend && !placed(p.id)) },
   ];
-  return { tree, earlier, groups, everyone: f.people, rootId: dunya?.id ?? null };
+  return { tree, earlier, rootSiblings, groups, everyone: f.people, rootId: dunya?.id ?? null };
 }
 
 /** Photos with anyone in a group: how many, and one to show on the card. */

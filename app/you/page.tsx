@@ -51,6 +51,12 @@ export default async function YouPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/family">
+                <span><strong>Family tree</strong><span>Parents, siblings, partners, children, and birth years</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/deleted">
                 <span><strong>Recently deleted</strong><span>Restore photos, people, and events</span></span>
                 <Icon name="chevronRight" className="chev" />

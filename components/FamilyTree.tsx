@@ -2,22 +2,29 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { FPerson, TreeNode } from "@/lib/family";
+import type { Elder, FPerson, TreeNode } from "@/lib/family";
+import { Halo } from "./Halo";
 import { Icon } from "./Icon";
 
 const SHOWN_DEPTH = 2; // Dunya, her children, and her grandchildren show without expanding.
-const GEN_NAMES = ["Parents", "Grandparents", "Great-grandparents"];
-const genName = (i: number) => GEN_NAMES[i] ?? `${"Great-".repeat(i - 1)}grandparents`;
 
-function Dot({ p, size, label }: { p: FPerson; size: "root" | "lg" | "md" | "sm"; label?: string }) {
+function Face({ p }: { p: FPerson }) {
   return (
-    <Link href={`/people/${p.id}`} className={`tdot tdot-${size}`}>
+    <Halo on={p.inMemory}>
       <span className="tdot-face" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : p.name.charAt(0)}
       </span>
+    </Halo>
+  );
+}
+
+function Dot({ p, size, label }: { p: FPerson; size: "root" | "lg" | "md" | "sm"; label?: string }) {
+  return (
+    <Link href={`/people/${p.id}`} className={`tdot tdot-${size}`}>
+      <Face p={p} />
       <span className="tdot-name">{p.name}</span>
-      {(label || p.inMemory) && <span className="tdot-sub">{[label, p.inMemory ? "In memory" : ""].filter(Boolean).join(", ")}</span>}
+      {label && <span className="tdot-sub">{label}</span>}
     </Link>
   );
 }
@@ -65,11 +72,8 @@ function PhoneBranch({ node, depth, all }: { node: TreeNode; depth: number; all:
     <li className={depth === 1 ? "tcard" : "trow"}>
       <div className="tcard-head">
         <Link href={`/people/${node.person.id}`} className="tcard-link">
-          <span className="tdot-face" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {node.person.avatarUrl ? <img src={node.person.avatarUrl} alt="" /> : node.person.name.charAt(0)}
-          </span>
-          <span><span className="tcard-name">{node.person.name}</span>{node.person.inMemory && <span className="tdot-sub">In memory</span>}</span>
+          <Face p={node.person} />
+          <span><span className="tcard-name">{node.person.name}</span></span>
         </Link>
         {hasMore && (
           <button type="button" className="tcard-toggle" aria-expanded={shown} aria-label={`${shown ? "Hide" : "Show"} ${node.person.name}'s family`} onClick={() => setOpen(!open)}>
@@ -83,10 +87,7 @@ function PhoneBranch({ node, depth, all }: { node: TreeNode; depth: number; all:
             <li key={pt.id} className="trow">
               <div className="tcard-head">
                 <Link href={`/people/${pt.id}`} className="tcard-link">
-                  <span className="tdot-face" aria-hidden="true">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {pt.avatarUrl ? <img src={pt.avatarUrl} alt="" /> : pt.name.charAt(0)}
-                  </span>
+                  <Face p={pt} />
                   <span><span className="tcard-name">{pt.name}</span><span className="tdot-sub">Partner</span></span>
                 </Link>
               </div>
@@ -99,10 +100,13 @@ function PhoneBranch({ node, depth, all }: { node: TreeNode; depth: number; all:
   );
 }
 
-export function FamilyTree({ tree, earlier, everyone }: { tree: TreeNode | null; earlier: FPerson[][]; everyone: { id: number; name: string }[] }) {
+export function FamilyTree({ tree, earlier, siblings, everyone }: {
+  tree: TreeNode | null; earlier: Elder[][]; siblings: Elder[]; everyone: { id: number; name: string }[];
+}) {
   const router = useRouter();
   const [all, setAll] = useState(false);
-  const [showEarlier, setShowEarlier] = useState(false);
+  const hasEarlier = earlier.length > 0 || siblings.length > 0;
+  const [showEarlier, setShowEarlier] = useState(true);
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [find, setFind] = useState("");
   const toggle = (id: number) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -115,59 +119,62 @@ export function FamilyTree({ tree, earlier, everyone }: { tree: TreeNode | null;
 
   const root = tree?.person;
   const rootName = root ? [root.name, ...root.aliases.filter((a) => a.toLowerCase() !== root.name.toLowerCase()).slice(0, 1)].join(" / ") : "";
+  const rootDot = root && (
+    <div className="tcouple">
+      <Link href={`/people/${root.id}`} className="tdot tdot-root">
+        <Face p={root} />
+        <span className="tdot-name">{rootName}</span>
+        <span className="tdot-sub">Matriarch</span>
+      </Link>
+      {tree!.partners.map((pt) => (
+        <span key={pt.id} className="tpartner">
+          <span className="tpartner-line" aria-hidden="true" />
+          <Dot p={pt} size="md" label="Partner" />
+        </span>
+      ))}
+    </div>
+  );
 
   return (
     <>
       <div className="tree-tools">
-        {tree && tree.children.some((c) => c.children.length) && (
-          <button type="button" className="btn" aria-pressed={all} onClick={() => setAll(!all)}>{all ? "Collapse" : "Expand all"}</button>
-        )}
         <div className="search-field tree-find">
           <Icon name="search" />
-          <input aria-label="Find a person" placeholder="Find a person..." list="family-names" value={find}
+          <input aria-label="Find a person" placeholder="Find a person" list="family-names" value={find}
             onChange={(e) => go(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") go(find); }} />
           <datalist id="family-names">{everyone.map((p) => <option key={p.id} value={p.name} />)}</datalist>
         </div>
+        {tree && tree.children.some((c) => c.children.length) && (
+          <button type="button" className="btn" aria-pressed={all} onClick={() => setAll(!all)}>{all ? "Collapse" : "Expand all"}</button>
+        )}
+        {hasEarlier && (
+          <button type="button" className="btn" aria-expanded={showEarlier} onClick={() => setShowEarlier(!showEarlier)}>
+            <Icon name={showEarlier ? "chevronUp" : "chevronDown"} size={16} /> {showEarlier ? "Hide earlier generations" : "Show earlier generations"}
+          </button>
+        )}
+        <Link href="/people/addresses" className="btn tree-address">Address book</Link>
       </div>
 
       {tree && root ? (
         <div className="tree">
-          {earlier.length > 0 && (
-            <div className="tree-earlier">
-              <button type="button" className="btn btn-quiet" aria-expanded={showEarlier} onClick={() => setShowEarlier(!showEarlier)}>
-                <Icon name={showEarlier ? "chevronDown" : "chevronUp"} size={16} /> Earlier generations
-              </button>
-              {showEarlier && (
-                <div className="tree-gens">
-                  {[...earlier].map((gen, i) => ({ gen, i })).reverse().map(({ gen, i }) => (
-                    <div key={i} className="tree-gen">
-                      <span className="tree-gen-label">{genName(i)}</span>
-                      <div className="tree-gen-people">{gen.map((p) => <Dot key={p.id} p={p} size="md" />)}</div>
-                    </div>
-                  ))}
+          {hasEarlier && showEarlier ? (
+            // Earlier generations: grandparents, then parents, then Dunya with her brothers and sisters beside her.
+            <div className="tree-earlier-box">
+              {[...earlier].reverse().map((gen, i) => (
+                <div key={i} className="tree-gen-row">
+                  {gen.map((p) => <Dot key={p.id} p={p} size="sm" label={p.role} />)}
                 </div>
-              )}
-            </div>
-          )}
-
-          <div className="tree-root">
-            <div className="tcouple">
-              <Link href={`/people/${root.id}`} className="tdot tdot-root">
-                <span className="tdot-face" aria-hidden="true">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {root.avatarUrl ? <img src={root.avatarUrl} alt="" /> : root.name.charAt(0)}
-                </span>
-                <span className="tdot-name">{rootName}</span>
-                <span className="tdot-sub">Matriarch</span>
-              </Link>
-              {tree.partners.map((pt) => (
-                <span key={pt.id} className="tpartner">
-                  <span className="tpartner-line" aria-hidden="true" />
-                  <Dot p={pt} size="md" label="Partner" />
-                </span>
               ))}
+              <div className="tree-chart tree-root-row">
+                <ul className={earlier.length ? "" : "no-parents"}>
+                  {siblings.map((p) => <li key={p.id}><Dot p={p} size="sm" label={p.role} /></li>)}
+                  <li className="is-root">{rootDot}</li>
+                </ul>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="tree-root">{rootDot}</div>
+          )}
 
           {tree.children.length > 0 ? (
             <>
