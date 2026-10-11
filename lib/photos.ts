@@ -150,3 +150,19 @@ export async function neighbors(f: Filters, order: Order, id: number, seed?: str
   );
   return row ?? null;
 }
+
+export type Slide = { id: number; title: string | null; occasion: string | null; year: number | null; decade: number | null; month: number | null; people: string[] };
+
+/** Everything a slideshow needs to play a view, in the same order browse shows it. No file links: those are fetched as it plays. */
+export async function findSlides(f: Filters, order: Order, seed?: string, limit = 5000): Promise<Slide[]> {
+  const { where, params, $ } = build(f);
+  return q<Slide>(
+    `select p.id, p.title, p.year, p.decade, p.month,
+            (select o.name from photo_occasions x join occasions o on o.id = x.occasion_id where x.photo_id = p.id order by o.name limit 1) as occasion,
+            coalesce((select array_agg(pe.name order by pe.name) from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
+                       where x.photo_id = p.id), '{}') as people
+       from photos p where ${where}
+      order by ${orderBy(order, $, seed)} limit ${$(limit)}`,
+    params,
+  );
+}

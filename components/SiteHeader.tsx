@@ -108,7 +108,7 @@ export function SiteHeader({ me }: { me: Me }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [adding]);
   // Tagging has its own Previous, Skip, and Save bar at the bottom on phones, in place of the tabs.
-  const tagging = path.startsWith("/tag") || path.startsWith("/photos/");
+  const tagging = path.startsWith("/tag") || path.startsWith("/photos/") || path.startsWith("/slideshow");
 
   return (
     <>
