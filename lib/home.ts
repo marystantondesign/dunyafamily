@@ -8,8 +8,8 @@ import { signGet } from "./r2";
 
 /** The homepage headline. Placeholder copy until Mary sends the final words. */
 export const HOME_COPY = {
-  title: "Who we are",
-  subtitle: "Our photos, our dates, and the family tree going back.",
+  title: "All of us, from one Dunya.",
+  subtitle: "We honor her by staying close with each other, remembering our past and growing futures together.",
 };
 
 export type Slide = { id: number; url: string; caption: string | null };
