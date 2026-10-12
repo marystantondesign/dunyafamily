@@ -303,3 +303,6 @@ insert into comment_emoji (comment_id, emoji, person_id, device, name, created_a
 select r.comment_id, r.emoji, r.author_pid, r.created_by_device, r.author_name, r.created_at from comment_reactions r
  where not exists (select 1 from comment_emoji e where e.comment_id = r.comment_id and e.emoji = r.emoji
                      and coalesce('p' || e.person_id::text, 'd' || e.device) = coalesce('p' || r.author_pid::text, 'd' || r.created_by_device));
+
+-- Comments can be edited by whoever wrote them (or Mary). The time it was posted stays; this records the edit.
+alter table photo_comments add column if not exists edited_at timestamptz;

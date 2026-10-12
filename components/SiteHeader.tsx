@@ -21,7 +21,7 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/prayer", label: "Prayer", icon: "pray" },
 ];
 // On phones the header shows the section's name where it has one of its own.
-const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"]];
+const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"], ["/people", "Family"]];
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },

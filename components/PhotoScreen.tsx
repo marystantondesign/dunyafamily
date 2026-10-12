@@ -28,7 +28,8 @@ export function PhotoScreen(props: {
   const [editing, setEditing] = useState(false);
   // Closed on a first visit; after that, open or closed the way it was last left on this device.
   const [talkOpen, setTalkOpen] = useState(false);
-  const [sheet, setSheet] = useState(false);
+  // The phone drawer. With no comments yet it opens ready to type; otherwise it opens on the thread, keyboard down.
+  const [sheet, setSheet] = useState<false | "read" | "write">(false);
   useEffect(() => { try { setTalkOpen(localStorage.getItem(COMMENTS_KEY) === "1"); } catch { /* private window */ } }, []);
   const showTalk = (on: boolean) => {
     setTalkOpen(on);
@@ -65,9 +66,8 @@ export function PhotoScreen(props: {
     ))}. </>
   );
 
-  const n = props.comments.length;
+  const n = props.comments.filter((c) => !c.removed).length;
   const nComments = `${n} ${n === 1 ? "comment" : "comments"}`;
-  const latest = props.comments.reduce<Comment | null>((a, c) => (!a || c.createdAt >= a.createdAt ? c : a), null);
   const heading = (
     <>
       <h1>{props.title}</h1>
@@ -138,13 +138,12 @@ export function PhotoScreen(props: {
       </aside>
 
       {!editing && (
-        <button type="button" className="pv-talkbar phone-only" onClick={() => setSheet(true)} aria-haspopup="dialog">
+        <button type="button" className="pv-talkbar phone-only" onClick={() => setSheet(n ? "read" : "write")} aria-haspopup="dialog">
           <span className="sheet-grip" aria-hidden="true" />
           <span className="pv-talkbar-row">
-            <Icon name="comment" size={20} />
-            <strong>{n ? nComments : "Comment"}</strong>
-            <span className="pv-talkbar-last">{latest ? `${latest.author}: ${latest.body}` : "Share a memory about this photo"}</span>
-            <Icon name="chevronUp" size={18} />
+            <Icon name="comment" size={22} />
+            <strong>{n ? "Show comments" : "Leave a comment"}</strong>
+            {n > 0 && <span className="pv-talkbar-count" aria-label={nComments}>{n}</span>}
           </span>
         </button>
       )}
@@ -154,7 +153,7 @@ export function PhotoScreen(props: {
           <aside className="pv-talksheet phone-only" role="dialog" aria-label={nComments}>
             <button type="button" className="sheet-grip-btn" onClick={() => setSheet(false)} aria-label="Close comments"><span className="sheet-grip" aria-hidden="true" /></button>
             <h2>{n ? nComments : "Comments"}</h2>
-            <Thread photoId={props.photoId} comments={props.comments} me={props.me} compose="Write a comment" />
+            <Thread photoId={props.photoId} comments={props.comments} me={props.me} compose="Write a comment" focus={sheet === "write"} />
           </aside>
         </>
       )}

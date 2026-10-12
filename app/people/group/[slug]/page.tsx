@@ -23,7 +23,7 @@ export default async function GroupPage({ params }: { params: Promise<{ slug: st
         <div className="people">
           {group.people.map((p) => (
             <Link key={p.id} href={`/people/${p.id}`} className="person">
-              <Halo on={p.inMemory}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
+              <Halo on={p.inMemory} name={p.name}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
               <span className="person-label">{p.name}</span>
             </Link>
           ))}

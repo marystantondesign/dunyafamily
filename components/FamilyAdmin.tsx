@@ -25,7 +25,7 @@ async function send(body: Record<string, unknown>) {
 
 function Face({ p, size = 38 }: { p: P; size?: number }) {
   return (
-    <Halo on={p.inMemory}>
+    <Halo on={p.inMemory} name={p.name}>
       <span className="fa-face" style={{ width: size, height: size }} aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : p.name.charAt(0)}

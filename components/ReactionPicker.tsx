@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 type Raw = { emoji: string; annotation: string; tags?: string[]; shortcodes?: string[]; group: number; order: number; version: number; skins?: { emoji: string; tone: number | number[] }[] };
 type Emoji = Raw & { words: string };
 
+/** Used to fill out the favorites until the family has used sixteen different emoji. */
 export const FAVORITES = ["😍", "😂", "🥰", "😭", "🙏", "❤️", "👏", "🔥", "🥹", "😮", "🐪", "🌸", "🎉", "💯", "😊", "🤍"];
 const GROUPS: { name: string; groups: number[] }[] = [
   { name: "Smileys and people", groups: [0, 1] },
@@ -28,6 +29,13 @@ const WIDTH = 340;
 const GAP = 6;
 
 let loaded: Promise<Emoji[]> | null = null;
+let recentLoaded: Promise<string[]> | null = null;
+
+/** The emoji the family used most recently, newest first, topped up with the usual favorites to make sixteen. */
+function loadFavorites(): Promise<string[]> {
+  recentLoaded ??= fetch("/api/reactions/recent").then((r) => r.json()).then((d: { emoji?: string[] }) => d.emoji ?? []).catch(() => []);
+  return recentLoaded.then((recent) => [...new Set([...recent, ...FAVORITES])].slice(0, 16));
+}
 
 /** Does this device draw the emoji in color? One it doesn't know comes out as a plain box. */
 function drawsInColor(ctx: CanvasRenderingContext2D, emoji: string) {
@@ -68,6 +76,7 @@ export function ReactionPicker({ anchor, within, mine = [], onPick, onClose }: {
   anchor: HTMLElement; within?: HTMLElement | null; mine?: string[]; onPick: (emoji: string) => void; onClose: () => void;
 }) {
   const [all, setAll] = useState<Emoji[] | null>(null);
+  const [favorites, setFavorites] = useState<string[]>(FAVORITES);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
   const [tone, setTone] = useState(0);
@@ -80,6 +89,7 @@ export function ReactionPicker({ anchor, within, mine = [], onPick, onClose }: {
   useEffect(() => {
     let cancelled = false;
     loadEmoji().then((e) => !cancelled && setAll(e), () => !cancelled && setFailed(true));
+    loadFavorites().then((f) => !cancelled && setFavorites(f));
     setTone(Number(read(TONE_KEY)) || 0);
     if (window.matchMedia("(pointer: fine)").matches) setTimeout(() => search.current?.focus(), 20);
     return () => { cancelled = true; };
@@ -124,7 +134,8 @@ export function ReactionPicker({ anchor, within, mine = [], onPick, onClose }: {
   }, [all, query]);
   const label = useMemo(() => new Map((all ?? []).map((e) => [e.emoji, e.annotation])), [all]);
 
-  const pick = (emoji: string) => { onPick(emoji); onClose(); anchor.focus(); };
+  // A new pick moves to the front of the favorites the next time the picker opens.
+  const pick = (emoji: string) => { recentLoaded = recentLoaded?.then((r) => [emoji, ...r.filter((x) => x !== emoji)]) ?? null; onPick(emoji); onClose(); anchor.focus(); };
   const button = (emoji: string, name: string) => (
     <button key={emoji} type="button" className={`ep-emoji${mine.includes(emoji) ? " on" : ""}`} title={name} aria-label={name} aria-pressed={mine.includes(emoji)} onClick={() => pick(emoji)}>{emoji}</button>
   );
@@ -154,8 +165,8 @@ export function ReactionPicker({ anchor, within, mine = [], onPick, onClose }: {
         ) : (
           <>
             <section className="ep-section rp-favorites">
-              <h3>Family favorites</h3>
-              <div className="ep-grid rp-grid">{FAVORITES.map((e) => button(e, label.get(e) ?? e))}</div>
+              <h3>Recent family favorites</h3>
+              <div className="ep-grid rp-grid">{favorites.map((e) => button(e, label.get(e) ?? e))}</div>
             </section>
             {failed ? <p className="ep-empty">The rest of the emoji didn&apos;t load.</p> : sections.map((s) => (
               <section key={s.name} className="ep-section">

@@ -37,15 +37,15 @@ const dayOf = (iso: string) => {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() && { year: "numeric" }) });
 };
 
-/** "Scott and Nadia are praying", "You, Cindy, and 4 others are praying", "Lucy and 2 others are praying". */
+/** "Scott and Nadia", "Cindy and 4 others", or "You, Cindy, and 4 others" (you always come first). */
 function summary(list: Praying[]) {
   const n = list.length;
   if (!n) return "";
   const names = list.map((p) => (p.me ? "You" : p.name));
-  if (n === 1) return names[0] === "You" ? "You're praying" : `${names[0]} is praying`;
-  if (n === 2) return `${names[0]} and ${names[1]} are praying`;
+  if (n === 1) return names[0];
+  if (n === 2) return `${names[0]} and ${names[1]}`;
   const others = (k: number) => `${k} ${k === 1 ? "other" : "others"}`;
-  return list[0].me ? `You, ${names[1]}, and ${others(n - 2)} are praying` : `${names[0]} and ${others(n - 1)} are praying`;
+  return list[0].me ? `You, ${names[1]}, and ${others(n - 2)}` : `${names[0]} and ${others(n - 1)}`;
 }
 
 function Faces({ list }: { list: Praying[] }) {
@@ -57,7 +57,7 @@ function Faces({ list }: { list: Praying[] }) {
   );
 }
 
-/** I'm praying, or You're praying. Shows the change right away. */
+/** Add to my prayers (maroon), then I'm praying (gold, softly shimmering). Tapping again takes it back. Shows the change right away. */
 function PrayButton({ url, mine, onChange }: { url: string; mine: boolean; onChange: (on: boolean) => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -70,7 +70,7 @@ function PrayButton({ url, mine, onChange }: { url: string; mine: boolean; onCha
         router.refresh();
         setBusy(false);
       }}>
-      <span aria-hidden="true">🙏</span> {mine ? "You're praying" : "I'm praying"}
+      {mine ? <><span aria-hidden="true">🙏</span> I&apos;m praying</> : <><Icon name="plus" size={16} stroke={2.4} /> Add to my prayers</>}
     </button>
   );
 }
@@ -113,7 +113,7 @@ function RememberCard({ r, me }: { r: Remembering; me: Me }) {
   const [who, setWho] = useState(false);
   return (
     <section className="pr-remember" aria-label={`Remembering ${r.name}`}>
-      <Halo on><Avatar name={r.name} url={r.avatarUrl} size="lg" /></Halo>
+      <Halo on name={r.name}><Avatar name={r.name} url={r.avatarUrl} size="lg" /></Halo>
       <div className="pr-remember-text">
         <h2>Remembering {r.name} today</h2>
         <p>Pray for those of us who miss {r.pronoun}.</p>
@@ -157,7 +157,7 @@ function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdi
           ) : r.forName ? (
             <><span>For</span> <strong className="pr-for">{r.forName}</strong> <span className="pr-dot" aria-hidden="true">·</span> </>
           ) : null}
-          <span>From {r.from}, {ago(r.createdAt)}</span>
+          <span suppressHydrationWarning>From {r.from}, {ago(r.createdAt)}</span>
         </p>
         {r.canEdit && (
           <div className="pr-tools" ref={box}>
@@ -369,7 +369,7 @@ export function PrayerBoard({ remembering, active, answered, moreAnswered, earli
       <div className="pr-head">
         <div>
           <h1 className="display desktop-only">Prayer requests</h1>
-          <p className="pr-tagline">Tap I&apos;m praying so they know.</p>
+          <p className="pr-tagline">Tap the &ldquo;Add to my prayers&rdquo; button so they can see your support.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setAsking(true)}>
           <span className="desktop-only">+ Ask for prayer</span><span className="phone-only">+ Ask</span>

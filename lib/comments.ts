@@ -15,8 +15,10 @@ export function isEmoji(text: string) {
 }
 
 export type CommentView = {
-  id: number; author: string; body: string; createdAt: string; canDelete: boolean;
+  id: number; author: string; body: string; createdAt: string; editedAt: string | null; canDelete: boolean;
   parentId: number | null; replyTo: string | null;
+  /** A comment that was deleted but still has replies: it shows as "This comment was removed" so the replies keep their place. */
+  removed: boolean;
   // Reactions on the comment, in the order each emoji was first used, like the photo's.
   reactions: ReactionView[];
 };
@@ -28,9 +30,12 @@ export type ReactionView = { emoji: string; count: number; names: string[]; mine
  */
 export async function photoTalk(photoId: number, s: Session | null): Promise<{ comments: CommentView[]; reactions: ReactionView[] }> {
   const [comments, reactions, cr] = await Promise.all([
-    q<{ id: number; body: string; author_name: string | null; created_by_device: string | null; created_at: string; parent_id: number | null; reply_to_name: string | null }>(
-      `select id, body, author_name, created_by_device, created_at, parent_id, reply_to_name from photo_comments
-        where photo_id = $1 and deleted_at is null order by created_at, id`, [photoId]),
+    q<{ id: number; body: string; author_name: string | null; created_by_device: string | null; created_at: string; edited_at: string | null;
+      parent_id: number | null; reply_to_name: string | null; deleted_at: string | null }>(
+      `select id, body, author_name, created_by_device, created_at, edited_at, parent_id, reply_to_name, deleted_at from photo_comments c
+        where photo_id = $1 and (deleted_at is null or (parent_id is null and exists (
+          select 1 from photo_comments r where r.parent_id = c.id and r.deleted_at is null)))
+        order by created_at, id`, [photoId]),
     q<{ emoji: string; created_by_device: string; author_name: string | null }>(
       `select emoji, created_by_device, author_name from photo_reactions where photo_id = $1 order by created_at`, [photoId]),
     q<{ comment_id: number; emoji: string; person_id: number | null; device: string | null; name: string | null; person_name: string | null }>(
@@ -39,12 +44,14 @@ export async function photoTalk(photoId: number, s: Session | null): Promise<{ c
         where c.photo_id = $1 order by r.created_at, r.id`, [photoId]),
   ]);
   const live = new Set(comments.filter((c) => !c.parent_id).map((c) => c.id));
+  const shown = comments.filter((c) => !c.parent_id || live.has(c.parent_id));
   return {
-    comments: comments.filter((c) => !c.parent_id || live.has(c.parent_id)).map((c) => {
+    comments: shown.map((c) => {
       const rows = cr.filter((r) => r.comment_id === c.id);
       const isMe = (r: (typeof rows)[number]) => (r.person_id != null ? r.person_id === s?.pid : !!s && r.device === s.did);
       return {
-        id: c.id, author: byName(c.author_name), body: c.body, createdAt: c.created_at, canDelete: canRemove(s, c.created_by_device),
+        id: c.id, author: c.deleted_at ? "" : byName(c.author_name), body: c.deleted_at ? "" : c.body, createdAt: c.created_at, editedAt: c.edited_at,
+        canDelete: !c.deleted_at && canRemove(s, c.created_by_device), removed: !!c.deleted_at,
         parentId: c.parent_id, replyTo: c.reply_to_name ? displayName(c.reply_to_name) : null,
         reactions: [...new Set(rows.map((r) => r.emoji))].map((emoji) => {
           const these = rows.filter((r) => r.emoji === emoji);
@@ -85,4 +92,24 @@ export async function reactToComment(commentId: number, emoji: string, s: Sessio
   await q(`insert into comment_emoji (comment_id, emoji, person_id, device, name) values ($1, $2, $3, $4, $5) on conflict do nothing`,
     [commentId, emoji, s.pid ?? null, s.did, s.name]);
   return true;
+}
+
+/** Change what a comment says. Whoever wrote it, or Mary. The posted time stays; edited_at records the change. */
+export async function editComment(id: number, body: string): Promise<string | null> {
+  const text = body.replace(/\r\n/g, "\n").trim().slice(0, 2000);
+  if (!text) return "Write something, or delete the comment instead.";
+  await q(`update photo_comments set body = $2, edited_at = now() where id = $1 and deleted_at is null`, [id, text]);
+  return null;
+}
+
+/** The emoji the family has used most recently, on photos and comments, newest first. */
+export async function recentEmoji(limit = 16): Promise<string[]> {
+  const rows = await q<{ emoji: string }>(
+    `select emoji from (
+       select emoji, max(created_at) as at from (
+         select emoji, created_at from photo_reactions
+         union all select emoji, created_at from comment_emoji) x
+       group by emoji) y
+     order by at desc limit $1`, [limit]);
+  return rows.map((r) => r.emoji);
 }

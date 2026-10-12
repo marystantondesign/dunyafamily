@@ -10,14 +10,17 @@ export type Gender = "female" | "male" | null;
 export type FPerson = {
   id: number; name: string; aliases: string[]; avatarUrl: string | null; inMemory: boolean; friend: boolean;
   gender: Gender; birthYear: number | null; birthOrder: number | null;
+  /** Birth year, or the year on their birthday if that is all we have. Shown as "b. 1955" and used for oldest first. */
+  year: number | null;
 };
 type Rel = { id: number; person_id: number; related_id: number; kind: "parent" | "partner" | "sibling"; label: string | null; created_by_device: string | null };
 
 /** Everyone, and every relationship between two people who are still in the family. */
 export async function loadFamily() {
   const [people, rels] = await Promise.all([
-    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean; gender: string | null; birth_year: number | null; birth_order: number | null }>(
-      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend, pe.gender, pe.birth_year, pe.birth_order
+    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean; gender: string | null; birth_year: number | null; birth_order: number | null; known_year: number | null }>(
+      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend, pe.gender, pe.birth_year, pe.birth_order,
+              coalesce(pe.birth_year, (select b.year from birthdays b where b.person_id = pe.id and b.deleted_at is null and b.year is not null order by b.id desc limit 1)) as known_year
          from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
         where pe.deleted_at is null order by lower(pe.name)`),
     q<Rel>(
@@ -29,7 +32,7 @@ export async function loadFamily() {
   const byId = new Map<number, FPerson>();
   await Promise.all(people.map(async (p) => byId.set(p.id, {
     id: p.id, name: displayName(p.name), aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend,
-    gender: p.gender === "female" || p.gender === "male" ? p.gender : null, birthYear: p.birth_year, birthOrder: p.birth_order,
+    gender: p.gender === "female" || p.gender === "male" ? p.gender : null, birthYear: p.birth_year, birthOrder: p.birth_order, year: p.known_year,
     avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null,
   })));
   const parentsOf = new Map<number, number[]>(), childrenOf = new Map<number, number[]>(), partnersOf = new Map<number, number[]>(), siblingsOf = new Map<number, number[]>();
@@ -40,10 +43,13 @@ export async function loadFamily() {
     else if (r.kind === "sibling") { push(siblingsOf, r.person_id, r.related_id); push(siblingsOf, r.related_id, r.person_id); }
   }
   const sortByName = (ids: number[]) => ids.filter((i) => byId.has(i)).sort((a, b) => byId.get(a)!.name.localeCompare(byId.get(b)!.name));
-  // Oldest first: the order Mary set by dragging, then birth year, then name.
+  // Oldest first: everyone with a birth year (or a year on their birthday) by year, then anyone without one in the
+  // order Mary set by dragging, then by name.
   const sortByAge = (ids: number[]) => ids.filter((i) => byId.has(i)).sort((a, b) => {
     const x = byId.get(a)!, y = byId.get(b)!;
-    return (x.birthOrder ?? 1e9) - (y.birthOrder ?? 1e9) || (x.birthYear ?? 1e9) - (y.birthYear ?? 1e9) || x.name.localeCompare(y.name);
+    if (x.year != null && y.year != null) return x.year - y.year || (x.birthOrder ?? 1e9) - (y.birthOrder ?? 1e9) || x.name.localeCompare(y.name);
+    if (x.year != null || y.year != null) return x.year != null ? -1 : 1;
+    return (x.birthOrder ?? 1e9) - (y.birthOrder ?? 1e9) || x.name.localeCompare(y.name);
   });
   const parents = (id: number) => sortByName(parentsOf.get(id) ?? []);
   return {

@@ -92,7 +92,7 @@ export default async function Home() {
             {people.map((p) => (
               <li key={p.id}>
                 <Link href={`/people/${p.id}`} className="member">
-                  <Halo on={p.inMemory}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
+                  <Halo on={p.inMemory} name={p.name}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
                   <span className="member-name">{p.name}</span>
                   <span className="member-sub">{photos(p.photos)}</span>
                 </Link>

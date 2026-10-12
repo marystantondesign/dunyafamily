@@ -10,7 +10,7 @@ const SHOWN_DEPTH = 2; // Dunya, her children, and her grandchildren show withou
 
 function Face({ p }: { p: FPerson }) {
   return (
-    <Halo on={p.inMemory}>
+    <Halo on={p.inMemory} name={p.name}>
       <span className="tdot-face" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : p.name.charAt(0)}
@@ -73,7 +73,8 @@ function PhoneBranch({ node, depth, all }: { node: TreeNode; depth: number; all:
       <div className="tcard-head">
         <Link href={`/people/${node.person.id}`} className="tcard-link">
           <Face p={node.person} />
-          <span><span className="tcard-name">{node.person.name}</span></span>
+          <span><span className="tcard-name">{node.person.name}</span>{node.person.year && <span className="tdot-sub">b. {node.person.year}</span>}</span>
+          {!hasMore && <Icon name="chevronRight" size={20} className="tcard-chev" />}
         </Link>
         {hasMore && (
           <button type="button" className="tcard-toggle" aria-expanded={shown} aria-label={`${shown ? "Hide" : "Show"} ${node.person.name}'s family`} onClick={() => setOpen(!open)}>
@@ -100,6 +101,21 @@ function PhoneBranch({ node, depth, all }: { node: TreeNode; depth: number; all:
   );
 }
 
+/** Phone: one person as a card row (avatar, name, what they are to Dunya, chevron). */
+function PhoneRow({ p, role }: { p: FPerson; role: string }) {
+  return (
+    <li className="tcard plain">
+      <div className="tcard-head">
+        <Link href={`/people/${p.id}`} className="tcard-link">
+          <Face p={p} />
+          <span><span className="tcard-name">{p.name}</span><span className="tdot-sub">{role}</span></span>
+          <Icon name="chevronRight" size={20} className="tcard-chev" />
+        </Link>
+      </div>
+    </li>
+  );
+}
+
 export function FamilyTree({ tree, earlier, siblings, everyone }: {
   tree: TreeNode | null; earlier: Elder[][]; siblings: Elder[]; everyone: { id: number; name: string }[];
 }) {
@@ -107,6 +123,8 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
   const [all, setAll] = useState(false);
   const hasEarlier = earlier.length > 0 || siblings.length > 0;
   const [showEarlier, setShowEarlier] = useState(true);
+  // On phones, earlier generations start hidden on every visit.
+  const [phoneEarlier, setPhoneEarlier] = useState(false);
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [find, setFind] = useState("");
   const toggle = (id: number) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -145,18 +163,48 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
           <datalist id="family-names">{everyone.map((p) => <option key={p.id} value={p.name} />)}</datalist>
         </div>
         {tree && tree.children.some((c) => c.children.length) && (
-          <button type="button" className="btn" aria-pressed={all} onClick={() => setAll(!all)}>{all ? "Collapse" : "Expand all"}</button>
+          <button type="button" className="btn desktop-only" aria-pressed={all} onClick={() => setAll(!all)}>{all ? "Collapse" : "Expand all"}</button>
         )}
         {hasEarlier && (
-          <button type="button" className="btn" aria-expanded={showEarlier} onClick={() => setShowEarlier(!showEarlier)}>
+          <button type="button" className="btn desktop-only" aria-expanded={showEarlier} onClick={() => setShowEarlier(!showEarlier)}>
             <Icon name={showEarlier ? "chevronUp" : "chevronDown"} size={16} /> {showEarlier ? "Hide earlier generations" : "Show earlier generations"}
           </button>
         )}
         <Link href="/people/addresses" className="btn tree-address">Address book</Link>
       </div>
+      {root && (hasEarlier || tree!.partners.length > 0) && (
+        <button type="button" className="btn tree-phone-toggle phone-only" aria-expanded={phoneEarlier} onClick={() => setPhoneEarlier(!phoneEarlier)}>
+          <Icon name={phoneEarlier ? "chevronUp" : "chevronDown"} size={16} /> {phoneEarlier ? "Hide" : "Show"} {root.name}&apos;s parents, siblings, and partners
+        </button>
+      )}
 
       {tree && root ? (
         <div className="tree">
+          <div className="tree-phone-top">
+            {phoneEarlier && (
+              <div className="tree-phone-earlier">
+                {[["Parents", earlier[0] ?? []], ["Siblings", siblings]].map(([label, list]) => (list as Elder[]).length > 0 && (
+                  <section key={label as string}>
+                    <h2 className="tree-phone-label">{label as string}</h2>
+                    <ul>{(list as Elder[]).map((p) => <PhoneRow key={p.id} p={p} role={p.role} />)}</ul>
+                  </section>
+                ))}
+                {tree.partners.length > 0 && (
+                  <section>
+                    <h2 className="tree-phone-label">Partners</h2>
+                    <ul>{tree.partners.map((p) => <PhoneRow key={p.id} p={p} role="Partner" />)}</ul>
+                  </section>
+                )}
+              </div>
+            )}
+            <Link href={`/people/${root.id}`} className="tdot tdot-root">
+              <Face p={root} />
+              <span className="tdot-name">{rootName}</span>
+              <span className="tdot-sub">Matriarch</span>
+            </Link>
+            {tree.children.length > 0 && <h2 className="tree-phone-label">Children, oldest first</h2>}
+          </div>
+          <div className="tree-desk">
           {hasEarlier && showEarlier ? (
             // Earlier generations: grandparents, then parents, then Dunya with her brothers and sisters beside her.
             <div className="tree-earlier-box">
@@ -175,6 +223,7 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
           ) : (
             <div className="tree-root">{rootDot}</div>
           )}
+          </div>
 
           {tree.children.length > 0 ? (
             <>
