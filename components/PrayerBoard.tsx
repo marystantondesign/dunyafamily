@@ -386,20 +386,20 @@ export function PrayerBoard({ remembering, active, answered, moreAnswered, earli
 
   return (
     <div className="prayer">
-      <div className={`pr-head${tab === "mine" ? " mine" : ""}`}>
-        <div>
-          <h1 className="display desktop-only">Prayer requests</h1>
-          {tab === "all" && <p className="pr-tagline">Tap the &ldquo;Add to my prayers&rdquo; button so they can see your support.</p>}
+      {/* Round 10 (mockup 53): the switch and Ask for prayer share the top row. */}
+      <div className="pr-toprow">
+        <div className="pr-tabs" role="tablist" aria-label="Prayer requests">
+          <button type="button" role="tab" aria-selected={tab === "all"} onClick={() => choose("all")}>All requests</button>
+          <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => choose("mine")}>My prayers · {mine.length}</button>
         </div>
-        <button type="button" className={`btn btn-primary${tab === "mine" ? " desktop-only" : ""}`} onClick={() => setAsking(true)}>
-          <span className="desktop-only">+ Ask for prayer</span><span className="phone-only">+ Ask</span>
-        </button>
+        <button type="button" className="btn btn-primary desktop-only" onClick={() => setAsking(true)}>+ Ask for prayer</button>
       </div>
-
-      <div className="pr-tabs" role="tablist" aria-label="Prayer requests">
-        <button type="button" role="tab" aria-selected={tab === "all"} onClick={() => choose("all")}>All requests</button>
-        <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => choose("mine")}>My prayers · {mine.length}</button>
-      </div>
+      {tab === "all" && (
+        <div className="pr-head phone-only">
+          <p className="pr-tagline">Tap the &ldquo;Add to my prayers&rdquo; button so they can see your support.</p>
+          <button type="button" className="btn btn-primary" onClick={() => setAsking(true)}>+ Ask</button>
+        </div>
+      )}
 
       {tab === "mine" ? (
         <div role="tabpanel" aria-label="My prayers">

@@ -66,18 +66,67 @@ export async function loadFamily() {
 }
 export type Family = Awaited<ReturnType<typeof loadFamily>>;
 
-export type TreeNode = { person: FPerson; partners: FPerson[]; children: TreeNode[] };
+/** A partner beside someone, with what they are: Husband, Wife, Former husband, Partner, Former partner. */
+export type TreePartner = { person: FPerson; label: string };
+/** Someone's children with one other parent (or none recorded), oldest first. */
+export type KidGroup = { partner: FPerson | null; label: string; children: TreeNode[] };
+export type TreeNode = {
+  person: FPerson;
+  /** Partners with no children together: shown beside the person. */
+  partners: TreePartner[];
+  /** Children grouped by their other parent, in the order of each group's oldest child. */
+  groups: KidGroup[];
+  /** Every child, oldest first within each group (for the phone list). */
+  children: TreeNode[];
+};
 
-/** Dunya and everyone descended from her, with partners beside each person. Never loops, even if the data does. */
+/** "spouse" reads as Husband or Wife, "former_spouse" as Former husband or wife, and so on. */
+export function partnerLabel(label: string | null | undefined, g: Gender) {
+  const spouse = g === "female" ? "wife" : g === "male" ? "husband" : "spouse";
+  return label === "spouse" ? spouse.charAt(0).toUpperCase() + spouse.slice(1)
+    : label === "former_spouse" ? `Former ${spouse}`
+    : label === "former_partner" ? "Former partner" : "Partner";
+}
+
+/**
+ * Dunya and everyone descended from her. Each person's children are grouped by their other parent, so children
+ * with different partners sit apart. Partners with no children together stand beside the person. Never loops.
+ */
 function descend(f: Family, id: number, seen: Set<number>): TreeNode {
   seen.add(id);
-  const partners = f.partners(id).filter((p) => !seen.has(p));
-  partners.forEach((p) => seen.add(p));
-  const kids = new Set([id, ...partners].flatMap((p) => f.children(p)));
+  const partnerIds = f.partners(id).filter((p) => !seen.has(p));
+  partnerIds.forEach((p) => seen.add(p));
+  const label = (other: number) => f.rels.find((r) => r.kind === "partner" && r.person_id === Math.min(id, other) && r.related_id === Math.max(id, other))?.label;
+
+  // Group this person's children, and any children of their partners, by the other parent.
+  const byParent = new Map<number | null, number[]>();
+  const put = (kid: number, other: number | null) => { if (!byParent.has(other)) byParent.set(other, []); byParent.get(other)!.push(kid); };
+  const placed = new Set<number>();
+  for (const kid of f.children(id)) {
+    if (seen.has(kid)) continue;
+    const others = f.parents(kid).filter((p) => p !== id);
+    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? null);
+    placed.add(kid);
+  }
+  for (const p of partnerIds) for (const kid of f.children(p)) if (!seen.has(kid) && !placed.has(kid)) { put(kid, p); placed.add(kid); }
+
+  const groups: KidGroup[] = [...byParent.entries()].map(([other, kids]) => {
+    if (other !== null) seen.add(other);
+    return { partner: other !== null ? f.byId.get(other) ?? null : null, kids: f.sortByAge(kids) };
+  })
+    // Groups go in the order of their oldest child.
+    .sort((a, b) => f.sortByAge([a.kids[0], b.kids[0]])[0] === a.kids[0] ? -1 : 1)
+    .map((g) => ({
+      partner: g.partner, label: g.partner ? partnerLabel(label(g.partner.id), g.partner.gender) : "",
+      children: g.kids.filter((k) => !seen.has(k)).map((k) => descend(f, k, seen)),
+    }));
+
+  const inGroups = new Set(groups.map((g) => g.partner?.id).filter((x): x is number => x != null));
   return {
     person: f.byId.get(id)!,
-    partners: partners.map((p) => f.byId.get(p)!),
-    children: f.sortByAge([...kids].filter((k) => !seen.has(k))).map((k) => descend(f, k, seen)),
+    partners: partnerIds.filter((p) => !inGroups.has(p)).map((p) => ({ person: f.byId.get(p)!, label: partnerLabel(label(p), f.byId.get(p)!.gender) })),
+    groups,
+    children: groups.flatMap((g) => g.children),
   };
 }
 

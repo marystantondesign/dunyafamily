@@ -12,10 +12,11 @@ type Kind = "parent" | "sibling" | "partner" | "child";
 export type AdminData = { person: P & { birthYear: number | null; friend: boolean }; parents: Row[]; siblings: Row[]; partners: Row[]; children: Row[] };
 
 const ROLE_SETS: Record<Kind, string[]> = {
-  parent: ["mother", "father", "parent"], sibling: ["sister", "brother", "sibling"], partner: ["spouse", "partner"], child: ["daughter", "son", "child"],
+  parent: ["mother", "father", "parent"], sibling: ["sister", "brother", "sibling"], partner: ["spouse", "former_spouse", "partner", "former_partner"], child: ["daughter", "son", "child"],
 };
 const ALL_ROLES = ["mother", "father", "parent", "sister", "brother", "sibling", "partner", "spouse", "daughter", "son", "child"];
-const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
+const NAMES: Record<string, string> = { spouse: "Husband or wife", former_spouse: "Former husband or wife", partner: "Partner", former_partner: "Former partner" };
+const cap = (w: string) => NAMES[w] ?? w.charAt(0).toUpperCase() + w.slice(1);
 const kindOf = (role: string): Kind => (Object.entries(ROLE_SETS).find(([, r]) => r.includes(role))?.[0] as Kind) ?? "child";
 
 async function send(body: Record<string, unknown>) {

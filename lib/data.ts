@@ -55,13 +55,13 @@ export async function birthdays(now = new Date()): Promise<Birthday[]> {
     .sort((a, b) => a.inDays - b.inDays);
 }
 
-export type Gathering = { id: number; title: string; date: string; time_note: string | null; location: string | null; notes: string | null; created_by_device: string | null; created_by_name: string | null };
+export type Gathering = { id: number; title: string; date: string; end_date?: string | null; time_note: string | null; location: string | null; notes: string | null; created_by_device: string | null; created_by_name: string | null };
 
 /** Gatherings from a year ago to two years out, for the month calendar. */
 export function calendarGatherings() {
   return q<Gathering>(
-    `select id, title, to_char(date, 'YYYY-MM-DD') as date, time_note, location, notes, created_by_device, created_by_name
-       from gatherings where deleted_at is null and date between current_date - interval '1 year' and current_date + interval '2 years' order by date`,
+    `select id, title, to_char(date, 'YYYY-MM-DD') as date, to_char(end_date, 'YYYY-MM-DD') as end_date, time_note, location, notes, created_by_device, created_by_name
+       from gatherings where deleted_at is null and coalesce(end_date, date) >= current_date - interval '1 year' and date <= current_date + interval '2 years' order by date`,
   );
 }
 

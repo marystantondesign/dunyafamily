@@ -9,8 +9,8 @@ type Item = { id: number; forName: string | null; about: string; howToPray: stri
 
 const BACK = "/prayer?tab=mine";
 const FADE_MS = 400;
-const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
-  "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
+// Amen stays about 2.5 seconds (2 with reduced motion), then fades back to My prayers.
+const AMEN_MS = 2500, AMEN_STILL_MS = 2000, LEAVE_MS = 500;
 // Words that read naturally after "Pray" in lower case ("Pray that he...", "Pray for peace..."). Anything else, like a name, keeps its capital.
 const LOWER = new Set(["that", "for", "the", "a", "an", "his", "her", "their", "our", "my", "he", "she", "they", "we", "it", "healing", "peace",
   "strength", "safe", "safety", "comfort", "wisdom", "guidance", "protection", "travel", "traveling", "everything", "all", "good", "smooth",
@@ -33,6 +33,7 @@ export function PrayThrough({ items }: { items: Item[] }) {
   const [index, setIndex] = useState(0);
   const [fade, setFade] = useState<"in" | "out">("in");
   const [mounted, setMounted] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const touch = useRef<number | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const done = index >= items.length;
@@ -64,10 +65,24 @@ export function PrayThrough({ items }: { items: Item[] }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [step, done, router]);
 
+  // After the last one: Amen, then back to My prayers on its own. A tap goes back right away.
+  const leave = useCallback(() => {
+    if (leaving) return;
+    setLeaving(true);
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => router.push(BACK), still ? 0 : LEAVE_MS);
+  }, [leaving, router]);
+  useEffect(() => {
+    if (!done) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = window.setTimeout(leave, still ? AMEN_STILL_MS : AMEN_MS);
+    return () => window.clearTimeout(t);
+  }, [done, leave]);
+
   const n = items.length;
   const item = items[Math.min(index, n - 1)];
   const layer = (
-    <div className="pt" onClick={() => { if (!done) step(1); }}
+    <div className={`pt${leaving ? " leaving" : ""}`} onClick={() => { if (done) leave(); else step(1); }}
       onTouchStart={(e) => { touch.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => {
         const startX = touch.current; touch.current = null;
@@ -76,12 +91,9 @@ export function PrayThrough({ items }: { items: Item[] }) {
         if (dx < -50) { e.preventDefault(); step(1); }
       }}>
       {done ? (
-        <div className="pt-end">
+        <div className="pt-end" role="status">
           <span className="pt-glow" aria-hidden="true">🙏</span>
           <h1>Amen.</h1>
-          <p className="pt-end-line">You prayed for {n === 1 ? "one" : `all ${WORDS[n] ?? n}`} today.</p>
-          <p className="pt-end-sub">Your family can see you&apos;re standing with them.</p>
-          <Link href={BACK} className="pt-done" onClick={(e) => e.stopPropagation()}>Done</Link>
         </div>
       ) : (
         <>

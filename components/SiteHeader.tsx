@@ -8,7 +8,7 @@ const NAV: { href: string; label: string; also?: string }[] = [
   { href: "/", label: "Home" },
   { href: "/browse", label: "Browse" },
   { href: "/people", label: "Family" },
-  { href: "/calendar", label: "Birthdays & gatherings" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/prayer", label: "Prayer requests" },
   { href: "/upload", label: "Add photos", also: "/tag" },
 ];

@@ -4,12 +4,14 @@ import type { Session } from "./session";
 import { resolvePeople } from "./tags";
 
 /** What someone can be to the person being edited, as picked in "is Dunya's ...". */
-export const ROLES = ["mother", "father", "parent", "sister", "brother", "sibling", "partner", "spouse", "daughter", "son", "child"] as const;
+export const ROLES = ["mother", "father", "parent", "sister", "brother", "sibling", "partner", "spouse", "former_partner", "former_spouse", "daughter", "son", "child"] as const;
+/** What a partner link says under the name: "spouse" shows as Husband or Wife, "former_spouse" as Former husband or wife. */
+export const PARTNER_LABELS = ["spouse", "former_spouse", "partner", "former_partner"] as const;
 export type Role = (typeof ROLES)[number];
 
 const genderOf = (r: Role): Gender | undefined =>
   ["mother", "sister", "daughter"].includes(r) ? "female" : ["father", "brother", "son"].includes(r) ? "male" : ["parent", "sibling", "child"].includes(r) ? null : undefined;
-const kindOf = (r: Role) => (["mother", "father", "parent"].includes(r) ? "parent" : ["sister", "brother", "sibling"].includes(r) ? "sibling" : ["partner", "spouse"].includes(r) ? "partner" : "child");
+const kindOf = (r: Role) => (["mother", "father", "parent"].includes(r) ? "parent" : ["sister", "brother", "sibling"].includes(r) ? "sibling" : (PARTNER_LABELS as readonly string[]).includes(r) ? "partner" : "child");
 
 /** "1955", or a full date like "1955-03-09" or "March 9, 1955". */
 export function parseBirth(raw: string): { year: number; month?: number; day?: number } | null {
@@ -62,7 +64,7 @@ export async function connect(personId: number, otherRaw: number | string, role:
     // Brothers and sisters share parents.
     for (const p of f.parents(personId)) if (p !== other && !(await isSelfOrDescendant(other, p))) await link(p, other, "parent", s);
   } else {
-    await link(personId, other, "partner", s, role === "spouse" ? "spouse" : "partner");
+    await link(personId, other, "partner", s, role);
   }
   const g = genderOf(role);
   if (g !== undefined) await q(`update people set gender = $1 where id = $2`, [g, other]);
@@ -74,7 +76,7 @@ export async function connect(personId: number, otherRaw: number | string, role:
 export async function setRole(personId: number, otherId: number, role: Role) {
   const g = genderOf(role);
   if (g !== undefined) await q(`update people set gender = $1 where id = $2`, [g, otherId]);
-  if (role === "spouse" || role === "partner")
+  if ((PARTNER_LABELS as readonly string[]).includes(role))
     await q(`update relationships set label = $1 where kind = 'partner' and deleted_at is null and person_id = $2 and related_id = $3`,
       [role, Math.min(personId, otherId), Math.max(personId, otherId)]);
 }
@@ -108,7 +110,7 @@ export async function editData(personId: number) {
   const me = f.byId.get(personId);
   if (!me) return null;
   const partnerLabel = (other: number) =>
-    f.rels.find((r) => r.kind === "partner" && r.person_id === Math.min(personId, other) && r.related_id === Math.max(personId, other))?.label === "spouse" ? "spouse" : "partner";
+    (PARTNER_LABELS as readonly string[]).find((l) => l === f.rels.find((r) => r.kind === "partner" && r.person_id === Math.min(personId, other) && r.related_id === Math.max(personId, other))?.label) ?? "partner";
   const g = (id: number) => f.byId.get(id)!;
   return {
     person: me,

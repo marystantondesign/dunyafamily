@@ -593,8 +593,6 @@ section { margin-top: 48px; }
 .cal-events li.quiet .ev-icon { color: #A8977F; }
 .cal-events > p { padding: 14px 20px; margin: 0; }
 .subscribe { margin-top: 24px; }
-.cal-add { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
-.cal-add > form { flex: 1 1 100%; }
 @media (max-width: 760px) {
   .bday-cards { grid-template-columns: 1fr; gap: 8px; }
   .bday-card { padding: 8px; gap: 14px; }
@@ -1354,6 +1352,8 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
 .pr-head h1 { margin: 0; font-size: 38px; }
 .pr-tagline { margin: 4px 0 0; font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink-2); }
 /* Round 9 (mockup 43): All requests and My prayers. */
+.pr-toprow { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 22px; }
+.pr-toprow .pr-tabs { flex: 1; margin: 0; }
 .pr-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 18px; background: #EFE5D6; border-radius: 12px; max-width: 520px; }
 .pr-tabs button { min-height: 40px; border: 0; border-radius: 9px; background: none; font: inherit; font-size: 15px; color: var(--ink-3); cursor: pointer; }
 .pr-tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(43, 29, 26, 0.12); }
@@ -1440,7 +1440,8 @@ a.pr-for:hover { color: var(--plum); }
 @media (max-width: 760px) {
   .prayer { margin: -12px -4px 0; }
   .pr-head { align-items: center; margin-bottom: 16px; }
-  .pr-head.mine { display: none; }
+  .pr-toprow { margin-bottom: 16px; }
+  .pr-head.phone-only { display: flex; }
   .pr-tabs { max-width: none; }
   .pr-tagline { font-size: 13px; margin: 0; }
   .pr-head .btn { min-height: 40px; padding: 0 14px; }
@@ -1491,13 +1492,14 @@ body:has(.pt) .site-header, body:has(.pt) .tab-bar { display: none; }
 .pt-dots span { width: 6px; height: 6px; border-radius: 3px; background: #5A4E46; transition: width 300ms, background 300ms; }
 .pt-dots span.on { width: 24px; background: #E2B84A; }
 .pt-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.pt-glow { font-size: 44px; line-height: 1; padding: 22px; border-radius: 50%; background: radial-gradient(circle, rgba(226, 184, 74, 0.35) 0%, rgba(226, 184, 74, 0) 70%); animation: pt-glow 3s ease-in-out infinite; }
-@keyframes pt-glow { 0%, 100% { box-shadow: 0 0 30px 6px rgba(226, 184, 74, 0.12); } 50% { box-shadow: 0 0 46px 14px rgba(226, 184, 74, 0.24); } }
-.pt-end h1 { margin: 26px 0 0; font-family: var(--serif); font-weight: 400; font-size: 64px; color: #F2E6D8; }
-.pt-end-line { margin: 14px 0 0; font-family: var(--serif); font-size: 24px; color: #F2E6D8; }
-.pt-end-sub { margin: 18px 0 0; font-size: 16px; color: #A8988A; }
-.pt-done { margin-top: 34px; min-width: 160px; min-height: 52px; padding: 0 34px; border-radius: 999px; background: #E2B84A; color: #2A1D05; font-size: 17px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
-.pt-done:hover { background: #EBC660; color: #2A1D05; }
+/* Amen (round 10, mockup 55): the glow scales up and brightens over 1.6 seconds, then the page fades back. */
+.pt-glow { font-size: 52px; line-height: 1; padding: 30px; border-radius: 50%; background: radial-gradient(circle, rgba(226, 184, 74, 0.38) 0%, rgba(226, 184, 74, 0) 70%); animation: pt-glow 1.6s ease-out both; }
+@keyframes pt-glow { from { transform: scale(0.6); opacity: 0.25; filter: brightness(0.6); } to { transform: scale(1); opacity: 1; filter: brightness(1.1); } }
+.pt-end h1 { margin: 34px 0 0; font-family: var(--serif); font-weight: 400; font-size: 72px; color: #F2E6D8; animation: pt-amen 1.2s ease-out 0.3s both; }
+@keyframes pt-amen { from { opacity: 0; } to { opacity: 1; } }
+.pt { transition: opacity 500ms ease; }
+.pt.leaving { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .pt-end h1 { animation: none; } .pt { transition: none; } }
 @media (max-width: 760px) {
   .pt { padding: calc(20px + env(safe-area-inset-top)) 22px calc(28px + env(safe-area-inset-bottom)); }
   .pt-count { font-size: 15px; }
@@ -1506,9 +1508,7 @@ body:has(.pt) .site-header, body:has(.pt) .tab-bar { display: none; }
   .pt-how { font-size: 16px; margin-top: 16px; }
   .pt-by { font-size: 12px; margin-top: 18px; }
   .pt-hint { font-size: 17px; line-height: 1.45; }
-  .pt-end h1 { font-size: 52px; }
-  .pt-end-line { font-size: 20px; }
-  .pt-end-sub { font-size: 15px; }
+  .pt-end h1 { font-size: 56px; }
 }
 .share-pass { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; font-family: var(--serif); font-size: 22px; }
 
@@ -1558,3 +1558,137 @@ body:has(.pt) .site-header, body:has(.pt) .tab-bar { display: none; }
 .texts-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 14px; color: var(--ink-3); }
 .texts-meta strong { color: var(--ink); font-size: 15px; }
 .texts-body { margin: 8px 0 0; white-space: pre-wrap; font: inherit; font-size: 14px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+
+/* Add photos (round 10, mockup 54). */
+.upload-head { margin-bottom: 18px; }
+.upload-head .display { font-size: 30px; }
+.upload-page > .dropzone:not(.compact) { min-height: 420px; justify-content: center; }
+.upload-recent { margin-top: 26px; }
+.upload-recent .section-head { margin-bottom: 12px; }
+.upload-recent-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+.upload-recent-row a { flex: none; width: 96px; height: 96px; border-radius: 6px; overflow: hidden; background: var(--wash); }
+.upload-recent-row img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 760px) {
+  .upload-page > .dropzone:not(.compact) { min-height: 300px; }
+  .upload-recent-row a { width: 80px; height: 80px; }
+}
+.upload-seeall { font-size: 15px; color: var(--plum); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Calendar (round 10, mockups 50 to 52). */
+.bday-section { margin-top: 4px; }
+.bday-section .section-head { margin-bottom: 14px; }
+.bday-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.bday-card { padding: 10px 12px; gap: 14px; }
+.bday-photo { width: 56px; height: 56px; border-radius: 4px; font-size: 22px; }
+.bday-text { font-size: 15px; line-height: 1.3; }
+.bday-turns { font-family: var(--sans); font-size: 12px; color: var(--ink-3); }
+.cal-section { margin-top: 26px; }
+.cal-head { justify-content: space-between; flex-wrap: wrap; }
+.cal-nav { display: flex; align-items: center; gap: 18px; }
+.cal-add { display: flex; align-items: center; gap: 16px; }
+.cal-hint { font-size: 14px; color: var(--ink-3); }
+.cal-add .btn { gap: 6px; }
+.cal-grid { user-select: none; }
+.cal-day.selected { background: #F4E4E2; box-shadow: inset 0 0 0 2px var(--plum); }
+.cal-day.selected .num { box-shadow: none; }
+.cal-day.selected:hover { background: #EFD9D6; }
+.cal-side { flex: 0 1 300px; display: flex; flex-direction: column; gap: 18px; }
+.cal-events h3 { font-size: 20px; }
+.cal-events strong { font-family: var(--sans); font-size: 15px; font-weight: 400; }
+.cal-sub p { margin: 0 0 10px; font-size: 14px; color: var(--ink-2); }
+.cal-sub-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-sub-btns .btn { min-height: 40px; padding: 0 14px; }
+.cal-other { margin-top: 8px; font-size: 13px; font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
+.cal-url span { word-break: break-all; color: var(--ink-2); }
+.ae-backdrop { z-index: 60; }
+.ae { position: relative; background: var(--paper); border-radius: 12px; width: min(560px, 100%); max-height: calc(100dvh - 40px); overflow: auto; padding: 22px 24px 22px; box-shadow: 0 20px 50px rgba(43, 29, 26, 0.25); }
+.ae-head { display: flex; align-items: center; justify-content: space-between; margin-right: -10px; }
+.ae-head h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 28px; }
+.ae-when { margin: 8px 0 14px; font-size: 15px; color: var(--ink-2); }
+.ae-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ae-kind { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font: inherit; color: var(--ink); cursor: pointer; }
+.ae-kind:hover:not(:disabled) { border-color: var(--input); }
+.ae-kind.on { background: var(--plum-wash); border-color: var(--plum); }
+.ae-kind:disabled { opacity: 0.45; cursor: not-allowed; }
+.ae-kind-icon { font-size: 24px; line-height: 1; }
+.ae-kind strong { display: block; font-size: 15px; font-weight: 600; }
+.ae-kind span span { display: block; font-size: 13px; color: var(--ink-3); }
+.ae-note { margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
+.ae-fields { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.ae-check { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
+.ae-check input { width: 20px; height: 20px; accent-color: var(--plum); }
+.ae-year { max-width: 200px; }
+.ae-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .bday-cards { grid-template-columns: 1fr; }
+  .bday-cards .bday-card:nth-child(4) { display: none; }
+  .cal-nav { gap: 10px; flex: 1; }
+  .cal-add { width: 100%; justify-content: space-between; }
+  .cal-hint { font-size: 13px; }
+  .ae-backdrop { align-items: flex-end; padding: 0; }
+  .ae { width: 100%; border-radius: 16px 16px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); max-height: 92dvh; }
+  .ae-head h2 { font-size: 22px; }
+  .ae-kind { min-height: 56px; padding: 8px 10px; gap: 8px; }
+  .ae-kind strong { font-size: 14px; }
+  .ae .field input { font-size: 16px; }
+}
+
+/* Family tree (round 10, mockup 49 and Mary's follow-up): everyone shown, children grouped by their other parent,
+   scaled down to fit the window rather than scrolling sideways. */
+.tree-desk.ft-fit { display: block; position: relative; width: 100%; }
+@media (max-width: 760px) { .tree-desk.ft-fit { display: none; } }
+.ft { width: max-content; display: flex; flex-direction: column; align-items: center; transform-origin: top left; }
+.ft ul { display: flex; justify-content: center; align-items: flex-start; margin: 0; padding: 18px 0 0; position: relative; }
+.ft li { list-style: none; position: relative; padding: 18px 6px 0; display: flex; flex-direction: column; align-items: center; }
+.ft li::before, .ft li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: 18px; border-top: 1px solid var(--check); }
+.ft li::after { right: auto; left: 50%; border-left: 1px solid var(--check); }
+.ft li:first-child::before, .ft li:last-child::after { border-top: 0; }
+.ft li:last-child::before { border-right: 1px solid var(--check); }
+.ft li:only-child::before { display: none; }
+.ft li:only-child::after { border-top: 0; }
+.ft ul ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 18px; border-left: 1px solid var(--check); }
+.ft .tdot { gap: 3px; }
+.ft .tdot-sub { font-size: 11px; }
+.ft-d0 .tdot-face { width: 72px; height: 72px; font-size: 26px; }
+.ft-d0 .tdot-name { font-size: 19px; font-weight: 700; margin-top: 4px; }
+.ft-d1 .tdot-face { width: 52px; height: 52px; font-size: 19px; }
+.ft-d1 .tdot-name { font-size: 16px; }
+.ft-d2 .tdot-face { width: 42px; height: 42px; font-size: 16px; }
+.ft-d2 .tdot-name { font-size: 14px; }
+.ft-d3 .tdot-face { width: 34px; height: 34px; font-size: 13px; border-width: 2px; }
+.ft-d3 .tdot-name { font-size: 12px; }
+.ft-d4 .tdot-face { width: 28px; height: 28px; font-size: 11px; border-width: 2px; }
+.ft-d4 .tdot-name { font-size: 11px; }
+.ft .tcouple { gap: 0; }
+.ft .tpartner-line { width: 12px; margin: 21px 4px 0; }
+.ft .tcouple:has(> .ft-d1) .tpartner-line { margin-top: 26px; }
+.ft .tcouple:has(> .ft-d3) .tpartner-line { margin-top: 17px; }
+.ft .tcouple:has(> .ft-d4) .tpartner-line { margin-top: 14px; }
+/* Dunya stays centered over the groups; a husband or partner with no children together sits to her right. */
+.ft-root { position: relative; display: flex; justify-content: center; padding-bottom: 18px; }
+.ft-root::after { content: ""; position: absolute; left: 50%; bottom: 0; height: 18px; border-left: 1px solid var(--check); }
+.ft-root:has(+ :not(.ft-groups)), .ft-root:last-child { padding-bottom: 0; }
+.ft-root:last-child::after { display: none; }
+.ft-spouse { position: absolute; left: 100%; top: 0; display: flex; align-items: flex-start; }
+.ft-double { width: 34px; height: 0; margin: 33px 14px 0; border-top: 4px double var(--check); }
+.ft-groups { padding-top: 0 !important; }
+.ft-groups > li { padding: 18px 10px 0; }
+.ft-card { display: flex; flex-direction: column; align-items: center; padding: 0 18px 18px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 252, 246, 0.55); }
+.ft-tab { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--paper); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; font-size: 14px; color: var(--ink); text-decoration: none; }
+.ft-tab:hover { color: var(--plum); }
+.ft-tab strong { font-weight: 600; }
+.ft-tab .tdot-face { width: 28px; height: 28px; font-size: 12px; border-width: 2px; }
+.ft-subtab { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.ft-subtab .tdot-face { width: 22px; height: 22px; font-size: 10px; border-width: 1.5px; }
+.ft-group.plain > .ft-kids { padding-top: 0; }
+.ft-group.plain > .ft-kids::before { display: none; }
+.tree-earlier-box .ft-root { padding-bottom: 0; }
+.tree-earlier-box .ft-root::after { display: none; }
+.tree-earlier-box + .ft-groups { margin-top: 16px; }
+.ft-note { margin: 18px 0 0; text-align: center; font-size: 13px; color: var(--ink-3); }
+.tree-phone-groups { display: none; }
+.tree-phone-grouplabel { margin: 16px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+@media (max-width: 760px) {
+  .tree-phone-groups { display: block; width: 100%; }
+  .tree-phone-group + .tree-phone-group { margin-top: 6px; }
+}

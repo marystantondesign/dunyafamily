@@ -351,3 +351,6 @@ create table if not exists reminder_sends (
   error text,
   created_at timestamptz not null default now()
 );
+
+-- Gatherings can run several days (round 10): the last day, when it isn't the same as the first.
+alter table gatherings add column if not exists end_date date;

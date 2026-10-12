@@ -40,13 +40,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     lines.push("BEGIN:VEVENT", `UID:date-${d.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${esc(summary)}`, "TRANSP:TRANSPARENT", "END:VEVENT");
   }
 
-  const gatherings = await q<{ id: number; title: string; date: string; time_note: string | null }>(
-    `select id, title, to_char(date, 'YYYY-MM-DD') as date, time_note from gatherings
-      where deleted_at is null and date >= current_date - interval '60 days'`,
+  const gatherings = await q<{ id: number; title: string; date: string; end_date: string | null; time_note: string | null }>(
+    `select id, title, to_char(date, 'YYYY-MM-DD') as date, to_char(end_date, 'YYYY-MM-DD') as end_date, time_note from gatherings
+      where deleted_at is null and coalesce(end_date, date) >= current_date - interval '60 days'`,
   );
   for (const g of gatherings) {
+    // All-day events: the end is the day after the last day, so a several-day gathering covers every day.
     const [y, m, d] = g.date.split("-").map(Number);
-    lines.push("BEGIN:VEVENT", `UID:gathering-${g.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(new Date(y, m - 1, d))}`, `DTEND;VALUE=DATE:${ymd(new Date(y, m - 1, d + 1))}`, `SUMMARY:${esc(g.title)}`, ...(g.time_note ? [`DESCRIPTION:${esc(g.time_note)}`] : []), "END:VEVENT");
+    const [ey, em, ed] = (g.end_date ?? g.date).split("-").map(Number);
+    lines.push("BEGIN:VEVENT", `UID:gathering-${g.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(new Date(y, m - 1, d))}`, `DTEND;VALUE=DATE:${ymd(new Date(ey, em - 1, ed + 1))}`, `SUMMARY:${esc(g.title)}`, ...(g.time_note ? [`DESCRIPTION:${esc(g.time_note)}`] : []), "END:VEVENT");
   }
   lines.push("END:VCALENDAR");
 
