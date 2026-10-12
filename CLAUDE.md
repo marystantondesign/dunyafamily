@@ -53,3 +53,5 @@ See db/schema.sql.
 In progress, one phase at a time with Mary's OK: Manage people (rename, merge duplicates, aliases), a birthday takeover and "On this day" on Home, HEIC photos from iPhones, importing Mary's existing photos (depends on how they're organized), and prayer requests (not designed yet).
 
 Old scan dates: npm run migrate:scan-dates shows how many early uploads still carry a camera date from scanning. Run with --apply only after Mary's OK.
+
+- Don't end updates with a "still open" list or re-ask past questions (starter family links, tree placements, Keep in prayer, person-page prayers, photo import). Mary will raise anything she wants.
