@@ -356,9 +356,29 @@ function AnswerForm({ r, onClose }: { r: PrayerView; onClose: () => void }) {
   );
 }
 
-export function PrayerBoard({ remembering, active, answered, moreAnswered, earlier, people, me }: {
+/** A compact card for My prayers: who it's for, what's going on, and the gold I'm praying button. */
+function MyCard({ r, me }: { r: PrayerView; me: Me }) {
+  const [shown, set] = useOptimistic(r.praying, r.mine, me);
+  const forName = r.forPerson?.name ?? r.forName;
+  return (
+    <article className="pr-card pr-mine">
+      {forName && <p className="pr-meta"><span>For</span> <strong className="pr-for">{forName}</strong></p>}
+      <h3 className="pr-about">{r.about}</h3>
+      <div className="pr-foot"><PrayButton url={`/api/prayer/${r.id}/praying`} mine={shown.mine} onChange={set} /></div>
+    </article>
+  );
+}
+
+export function PrayerBoard({ remembering, active, answered, moreAnswered, earlier, people, me, tab: startTab }: {
   remembering: Remembering[]; active: PrayerView[]; answered: PrayerView[]; moreAnswered: number; earlier: boolean; people: Person[]; me: Me;
+  tab: "all" | "mine";
 }) {
+  const [tab, setTab] = useState(startTab);
+  const choose = (t: "all" | "mine") => {
+    setTab(t);
+    window.history.replaceState(null, "", t === "mine" ? "/prayer?tab=mine" : "/prayer");
+  };
+  const mine = active.filter((r) => r.mine);
   const [asking, setAsking] = useState(false);
   const [editing, setEditing] = useState<PrayerView | null>(null);
   const [answering, setAnswering] = useState<PrayerView | null>(null);
@@ -366,16 +386,39 @@ export function PrayerBoard({ remembering, active, answered, moreAnswered, earli
 
   return (
     <div className="prayer">
-      <div className="pr-head">
+      <div className={`pr-head${tab === "mine" ? " mine" : ""}`}>
         <div>
           <h1 className="display desktop-only">Prayer requests</h1>
-          <p className="pr-tagline">Tap the &ldquo;Add to my prayers&rdquo; button so they can see your support.</p>
+          {tab === "all" && <p className="pr-tagline">Tap the &ldquo;Add to my prayers&rdquo; button so they can see your support.</p>}
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setAsking(true)}>
+        <button type="button" className={`btn btn-primary${tab === "mine" ? " desktop-only" : ""}`} onClick={() => setAsking(true)}>
           <span className="desktop-only">+ Ask for prayer</span><span className="phone-only">+ Ask</span>
         </button>
       </div>
 
+      <div className="pr-tabs" role="tablist" aria-label="Prayer requests">
+        <button type="button" role="tab" aria-selected={tab === "all"} onClick={() => choose("all")}>All requests</button>
+        <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => choose("mine")}>My prayers · {mine.length}</button>
+      </div>
+
+      {tab === "mine" ? (
+        <div role="tabpanel" aria-label="My prayers">
+          {mine.length > 0 ? (
+            <>
+              <Link href="/prayer/through" className="pr-through">
+                <span className="pr-through-icon" aria-hidden="true">🙏</span>
+                <span><strong>Pray through these</strong><span>One at a time, about {mine.length} {mine.length === 1 ? "minute" : "minutes"}</span></span>
+                <Icon name="chevronRight" size={22} />
+              </Link>
+              {mine.map((r) => <MyCard key={r.id} r={r} me={me} />)}
+            </>
+          ) : (
+            <p className="muted pr-empty pr-mine-empty">Tap Add to my prayers on any request and it will show up here.</p>
+          )}
+          <Link href="/you/reminders" className="pr-remind-link">Text me these reminders</Link>
+        </div>
+      ) : (
+      <div role="tabpanel" aria-label="All requests">
       {remembering.map((r) => <RememberCard key={r.personId} r={r} me={me} />)}
 
       <h2 className="pr-section">Praying now</h2>
@@ -388,6 +431,8 @@ export function PrayerBoard({ remembering, active, answered, moreAnswered, earli
           {moreAnswered > 0 && <Link href="/prayer?earlier=1" className="pr-earlier">See earlier requests</Link>}
           {earlier && <Link href="/prayer" className="pr-earlier">Show fewer</Link>}
         </>
+      )}
+      </div>
       )}
 
       {(asking || editing) && <AskForm people={people} me={me} editing={editing} onClose={() => { setAsking(false); setEditing(null); }} />}

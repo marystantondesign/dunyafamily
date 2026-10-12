@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/sms";
 import type { Metadata } from "next";
 import { Caveat, Figtree, Libre_Caslon_Text } from "next/font/google";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -11,6 +12,7 @@ const sans = Figtree({ subsets: ["latin"], weight: ["400", "500", "600"], variab
 const hand = Caveat({ subsets: ["latin"], weight: "500", variable: "--font-hand" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "Dunya Family",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false, noimageindex: true } },
 };

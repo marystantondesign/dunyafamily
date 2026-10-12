@@ -21,7 +21,7 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/prayer", label: "Prayer", icon: "pray" },
 ];
 // On phones the header shows the section's name where it has one of its own.
-const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"], ["/people", "Family"]];
+const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"], ["/people", "Family"], ["/you/reminders", "Text reminders"]];
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
@@ -82,6 +82,7 @@ function AccountMenu({ me }: { me: Me }) {
           <div className="account-group">
             <Link role="menuitem" href={me.pid ? `/people/${me.pid}` : "/enter/who"}><Icon name="person" size={20} /> Your page</Link>
             <Link role="menuitem" href="/you"><Icon name="gear" size={20} /> Settings</Link>
+            <Link role="menuitem" href="/you/reminders"><Icon name="mail" size={20} /> Text reminders</Link>
             <Link role="menuitem" href="/enter/who"><Icon name="swap" size={20} /> Not {first}? Switch person</Link>
           </div>
           {me.role === "admin" && (
@@ -90,6 +91,7 @@ function AccountMenu({ me }: { me: Me }) {
               <Link role="menuitem" href="/admin/homepage"><Icon name="home" size={20} /> Homepage photos</Link>
               <Link role="menuitem" href="/admin/family"><Icon name="family" size={20} /> Family tree</Link>
               <Link role="menuitem" href="/admin/deleted"><Icon name="trash" size={20} /> Recently deleted</Link>
+              <Link role="menuitem" href="/admin/texts"><Icon name="mail" size={20} /> Texts sent</Link>
               <Link role="menuitem" href="/admin/password"><Icon name="lock" size={20} /> Family password</Link>
             </div>
           )}

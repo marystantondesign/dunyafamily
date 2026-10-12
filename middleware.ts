@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "./lib/session";
 
-const PUBLIC = ["/enter", "/api/enter", "/api/calendar/"];
+// Twilio and the reminder schedule check their own signature or secret. The link preview image and contact
+// picture have nothing private in them.
+const PUBLIC = ["/enter", "/api/enter", "/api/calendar/", "/api/sms/", "/api/cron/", "/share/", "/og-prayer.png", "/contact-icon.png"];
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
@@ -10,6 +12,8 @@ export async function middleware(req: NextRequest) {
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
   if (!session) {
     if (path.startsWith("/api/")) return NextResponse.json({ error: "Enter the family password first." }, { status: 401 });
+    // A link to the prayer page from a text: its preview card (and then the password page) comes from a public stand-in.
+    if (path === "/prayer") return NextResponse.rewrite(new URL(`/share/prayer${req.nextUrl.search}`, req.url));
     const url = new URL("/enter", req.url);
     if (path !== "/") url.searchParams.set("next", path + req.nextUrl.search);
     return NextResponse.redirect(url);

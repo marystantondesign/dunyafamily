@@ -306,3 +306,48 @@ select r.comment_id, r.emoji, r.author_pid, r.created_by_device, r.author_name, 
 
 -- Comments can be edited by whoever wrote them (or Mary). The time it was posted stays; this records the edit.
 alter table photo_comments add column if not exists edited_at timestamptz;
+
+-- Text reminders (round 9). One row per person. Nothing is sent until the phone number is confirmed.
+create table if not exists reminder_settings (
+  person_id int primary key references people(id),
+  phone text,
+  phone_verified_at timestamptz,
+  enabled boolean not null default false,
+  send_time text not null default '07:00',
+  time_zone text not null default 'America/New_York',
+  frequency text not null default 'daily',
+  include_prayers boolean not null default true,
+  include_birthdays boolean not null default true,
+  include_anniversaries boolean not null default true,
+  include_remembrance boolean not null default true,
+  include_answered boolean not null default false,
+  last_sent_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+create index if not exists reminder_settings_phone on reminder_settings (phone);
+
+-- Confirmation codes for a phone number: only a hash is kept. Ten minutes, five tries.
+create table if not exists verification_codes (
+  id serial primary key,
+  person_id int,
+  phone text not null,
+  code_hash text not null,
+  expires_at timestamptz not null,
+  attempts int not null default 0,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists verification_codes_phone on verification_codes (phone, created_at);
+
+-- Every text sent or tried, for the admin page.
+create table if not exists reminder_sends (
+  id serial primary key,
+  person_id int,
+  phone text,
+  kind text not null default 'reminder',
+  body text,
+  status text not null,
+  provider_id text,
+  error text,
+  created_at timestamptz not null default now()
+);

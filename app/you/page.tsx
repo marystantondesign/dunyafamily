@@ -33,6 +33,12 @@ export default async function YouPage() {
           </Link>
         </li>
         <li>
+          <Link href="/you/reminders">
+            <span><strong>Text reminders</strong><span>A short text with your prayers and family dates</span></span>
+            <Icon name="chevronRight" className="chev" />
+          </Link>
+        </li>
+        <li>
           <Link href="/calendar#subscribe">
             <span><strong>Your calendar</strong><span>Add birthdays and gatherings to Google or Apple Calendar</span></span>
             <Icon name="chevronRight" className="chev" />
@@ -59,6 +65,12 @@ export default async function YouPage() {
             <li>
               <Link href="/admin/deleted">
                 <span><strong>Recently deleted</strong><span>Restore photos, people, and events</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/texts">
+                <span><strong>Texts sent</strong><span>Every reminder and code text, and any that failed</span></span>
                 <Icon name="chevronRight" className="chev" />
               </Link>
             </li>

@@ -7,15 +7,17 @@ import { prayerPage } from "@/lib/prayer";
 
 export const dynamic = "force-dynamic";
 
-export default async function PrayerPage({ searchParams }: { searchParams: Promise<{ earlier?: string }> }) {
+export default async function PrayerPage({ searchParams }: { searchParams: Promise<{ earlier?: string; tab?: string }> }) {
   const s = await getSession();
   if (!s) redirect("/enter");
-  const earlier = (await searchParams).earlier === "1";
+  const sp = await searchParams;
+  const earlier = sp.earlier === "1";
   const [data, people, me] = await Promise.all([prayerPage(s, earlier), listPeople(), whoAmI(s)]);
   return (
     <PrayerBoard
       {...data}
       earlier={earlier}
+      tab={sp.tab === "mine" ? "mine" : "all"}
       me={{ name: me.name, avatarUrl: me.avatarUrl }}
       people={people.map((p) => ({ id: p.id, name: p.name, aliases: p.aliases, avatarUrl: p.avatar_url }))}
     />
