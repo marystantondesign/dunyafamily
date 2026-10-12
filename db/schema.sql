@@ -285,3 +285,21 @@ create table if not exists prayer_praying (
 create unique index if not exists prayer_praying_once on prayer_praying (
   coalesce(prayer_request_id, 0), coalesce(remembrance_person_id, 0), coalesce(remembrance_year, 0),
   coalesce('p' || person_id::text, 'd' || device));
+
+-- Comment reactions, any number of emoji per person (like photo reactions). One row per comment, emoji, and person
+-- (or device, before they've said who they are). Replaces comment_reactions, which allowed only one; its rows are
+-- copied here once and the old table is left as it was.
+create table if not exists comment_emoji (
+  id serial primary key,
+  comment_id int not null references photo_comments(id),
+  emoji text not null,
+  person_id int,
+  device text,
+  name text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists comment_emoji_once on comment_emoji (comment_id, emoji, coalesce('p' || person_id::text, 'd' || device));
+insert into comment_emoji (comment_id, emoji, person_id, device, name, created_at)
+select r.comment_id, r.emoji, r.author_pid, r.created_by_device, r.author_name, r.created_at from comment_reactions r
+ where not exists (select 1 from comment_emoji e where e.comment_id = r.comment_id and e.emoji = r.emoji
+                     and coalesce('p' || e.person_id::text, 'd' || e.device) = coalesce('p' || r.author_pid::text, 'd' || r.created_by_device));

@@ -29,7 +29,10 @@ const DECADES = Array.from({ length: 11 }, (_, i) => 1930 + i * 10);
  * Edit details (mockups 4 and 9). Each change saves as you go: names and dates when you leave the field,
  * people, occasions, and albums right away. Same permission rules as before.
  */
-export function PhotoDetails({ d, onDone, tagHref, onRemove }: { d: DetailsData; onDone: () => void; tagHref: string; onRemove?: () => void }) {
+export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onAvatar }: {
+  d: DetailsData; onDone: () => void; tagHref: string; onRemove?: () => void;
+  avatarFor?: { id: number; name: string }[]; onAvatar?: (p: { id: number; name: string }) => void;
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const titleEditable = d.canEditMeta || !d.title;
@@ -50,14 +53,20 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove }: { d: DetailsData;
     else if (last) call("/api/albums", "POST", { title: last, photoIds: [d.photoId] });
   };
 
-  const chips = (list: Chip[], onRemove: (id: number) => void, what: string) => list.length > 0 && (
+  const chips = (list: Chip[], onRemove: (id: number) => void, what: string, avatars = false) => list.length > 0 && (
     <div className="pd-chips">
-      {list.map((c) => (
-        <span key={c.id} className="pd-chip">
-          {c.name}
-          {c.removable && <button type="button" aria-label={`Remove ${c.name} from ${what}`} onClick={() => onRemove(c.id)}>×</button>}
-        </span>
-      ))}
+      {list.map((c) => {
+        const canAvatar = avatars && onAvatar && avatarFor.some((p) => p.id === c.id);
+        return (
+          <span key={c.id} className="pd-chip-row">
+            <span className="pd-chip">
+              {c.name}
+              {c.removable && <button type="button" aria-label={`Remove ${c.name} from ${what}`} onClick={() => onRemove(c.id)}>×</button>}
+            </span>
+            {canAvatar && <button type="button" className="pd-avatar" onClick={() => onAvatar({ id: c.id, name: c.name })}>Use as profile photo</button>}
+          </span>
+        );
+      })}
     </div>
   );
 
@@ -88,7 +97,7 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove }: { d: DetailsData;
 
       <div className="pd-section">
         <span className="label">Who&apos;s here</span>
-        {chips(d.people, (id) => removeTag("person", id), "this photo")}
+        {chips(d.people, (id) => removeTag("person", id), "this photo", true)}
         <TagPicker label="Add someone" hideLabel options={d.allPeople.filter((o) => !d.people.some((p) => p.id === o.id))} value={[]} onChange={addTag("person")} placeholder="Add someone" />
       </div>
 
@@ -135,7 +144,8 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove }: { d: DetailsData;
 
       <div className="pd-foot">
         <a href={tagHref}>Tag many in a row</a>
-        {onRemove && <button type="button" className="pd-remove" onClick={onRemove}>Remove photo</button>}
+        <a href={`/api/photos/${d.photoId}/download`}>Download original</a>
+        {onRemove && <button type="button" className="pd-remove" onClick={onRemove}>Delete photo</button>}
       </div>
     </div>
   );

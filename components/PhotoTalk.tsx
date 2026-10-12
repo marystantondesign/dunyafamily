@@ -1,96 +1,68 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { EmojiPicker } from "./EmojiPicker";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
+import { ReactionPicker } from "./ReactionPicker";
 
 export type Reaction = { emoji: string; count: number; names: string[]; mine: boolean };
 export type Comment = {
   id: number; author: string; body: string; createdAt: string; canDelete: boolean; parentId: number | null; replyTo: string | null;
-  reactions: { emoji: string; count: number }[]; reactors: string[]; mine: string | null;
+  reactions: Reaction[];
 };
-
-const EMOJI = ["❤️", "😂", "😍", "😢", "🙏", "👏"];
-const LABEL: Record<string, string> = { "❤️": "Love", "😂": "Laughing", "😍": "Adore", "😢": "Sad", "🙏": "Grateful", "👏": "Applause" };
 
 const names = (list: string[]) =>
   list.length <= 1 ? list.join("") : list.length === 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
 
-/** Emoji reactions under a photo. Tap one to add yours; tap it again to take it back. */
-export function Reactions({ photoId, reactions, comments, onComments, countOnly }: {
-  photoId: number; reactions: Reaction[]; comments: number; onComments?: () => void; countOnly?: boolean;
+/**
+ * Emoji chips (emoji and count) and a "☺ +" button that opens the picker. Tap a chip to add yours or take it
+ * back; people can add as many different emoji as they like. Used under the photo and under every comment.
+ */
+export function ReactionChips({ url, reactions, small, scope, label = "Add a reaction" }: {
+  url: string; reactions: Reaction[]; small?: boolean; scope: string; label?: string;
 }) {
   const router = useRouter();
   const [picking, setPicking] = useState(false);
-  const [full, setFull] = useState(false);
-  const [busy, setBusy] = useState(false);
   // Shown right away; the page catches up with everyone else's reactions on refresh.
   const [shown, setShown] = useState(reactions);
   useEffect(() => setShown(reactions), [reactions]);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!picking) return;
-    const onDown = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setPicking(false); };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [picking]);
-
-  const closeFull = useCallback(() => setFull(false), []);
-  // Picking from the full panel always adds (or, if it's already yours, takes it back), then closes.
-  const pickFull = useCallback((emoji: string) => { setFull(false); toggleRef.current(emoji); }, []);
-  const toggleRef = useRef<(emoji: string) => void>(() => undefined);
-  toggleRef.current = (emoji: string) => { toggle(emoji); };
+  const addBtn = useRef<HTMLButtonElement>(null);
 
   async function toggle(emoji: string) {
-    setBusy(true);
-    setPicking(false);
     setShown((prev) => {
       const r = prev.find((x) => x.emoji === emoji);
-      if (r?.mine) return prev.map((x) => (x.emoji === emoji ? { ...x, count: x.count - 1, mine: false, names: x.names.slice(0, -1) } : x)).filter((x) => x.count > 0);
+      if (r?.mine) return prev.map((x) => (x.emoji === emoji ? { ...x, count: x.count - 1, mine: false, names: x.names.filter((n) => n !== "You") } : x)).filter((x) => x.count > 0);
       if (r) return prev.map((x) => (x.emoji === emoji ? { ...x, count: x.count + 1, mine: true, names: [...x.names, "You"] } : x));
       return [...prev, { emoji, count: 1, mine: true, names: ["You"] }];
     });
-    await fetch(`/api/photos/${photoId}/reactions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji }) }).catch(() => undefined);
+    await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emoji }) }).catch(() => undefined);
     router.refresh();
-    setBusy(false);
   }
 
   return (
-    <div className="talk-row">
+    <>
       {shown.map((r) => (
-        <button key={r.emoji} type="button" className={`react-chip${r.mine ? " mine" : ""}`} disabled={busy} onClick={() => toggle(r.emoji)}
-          title={names(r.names)} aria-pressed={r.mine} aria-label={`${LABEL[r.emoji] ?? r.emoji}, ${r.count}: ${names(r.names)}${r.mine ? ". Tap to take yours back." : ""}`}>
+        <button key={r.emoji} type="button" className={`react-chip${small ? " small" : ""}${r.mine ? " mine" : ""}`} onClick={() => toggle(r.emoji)}
+          title={names(r.names)} aria-pressed={r.mine} aria-label={`${r.emoji} ${r.count}: ${names(r.names)}${r.mine ? ". Tap to take yours back." : ""}`}>
           <span aria-hidden="true">{r.emoji}</span> {r.count}
         </button>
       ))}
-      <div className="react-add" ref={box}>
-        <button type="button" className="react-chip add" aria-label="Add a reaction" aria-expanded={picking} onClick={() => setPicking(!picking)}>
-          <Icon name="smile" size={18} /><Icon name="plus" size={12} stroke={2.4} />
-        </button>
-        {picking && (
-          <div className="react-palette" role="menu">
-            {EMOJI.map((e) => (
-              <button key={e} type="button" role="menuitem" aria-label={LABEL[e]} title={LABEL[e]} onClick={() => toggle(e)}
-                className={shown.some((r) => r.emoji === e && r.mine) ? "mine" : undefined}>{e}</button>
-            ))}
-            <button type="button" className="react-more" aria-label="More emoji" title="More emoji" onClick={() => { setPicking(false); setFull(true); }}>
-              <Icon name="plus" size={18} stroke={2} />
-            </button>
-          </div>
-        )}
-        {full && (
-          <>
-            <div className="emoji-backdrop" onClick={() => setFull(false)} aria-hidden="true" />
-            <EmojiPicker onPick={pickFull} onClose={closeFull} />
-          </>
-        )}
-      </div>
-      {countOnly ? <span className="talk-count">{comments ? `${comments} ${comments === 1 ? "comment" : "comments"}` : ""}</span>
-        : onComments && (
-          <button type="button" className="talk-comments" onClick={onComments}>
-            <Icon name="comment" size={18} /> {comments ? `${comments} ${comments === 1 ? "comment" : "comments"}` : "Comment"}
-          </button>
-        )}
+      <button ref={addBtn} type="button" className={`react-chip add${small ? " small" : ""}${picking ? " open" : ""}`} aria-label={label} aria-haspopup="dialog" aria-expanded={picking}
+        onClick={() => setPicking(!picking)}>
+        <Icon name="smile" size={small ? 15 : 18} /><Icon name="plus" size={small ? 10 : 12} stroke={2.4} />
+      </button>
+      {picking && addBtn.current && (
+        <ReactionPicker anchor={addBtn.current} within={addBtn.current.closest<HTMLElement>(scope)} mine={shown.filter((r) => r.mine).map((r) => r.emoji)}
+          onPick={(e) => { if (!shown.some((r) => r.emoji === e && r.mine)) toggle(e); }} onClose={() => setPicking(false)} />
+      )}
+    </>
+  );
+}
+
+/** Emoji reactions under a photo. */
+export function Reactions({ photoId, reactions }: { photoId: number; reactions: Reaction[] }) {
+  return (
+    <div className="talk-row">
+      <ReactionChips url={`/api/photos/${photoId}/reactions`} reactions={reactions} scope=".pv-main" />
     </div>
   );
 }
@@ -109,10 +81,6 @@ function ago(iso: string) {
 }
 const full = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 
-const QUICK = ["❤️", "😂", "😮", "😢", "🙏", "👍"];
-/** What the Like button says once you've reacted. */
-const DONE: Record<string, string> = { "❤️": "Loved", "😂": "Haha", "😮": "Wow", "😢": "Sad", "🙏": "Grateful", "👍": "Liked" };
-const QUICK_LABEL: Record<string, string> = { "❤️": "Love", "😂": "Haha", "😮": "Wow", "😢": "Sad", "🙏": "Grateful", "👍": "Like" };
 const SHOWN_REPLIES = 2;
 
 const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
@@ -128,48 +96,15 @@ async function send(url: string, body: unknown) {
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "That didn't post. Try again.");
 }
 
-/** One comment: the bubble, its reactions, and Like, Reply, the time, and Delete. */
+/** One comment: the bubble, then its reactions, Reply, the time, and Delete. */
 function CommentItem({ c, onReply, onError }: { c: Comment; onReply: (c: Comment) => void; onError: (m: string) => void }) {
   const router = useRouter();
-  const [mine, setMine] = useState(c.mine);
-  const [counts, setCounts] = useState(c.reactions);
-  useEffect(() => { setMine(c.mine); setCounts(c.reactions); }, [c.mine, c.reactions]);
-  const [bar, setBar] = useState(false);
-  // The quick reactions open below the comment, or above it when there's no room left in the list.
-  const [up, setUp] = useState(false);
-  const hover = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const press = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pressed = useRef(false);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!bar) return;
-    const list = box.current?.closest(".cm-list"), r = box.current?.getBoundingClientRect();
-    setUp(!!list && !!r && r.bottom + 64 > list.getBoundingClientRect().bottom);
-    const onDown = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setBar(false); };
-    window.addEventListener("pointerdown", onDown);
-    return () => window.removeEventListener("pointerdown", onDown);
-  }, [bar]);
-
-  async function react(emoji: string) {
-    setBar(false);
-    const next = mine === emoji ? null : emoji;
-    setCounts((prev) => {
-      let list = prev.map((r) => (r.emoji === mine ? { ...r, count: r.count - 1 } : r));
-      if (next) list = list.some((r) => r.emoji === next) ? list.map((r) => (r.emoji === next ? { ...r, count: r.count + 1 } : r)) : [...list, { emoji: next, count: 1 }];
-      return list.filter((r) => r.count > 0).sort((a, b) => b.count - a.count);
-    });
-    setMine(next);
-    try { await send(`/api/comments/${c.id}/reactions`, { emoji }); } catch (e) { onError((e as Error).message); }
-    router.refresh();
-  }
   async function remove() {
     if (!confirm("Delete this comment? Mary can bring it back from Recently deleted.")) return;
     const res = await fetch(`/api/comments/${c.id}`, { method: "DELETE" });
     if (!res.ok) onError((await res.json().catch(() => ({}))).error ?? "That didn't work. Try again.");
     router.refresh();
   }
-  const total = counts.reduce((n, r) => n + r.count, 0);
-
   return (
     <div className={`cm${c.parentId ? " reply" : ""}`}>
       <Avatar name={c.author} small={!!c.parentId} />
@@ -177,32 +112,12 @@ function CommentItem({ c, onReply, onError }: { c: Comment; onReply: (c: Comment
         <div className="cm-bubble">
           <p className="cm-author">{c.author}</p>
           <p className="cm-body">{c.replyTo && <span className="cm-mention">{c.replyTo} </span>}{c.body}</p>
-          {total > 0 && (
-            <span className="cm-badge" title={c.reactors.join(", ")} aria-label={`${total} ${total === 1 ? "reaction" : "reactions"}: ${c.reactors.join(", ")}`}>
-              <span aria-hidden="true">{counts.slice(0, 3).map((r) => r.emoji).join("")}</span>{total > 1 && <span aria-hidden="true">{total}</span>}
-            </span>
-          )}
         </div>
-        <div className="cm-actions" ref={box}>
-          <button type="button" className={`cm-like${mine ? " on" : ""}`} aria-pressed={!!mine}
-            onMouseEnter={() => { hover.current = setTimeout(() => setBar(true), 450); }}
-            onMouseLeave={() => { if (hover.current) clearTimeout(hover.current); }}
-            onTouchStart={() => { pressed.current = false; press.current = setTimeout(() => { pressed.current = true; setBar(true); }, 400); }}
-            onTouchEnd={(e) => { if (press.current) clearTimeout(press.current); if (pressed.current) e.preventDefault(); }}
-            onContextMenu={(e) => e.preventDefault()}
-            onClick={() => { if (hover.current) clearTimeout(hover.current); react(mine ?? "❤️"); }}>
-            {mine ? DONE[mine] ?? "Reacted" : "Like"}
-          </button>
-          <button type="button" onClick={() => onReply(c)}>Reply</button>
+        <div className="cm-actions">
+          <ReactionChips small url={`/api/comments/${c.id}/reactions`} reactions={c.reactions} scope=".pv-talk, .pv-talksheet" label={`React to ${c.author}'s comment`} />
+          <button type="button" className="cm-reply" onClick={() => onReply(c)}>Reply</button>
           <time dateTime={c.createdAt} title={full(c.createdAt)}>{ago(c.createdAt)}</time>
           {c.canDelete && <button type="button" className="cm-delete" onClick={remove}>Delete</button>}
-          {bar && (
-            <div className={`cm-quick${up ? " up" : ""}`} role="menu" aria-label="React" onMouseLeave={() => setBar(false)}>
-              {QUICK.map((e) => (
-                <button key={e} type="button" role="menuitem" aria-label={QUICK_LABEL[e]} title={QUICK_LABEL[e]} className={mine === e ? "on" : undefined} onClick={() => react(e)}>{e}</button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
