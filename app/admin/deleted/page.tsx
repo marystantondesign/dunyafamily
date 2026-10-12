@@ -7,7 +7,7 @@ import { listDeleted, type DeletedType } from "@/lib/deleted";
 export const dynamic = "force-dynamic";
 
 const ICON: Record<DeletedType, IconName> = {
-  photo: "photo", person: "person", album: "album", birthday: "cake", gathering: "family", date: "calendar", relationship: "family", comment: "mail", prayer: "pray",
+  photo: "photo", person: "person", album: "album", birthday: "cake", gathering: "family", date: "calendar", relationship: "family", comment: "mail", prayer: "pray", recipe: "pencil", note: "comment",
 };
 
 const when = (d: string) => {

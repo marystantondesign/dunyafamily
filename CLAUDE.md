@@ -46,6 +46,7 @@ See db/schema.sql.
 - photos.title: an optional photo name. Without one, the occasion and year show. (photos.caption is the old note; notes were copied into comments.)
 - photo_comments (soft delete, restorable) and photo_reactions (any single emoji, one of each per device; removing one is a hard delete of that row).
 - homepage_photos: up to 10 photos with captions and positions for the Home Polaroid; settings.homepage_interval is the speed.
+- recipes and recipe_notes (round 11, soft delete, restorable): the recipe box. Not a nav tab; the way in is the Home card. person_id links to the tree, from_name is anyone else. "Sort it out for me" (app/api/recipes/parse) uses the Anthropic SDK on the server with ANTHROPIC_API_KEY; without the key people fill the form by hand.
 - settings: key and value (home_photo_id from before homepage_photos, homepage_interval, family password hash and version).
 
 ## Roadmap

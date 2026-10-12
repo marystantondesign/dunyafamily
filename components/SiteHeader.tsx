@@ -21,7 +21,13 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/prayer", label: "Prayer", icon: "pray" },
 ];
 // On phones the header shows the section's name where it has one of its own.
-const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"], ["/people", "Family"], ["/you/reminders", "Text reminders"]];
+const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"], ["/people", "Family"], ["/you/reminders", "Text reminders"], ["/recipes", "Recipes"]];
+// Pages a level down, where phones show a back arrow in place of the avatar.
+const phoneBack = (path: string) => {
+  const m = path.match(/^\/recipes\/(\d+)\/edit$/);
+  if (m) return `/recipes/${m[1]}`;
+  return /^\/recipes\/[^/]+$/.test(path) ? "/recipes" : null;
+};
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
@@ -115,12 +121,14 @@ export function SiteHeader({ me }: { me: Me }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [adding]);
   // Tagging has its own Previous, Skip, and Save bar at the bottom on phones, in place of the tabs.
+  const back = phoneBack(path);
   const tagging = path.startsWith("/tag") || path.startsWith("/photos/") || path.startsWith("/slideshow");
 
   return (
     <>
       <header className="site-header">
-        <div className="site-header-inner">
+        <div className={`site-header-inner${back ? " has-back" : ""}`}>
+          {back && <Link href={back} className="icon-btn phone-back" aria-label="Back"><Icon name="chevronLeft" size={22} stroke={1.8} /></Link>}
           <Link href="/" className="brand">Dunya Family</Link>
           <Link href="/" className="phone-title">{PHONE_TITLES.find(([href]) => current(path, href))?.[1] ?? "Dunya Family"}</Link>
           <nav aria-label="Main" className="main-nav">

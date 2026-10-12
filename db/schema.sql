@@ -354,3 +354,37 @@ create table if not exists reminder_sends (
 
 -- Gatherings can run several days (round 10): the last day, when it isn't the same as the first.
 alter table gatherings add column if not exists end_date date;
+
+-- Recipes (round 11). The recipe box: one row per recipe card. person_id links to someone in the tree; from_name is for anyone else.
+create table if not exists recipes (
+  id serial primary key,
+  title text not null,
+  person_id int references people(id),
+  from_name text,
+  intro text,
+  servings text,
+  ingredients jsonb not null default '[]'::jsonb,
+  steps jsonb not null default '[]'::jsonb,
+  card_photo_key text,
+  added_by_name text,
+  added_by_device text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by_name text
+);
+
+-- Notes from the family under a recipe. No replies or reactions.
+create table if not exists recipe_notes (
+  id serial primary key,
+  recipe_id int not null references recipes(id),
+  author_name text,
+  author_device text,
+  author_person_id int,
+  text text not null,
+  photo_key text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by_name text
+);
+create index if not exists recipe_notes_recipe on recipe_notes (recipe_id, created_at);

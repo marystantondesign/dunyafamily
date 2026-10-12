@@ -5,6 +5,9 @@ import { Halo } from "@/components/Halo";
 import { HeroPolaroid } from "@/components/HeroPolaroid";
 import { birthdaysToday, everyone, featuredCollections, heroSlides, HOME_COPY, onThisDay } from "@/lib/home";
 import { Gallery } from "@/components/Gallery";
+import { BookSketch, RecipeBoxSketch } from "@/components/Sketches";
+import { Icon } from "@/components/Icon";
+import { recipeCount } from "@/lib/recipes";
 import { whenLabel } from "@/lib/when";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +15,7 @@ export const dynamic = "force-dynamic";
 const photos = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
 
 export default async function Home() {
-  const [hero, collections, people, bdays, past] = await Promise.all([heroSlides(), featuredCollections(), everyone(), birthdaysToday(), onThisDay()]);
+  const [hero, collections, people, bdays, past, recipes] = await Promise.all([heroSlides(), featuredCollections(), everyone(), birthdaysToday(), onThisDay(), recipeCount()]);
 
   // Birthday takeover: on someone's birthday the hero is theirs, fading through photos of them across the years.
   const celebrating = bdays.filter((b) => !b.inMemory);
@@ -68,6 +71,31 @@ export default async function Home() {
           <Link href="/upload" className="btn btn-primary">Add photos</Link>
         </section>
       )}
+
+      {/* Recipes and In Her Words. In Her Words is a card only for now: its stories pages aren't designed yet. */}
+      <section className="home-keep" aria-label="Recipes and stories">
+        <div className="hk-card">
+          <Link href="/recipes" className="hk-art" tabIndex={-1} aria-hidden="true"><RecipeBoxSketch height={132} /></Link>
+          <div className="hk-text">
+            <h2><Link href="/recipes" className="hk-link">Recipes</Link></h2>
+            <p>
+              <span className="desktop-only">{recipes ? `${recipes} ${recipes === 1 ? "recipe" : "recipes"} in the box` : "Start the recipe box"}</span>
+              <span className="phone-only">{recipes ? `${recipes} ${recipes === 1 ? "recipe" : "recipes"}` : "Start the box"}</span>
+            </p>
+            <div className="hk-actions">
+              <Link href="/recipes" className="btn btn-primary">Open the box</Link>
+              <Link href="/recipes/new" className="btn"><Icon name="plus" size={16} stroke={2} />Add a recipe</Link>
+            </div>
+          </div>
+        </div>
+        <div className="hk-card soon">
+          <div className="hk-art"><BookSketch height={132} /></div>
+          <div className="hk-text">
+            <h2>In Her Words</h2>
+            <p>Coming soon</p>
+          </div>
+        </div>
+      </section>
 
       {past.length > 0 && (
         <section className="on-this-day">

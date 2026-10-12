@@ -3,7 +3,7 @@ import { byName, displayName } from "./names";
 import { monthDay } from "./people";
 import { signGet } from "./r2";
 
-export const RESTORABLE = ["photo", "person", "album", "birthday", "gathering", "date", "relationship", "comment", "prayer"] as const;
+export const RESTORABLE = ["photo", "person", "album", "birthday", "gathering", "date", "relationship", "comment", "prayer", "recipe", "note"] as const;
 export type DeletedType = (typeof RESTORABLE)[number];
 export type DeletedItem = {
   type: DeletedType; id: number; title: string; sub: string; deletedAt: string; deletedBy: string | null; thumbUrl: string | null;
@@ -14,7 +14,7 @@ const recent = (t: string) => `${t}.deleted_at is not null and ${t}.deleted_at >
 
 /** Everything removed in the last 30 days, newest first. Older things are still in the database, just not listed. */
 export async function listDeleted(): Promise<DeletedItem[]> {
-  const [photos, people, albums, birthdays, gatherings, dates, rels, comments, prayers] = await Promise.all([
+  const [photos, people, albums, birthdays, gatherings, dates, rels, comments, prayers, recipes, notes] = await Promise.all([
     q<{ id: number; thumb_key: string; year: number | null; uploaded_by_name: string | null; deleted_at: string; deleted_by_name: string | null }>(
       `select p.id, p.thumb_key, p.year, p.uploaded_by_name, p.deleted_at, p.deleted_by_name from photos p where ${recent("p")}`),
     q<{ id: number; name: string; deleted_at: string; deleted_by_name: string | null }>(
@@ -36,6 +36,10 @@ export async function listDeleted(): Promise<DeletedItem[]> {
       `select c.id, c.body, c.author_name, c.photo_id, c.deleted_at, c.deleted_by_name from photo_comments c where ${recent("c")}`),
     q<{ id: number; about: string; posted_by_name: string | null; deleted_at: string; deleted_by_name: string | null }>(
       `select r.id, r.about, r.posted_by_name, r.deleted_at, r.deleted_by_name from prayer_requests r where ${recent("r")}`),
+    q<{ id: number; title: string; added_by_name: string | null; deleted_at: string; deleted_by_name: string | null }>(
+      `select r.id, r.title, r.added_by_name, r.deleted_at, r.deleted_by_name from recipes r where ${recent("r")}`).catch(() => []),
+    q<{ id: number; text: string; author_name: string | null; title: string; deleted_at: string; deleted_by_name: string | null }>(
+      `select n.id, n.text, n.author_name, r.title, n.deleted_at, n.deleted_by_name from recipe_notes n join recipes r on r.id = n.recipe_id where ${recent("n")}`).catch(() => []),
   ]);
   const items: DeletedItem[] = [
     ...(await Promise.all(photos.map(async (p) => ({
@@ -63,12 +67,20 @@ export async function listDeleted(): Promise<DeletedItem[]> {
       type: "prayer" as const, id: r.id, title: `Prayer request from ${byName(r.posted_by_name)}`, sub: r.about.length > 90 ? `${r.about.slice(0, 90)}...` : r.about,
       deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
     })),
+    ...recipes.map((r) => ({
+      type: "recipe" as const, id: r.id, title: r.title, sub: `Recipe, added by ${byName(r.added_by_name)}`,
+      deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
+    })),
+    ...notes.map((n) => ({
+      type: "note" as const, id: n.id, title: `Note by ${byName(n.author_name)} on ${n.title}`, sub: n.text.length > 90 ? `${n.text.slice(0, 90)}...` : n.text,
+      deletedAt: n.deleted_at, deletedBy: n.deleted_by_name ? displayName(n.deleted_by_name) : null, thumbUrl: null,
+    })),
   ];
   return items.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
 }
 
 const TABLE: Record<DeletedType, string> = {
-  photo: "photos", person: "people", album: "albums", birthday: "birthdays", gathering: "gatherings", date: "person_dates", relationship: "relationships", comment: "photo_comments", prayer: "prayer_requests",
+  photo: "photos", person: "people", album: "albums", birthday: "birthdays", gathering: "gatherings", date: "person_dates", relationship: "relationships", comment: "photo_comments", prayer: "prayer_requests", recipe: "recipes", note: "recipe_notes",
 };
 
 /** Put something back. Returns a reason when it can't come back as it was. */
@@ -90,6 +102,10 @@ export async function restore(type: DeletedType, id: number): Promise<string | n
   if (type === "date") {
     const [gone] = await q(`select 1 from person_dates d join people pe on pe.id = d.person_id where d.id = $1 and pe.deleted_at is not null`, [id]);
     if (gone) return "Restore the person first.";
+  }
+  if (type === "note") {
+    const [gone] = await q(`select 1 from recipe_notes n join recipes r on r.id = n.recipe_id where n.id = $1 and r.deleted_at is not null`, [id]);
+    if (gone) return "Restore the recipe first.";
   }
   if (type === "relationship") {
     const [dup] = await q(
