@@ -252,3 +252,36 @@ alter table people add column if not exists birth_year int;
 alter table people add column if not exists birth_order int;
 -- 'spouse' or 'partner' on partner links. Sibling links (kind 'sibling', lower id first) cover brothers and sisters whose parents aren't in the tree.
 alter table relationships add column if not exists label text;
+
+-- Prayer requests. "For" is a person on the site, a typed name, or nobody. Removing one is a soft delete.
+create table if not exists prayer_requests (
+  id serial primary key,
+  for_person_id int references people(id),
+  for_name text,
+  about text not null,
+  how_to_pray text,
+  posted_by_person_id int,
+  posted_by_device text,
+  posted_by_name text,
+  created_at timestamptz not null default now(),
+  answered_at timestamptz,
+  answer_update text,
+  deleted_at timestamptz,
+  deleted_by_name text
+);
+
+-- Who is praying. A row is for a request, or for remembering someone on their day of remembrance in a given year
+-- (so each year's list starts fresh). Tapping again removes the row. One per person (or device, before they've said who they are).
+create table if not exists prayer_praying (
+  id serial primary key,
+  prayer_request_id int references prayer_requests(id),
+  remembrance_person_id int references people(id),
+  remembrance_year int,
+  person_id int,
+  device text,
+  name text,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists prayer_praying_once on prayer_praying (
+  coalesce(prayer_request_id, 0), coalesce(remembrance_person_id, 0), coalesce(remembrance_year, 0),
+  coalesce('p' || person_id::text, 'd' || device));

@@ -3,7 +3,7 @@ import { byName, displayName } from "./names";
 import { monthDay } from "./people";
 import { signGet } from "./r2";
 
-export const RESTORABLE = ["photo", "person", "album", "birthday", "gathering", "date", "relationship", "comment"] as const;
+export const RESTORABLE = ["photo", "person", "album", "birthday", "gathering", "date", "relationship", "comment", "prayer"] as const;
 export type DeletedType = (typeof RESTORABLE)[number];
 export type DeletedItem = {
   type: DeletedType; id: number; title: string; sub: string; deletedAt: string; deletedBy: string | null; thumbUrl: string | null;
@@ -14,7 +14,7 @@ const recent = (t: string) => `${t}.deleted_at is not null and ${t}.deleted_at >
 
 /** Everything removed in the last 30 days, newest first. Older things are still in the database, just not listed. */
 export async function listDeleted(): Promise<DeletedItem[]> {
-  const [photos, people, albums, birthdays, gatherings, dates, rels, comments] = await Promise.all([
+  const [photos, people, albums, birthdays, gatherings, dates, rels, comments, prayers] = await Promise.all([
     q<{ id: number; thumb_key: string; year: number | null; uploaded_by_name: string | null; deleted_at: string; deleted_by_name: string | null }>(
       `select p.id, p.thumb_key, p.year, p.uploaded_by_name, p.deleted_at, p.deleted_by_name from photos p where ${recent("p")}`),
     q<{ id: number; name: string; deleted_at: string; deleted_by_name: string | null }>(
@@ -34,6 +34,8 @@ export async function listDeleted(): Promise<DeletedItem[]> {
          join people pa on pa.id = r.person_id join people pb on pb.id = r.related_id where ${recent("r")}`),
     q<{ id: number; body: string; author_name: string | null; photo_id: number; deleted_at: string; deleted_by_name: string | null }>(
       `select c.id, c.body, c.author_name, c.photo_id, c.deleted_at, c.deleted_by_name from photo_comments c where ${recent("c")}`),
+    q<{ id: number; about: string; posted_by_name: string | null; deleted_at: string; deleted_by_name: string | null }>(
+      `select r.id, r.about, r.posted_by_name, r.deleted_at, r.deleted_by_name from prayer_requests r where ${recent("r")}`),
   ]);
   const items: DeletedItem[] = [
     ...(await Promise.all(photos.map(async (p) => ({
@@ -57,12 +59,16 @@ export async function listDeleted(): Promise<DeletedItem[]> {
       type: "comment" as const, id: c.id, title: `Comment by ${byName(c.author_name)}`, sub: c.body.length > 90 ? `${c.body.slice(0, 90)}...` : c.body,
       deletedAt: c.deleted_at, deletedBy: c.deleted_by_name ? displayName(c.deleted_by_name) : null, thumbUrl: null,
     })),
+    ...prayers.map((r) => ({
+      type: "prayer" as const, id: r.id, title: `Prayer request from ${byName(r.posted_by_name)}`, sub: r.about.length > 90 ? `${r.about.slice(0, 90)}...` : r.about,
+      deletedAt: r.deleted_at, deletedBy: r.deleted_by_name ? displayName(r.deleted_by_name) : null, thumbUrl: null,
+    })),
   ];
   return items.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
 }
 
 const TABLE: Record<DeletedType, string> = {
-  photo: "photos", person: "people", album: "albums", birthday: "birthdays", gathering: "gatherings", date: "person_dates", relationship: "relationships", comment: "photo_comments",
+  photo: "photos", person: "people", album: "albums", birthday: "birthdays", gathering: "gatherings", date: "person_dates", relationship: "relationships", comment: "photo_comments", prayer: "prayer_requests",
 };
 
 /** Put something back. Returns a reason when it can't come back as it was. */

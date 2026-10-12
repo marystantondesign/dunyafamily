@@ -12,6 +12,8 @@ const PATHS: Record<string, React.ReactNode> = {
   link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
   chevronRight: <path d="M9 6l6 6-6 6" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  // Praying hands: two palms meeting at the fingertips, wrists apart.
+  pray: <><path d="M12 3.5c-1.3 1.7-2.2 4.4-2.2 7.2v3.6l-3.9 4 1.8 2.2 3.8-3.4c.3-.3.5-.7.5-1.2z" /><path d="M12 3.5c1.3 1.7 2.2 4.4 2.2 7.2v3.6l3.9 4-1.8 2.2-3.8-3.4c-.3-.3-.5-.7-.5-1.2" /><path d="M9.8 11.5 7.6 13.4M14.2 11.5l2.2 1.9" /></>,
   chevronUp: <path d="M6 15l6-6 6 6" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,

@@ -9,6 +9,7 @@ const NAV: { href: string; label: string; also?: string }[] = [
   { href: "/browse", label: "Browse" },
   { href: "/people", label: "Family" },
   { href: "/calendar", label: "Birthdays & gatherings" },
+  { href: "/prayer", label: "Prayer requests" },
   { href: "/upload", label: "Add photos", also: "/tag" },
 ];
 
@@ -17,7 +18,10 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/browse", label: "Browse", icon: "search" },
   { href: "/people", label: "Family", icon: "family" },
   { href: "/calendar", label: "Calendar", icon: "calendar" },
+  { href: "/prayer", label: "Prayer", icon: "pray" },
 ];
+// On phones the header shows the section's name where it has one of its own.
+const PHONE_TITLES: [string, string][] = [["/prayer", "Prayer requests"]];
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
   { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
@@ -116,7 +120,7 @@ export function SiteHeader({ me }: { me: Me }) {
       <header className="site-header">
         <div className="site-header-inner">
           <Link href="/" className="brand">Dunya Family</Link>
-          <Link href="/" className="phone-title">Dunya Family</Link>
+          <Link href="/" className="phone-title">{PHONE_TITLES.find(([href]) => current(path, href))?.[1] ?? "Dunya Family"}</Link>
           <nav aria-label="Main" className="main-nav">
             {NAV.map((n) => (
               <Link key={n.href} href={n.href} aria-current={current(path, n.href) || (n.also && current(path, n.also)) ? "page" : undefined}>{n.label}</Link>

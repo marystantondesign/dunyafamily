@@ -102,7 +102,7 @@ export async function everyone(): Promise<Member[]> {
 /** The family's time zone, so "today" on Home turns over at their midnight, not the server's. */
 export const FAMILY_TZ = "America/New_York";
 
-function today(now = new Date()) {
+export function today(now = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: FAMILY_TZ, year: "numeric", month: "numeric", day: "numeric" })
     .formatToParts(now).map((p) => [p.type, p.value]));
   return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day) };
