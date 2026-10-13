@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "./lib/session";
 
 // Twilio and the reminder schedule check their own signature or secret. The link preview image and contact
-// picture have nothing private in them.
-const PUBLIC = ["/enter", "/api/enter", "/api/calendar/", "/api/sms/", "/api/cron/", "/share/", "/og-prayer.png", "/contact-icon.png"];
+// picture have nothing private in them, and neither do the app icons and manifest, which Add to Home Screen fetches before anyone signs in.
+const PUBLIC = ["/enter", "/api/enter", "/api/calendar/", "/api/sms/", "/api/cron/", "/share/", "/og-prayer.png", "/contact-icon.png",
+  "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png", "/favicon.ico"];
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;

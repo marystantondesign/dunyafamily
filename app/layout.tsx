@@ -1,5 +1,5 @@
 import { siteUrl } from "@/lib/sms";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Caveat, Figtree, Libre_Caslon_Text } from "next/font/google";
 import { SiteHeader } from "@/components/SiteHeader";
 import { redirect } from "next/navigation";
@@ -14,8 +14,17 @@ const hand = Caveat({ subsets: ["latin"], weight: "500", variable: "--font-hand"
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: "Dunya Family",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/favicon.ico", sizes: "48x48" }],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: { capable: true, title: "Dunya Fam" },
+  // Next writes the newer mobile-web-app-capable tag; older iPhones still look for the Apple one.
+  other: { "apple-mobile-web-app-capable": "yes" },
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false, noimageindex: true } },
 };
+
+export const viewport: Viewport = { themeColor: "#FBF7F0" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { session: s, stale } = await sessionState();
