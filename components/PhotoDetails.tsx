@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HomepageToggle } from "./HomepageToggle";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
@@ -21,6 +21,8 @@ export type DetailsData = {
   allOccasions: Option[];
   allAlbums: Option[];
   homepage: { entry: { caption: string } | null; used: number } | null;
+  /** Tagging needed: whether it's marked, and whether this visitor can take the mark off. */
+  taggingNeeded: { on: boolean; canClear: boolean };
 };
 
 const DECADES = Array.from({ length: 11 }, (_, i) => 1930 + i * 10);
@@ -29,12 +31,23 @@ const DECADES = Array.from({ length: 11 }, (_, i) => 1930 + i * 10);
  * Edit details (mockups 4 and 9). Each change saves as you go: names and dates when you leave the field,
  * people, occasions, and albums right away. Same permission rules as before.
  */
-export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onAvatar }: {
+export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onAvatar, helping, onThanks }: {
   d: DetailsData; onDone: () => void; tagHref: string; onRemove?: () => void;
   avatarFor?: { id: number; name: string }[]; onAvatar?: (p: { id: number; name: string }) => void;
+  /** Opened from "Yes, I'll tag them": go straight to adding people. */
+  helping?: boolean;
+  /** After "Yes, that's everyone". */
+  onThanks?: () => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
+  // After someone tags a "Tagging needed" photo, ask once whether that's everyone.
+  const [ask, setAsk] = useState<"no" | "open" | "done">("no");
+  // The Tagging needed box changes at once, then follows what's saved.
+  const [flagOn, setFlagOn] = useState(d.taggingNeeded.on);
+  useEffect(() => setFlagOn(d.taggingNeeded.on), [d.taggingNeeded.on]);
+  const who = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (helping) who.current?.querySelector("input")?.focus(); }, [helping]);
   const titleEditable = d.canEditMeta || !d.title;
   const yearEditable = d.canEditMeta || d.year === null;
 
@@ -45,7 +58,20 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onA
     router.refresh();
   }
   const patch = (body: Record<string, unknown>) => call(`/api/photos/${d.photoId}`, "PATCH", body);
-  const addTag = (kind: "person" | "occasion") => (v: Picked[]) => { const last = v[v.length - 1]; if (last !== undefined) call(`/api/photos/${d.photoId}/tags`, "POST", { kind, value: last }); };
+  const addTag = (kind: "person" | "occasion") => (v: Picked[]) => {
+    const last = v[v.length - 1];
+    if (last === undefined) return;
+    call(`/api/photos/${d.photoId}/tags`, "POST", { kind, value: last });
+    if (kind === "person" && flagOn && ask === "no") setAsk("open");
+  };
+  async function everyone() {
+    setError("");
+    const res = await fetch(`/api/photos/${d.photoId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taggingNeeded: false, everyone: true }) });
+    if (!res.ok) return setError((await res.json().catch(() => ({}))).error ?? "That didn't save. Try again.");
+    setAsk("done");
+    onThanks?.();
+    router.refresh();
+  }
   const removeTag = (kind: "person" | "occasion", id: number) => call(`/api/photos/${d.photoId}/tags`, "DELETE", { kind, value: id });
   const addAlbum = (v: Picked[]) => {
     const last = v[v.length - 1];
@@ -95,10 +121,28 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onA
         <span className="pd-added">{d.addedBy}</span>
       </div>
 
-      <div className="pd-section">
+      <div className="pd-section" ref={who}>
         <span className="label">Who&apos;s here</span>
         {chips(d.people, (id) => removeTag("person", id), "this photo", true)}
         <TagPicker label="Add someone" hideLabel options={d.allPeople.filter((o) => !d.people.some((p) => p.id === o.id))} value={[]} onChange={addTag("person")} placeholder="Add someone" />
+        {ask === "open" && (
+          <div className="tn-ask" role="group" aria-label="Is that everyone?">
+            <strong>Is that everyone?</strong>
+            <div className="tn-ask-btns">
+              <button type="button" className="btn btn-primary" onClick={everyone}>Yes, that&apos;s everyone</button>
+              <button type="button" className="btn" onClick={() => setAsk("done")}>Still some I don&apos;t know</button>
+            </div>
+          </div>
+        )}
+        <label className="tn-check">
+          <input type="checkbox" checked={flagOn} disabled={d.taggingNeeded.on && !d.taggingNeeded.canClear}
+            onChange={(e) => { setFlagOn(e.target.checked); patch({ taggingNeeded: e.target.checked }); }} />
+          <span><strong>Tagging needed</strong>
+            <span className="hint">{d.taggingNeeded.on && !d.taggingNeeded.canClear
+              ? "Only the person who marked this, or Mary, can take this off."
+              : "There's someone here nobody has named yet."}</span>
+          </span>
+        </label>
       </div>
 
       <div className="pd-section">

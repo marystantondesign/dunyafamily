@@ -9,11 +9,11 @@ type Tag = { id: Picked; removable: boolean };
 type TagIn = { id: number; removable: boolean };
 export type TagPhoto = {
   id: number; width: number | null; height: number | null; year: number | null; decade: number | null;
-  owner: boolean; people: TagIn[]; occasions: TagIn[]; thumb: string; url: string;
+  owner: boolean; people: TagIn[]; occasions: TagIn[]; thumb: string; url: string; tagging_needed: boolean;
 };
 type PersonOption = { id: number; name: string; aliases: string[]; avatar_url: string | null };
 type OccasionOption = { id: number; name: string };
-type Draft = { people: Tag[]; occasions: Tag[]; year: number | null; decade: number | null; yearText: string };
+type Draft = { people: Tag[]; occasions: Tag[]; year: number | null; decade: number | null; yearText: string; needed: boolean };
 
 const SHORTCUTS = 9;
 const DECADES = Array.from({ length: 10 }, (_, i) => 1930 + i * 10);
@@ -23,10 +23,10 @@ const OTHER = "__other";
 const LOCKED = "Only the person who added this, or Mary, can remove it.";
 
 const fromPhoto = (p: TagPhoto): Draft => ({
-  people: p.people, occasions: p.occasions, year: p.year, decade: p.decade, yearText: p.year ? String(p.year) : "",
+  people: p.people, occasions: p.occasions, year: p.year, decade: p.decade, yearText: p.year ? String(p.year) : "", needed: p.tagging_needed,
 });
 const key = (tags: Tag[]) => tags.map((t) => String(t.id)).sort().join(",");
-const same = (a: Draft, b: Draft) => key(a.people) === key(b.people) && key(a.occasions) === key(b.occasions) && a.year === b.year && a.decade === b.decade;
+const same = (a: Draft, b: Draft) => key(a.people) === key(b.people) && key(a.occasions) === key(b.occasions) && a.year === b.year && a.decade === b.decade && a.needed === b.needed;
 const has = (tags: Tag[], id: Picked) => tags.some((t) => t.id === id);
 
 function store(k: string, v: string | null) {
@@ -115,14 +115,14 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
       try {
         const res = await fetch(`/api/photos/${id}/tagging`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ people: d.people.map((t) => t.id), occasions: d.occasions.map((t) => t.id), year: d.year, decade: d.decade }),
+          body: JSON.stringify({ people: d.people.map((t) => t.id), occasions: d.occasions.map((t) => t.id), year: d.year, decade: d.decade, taggingNeeded: d.needed }),
         });
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
-        const out = (await res.json()) as { people: (TagIn & { name: string })[]; occasions: (TagIn & { name: string })[]; year: number | null; decade: number | null };
+        const out = (await res.json()) as { people: (TagIn & { name: string })[]; occasions: (TagIn & { name: string })[]; year: number | null; decade: number | null; taggingNeeded: boolean };
         const next: Draft = {
           people: out.people.map(({ id, removable }) => ({ id, removable })),
           occasions: out.occasions.map(({ id, removable }) => ({ id, removable })),
-          year: out.year, decade: out.decade, yearText: out.year ? String(out.year) : "",
+          year: out.year, decade: out.decade, yearText: out.year ? String(out.year) : "", needed: out.taggingNeeded,
         };
         setKnownPeople((list) => [...list, ...out.people.filter((p) => !list.some((x) => x.id === p.id)).map((p) => ({ id: p.id, name: p.name, aliases: [], avatar_url: null }))]);
         setKnownOcc((list) => [...list, ...out.occasions.filter((o) => !list.some((x) => x.id === o.id)).map((o) => ({ id: o.id, name: o.name }))]);
@@ -320,6 +320,13 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
             {index > 0 && (
               <button type="button" className="link-btn plum" onClick={sameAsLast}>Same people as last photo</button>
             )}
+            <label className="not-sure">
+              <input type="checkbox" checked={draft.needed} onChange={(e) => edit((d) => ({ ...d, needed: e.target.checked }))} />
+              <span>
+                <strong>I&apos;m not sure who this is!</strong>
+                <span>Checking the box marks this photo as &ldquo;<em>Tagging needed</em>&rdquo; so someone else can help.</span>
+              </span>
+            </label>
           </section>
 
           <div className="tag-fields">

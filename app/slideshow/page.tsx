@@ -39,6 +39,7 @@ export default async function SlideshowPage({ searchParams }: { searchParams: Pr
     ...(sp.month ? [`${MONTHS[Number(sp.month) - 1]}s`] : []),
     ...(sp.season ? [`${sp.season}s`] : []),
     ...(filters.favoritesOf ? ["Your favorites"] : []),
+    ...(filters.taggingNeeded ? ["Tagging needed"] : []),
     ...(filters.untagged ? ["Needs tags"] : []),
     ...(filters.batch ? ["One upload"] : []),
   ].filter((c): c is string => !!c);

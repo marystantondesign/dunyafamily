@@ -19,13 +19,14 @@ export function filtersFrom(sp: SP, occasions: Occasion[], pid?: number): Filter
     albums: ids(sp.albums),
     // With no one picked there are no favorites to show, so the filter matches nothing.
     favoritesOf: sp.favorites === "1" ? pid ?? -1 : undefined,
+    taggingNeeded: sp.tagging === "1",
   };
   if (sp.season && seasonMonths(sp.season))
     f.season = { months: seasonMonths(sp.season), occasionId: occasions.find((o) => o.name === sp.season)?.id };
   return f;
 }
 
-const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "favorites", "order"];
+const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "favorites", "tagging", "order"];
 const ORDERS = new Set(["oldest", "newest", "recent", "shuffled", "favorited"]);
 
 /** Just the filter params, in a stable order, for links and for remembering a place. */
@@ -37,10 +38,10 @@ export function filterQuery(sp: SP) {
 
 /** Whether any filter is on. With none, browse shows everything shuffled. */
 export const hasFilters = (f: Filters) =>
-  !!(f.people?.length || f.occasions?.length || f.decades?.length || f.decade || f.year || f.months?.length || f.season || f.untagged || f.batch || f.albums?.length || f.favoritesOf);
+  !!(f.people?.length || f.occasions?.length || f.decades?.length || f.decade || f.year || f.months?.length || f.season || f.untagged || f.batch || f.albums?.length || f.favoritesOf || f.taggingNeeded);
 
-/** Favorites on their own count as a view of everything you starred, so they shuffle like the full set does. */
-const onlyFavorites = (f: Filters) => !!f.favoritesOf && !hasFilters({ ...f, favoritesOf: undefined });
+/** Favorites or Tagging needed on their own are a whole pile to look through, so they shuffle like the full set does. */
+const onlyFavorites = (f: Filters) => !!(f.favoritesOf || f.taggingNeeded) && !hasFilters({ ...f, favoritesOf: undefined, taggingNeeded: undefined });
 
 /** The order a view gets when nobody picked one: shuffled with no filters (or just favorites), newest first with filters. */
 export const defaultOrder = (f: Filters): Order => (!hasFilters(f) || onlyFavorites(f) ? "shuffled" : "newest");

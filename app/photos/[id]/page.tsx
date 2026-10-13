@@ -12,6 +12,7 @@ import { shuffleSeed } from "@/lib/shuffle";
 import { neighbors, whenLabel, type PhotoRow } from "@/lib/photos";
 import { signGet } from "@/lib/r2";
 import { isFavorite } from "@/lib/favorites";
+import { canClearFlag } from "@/lib/taggingNeeded";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   // A photo name wins. Otherwise the occasion and year, like "NYC, 2026".
   const fallback = [occasionTags[0]?.name, when].filter(Boolean).join(", ");
   const title = (photo as PhotoRow & { title: string | null }).title || fallback || "Date unknown";
+  const flag = photo as PhotoRow & { tagging_needed?: boolean; tagging_needed_by: number | null; tagging_needed_by_device: string | null };
   const added = new Date(photo.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
@@ -101,6 +103,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
         allOccasions: occasions.map(({ id, name }) => ({ id, name })),
         allAlbums: albums.map((a) => ({ id: a.id, name: a.title })),
         homepage: admin ? { entry: hpEntry, used: hpUsed } : null,
+        taggingNeeded: { on: !!flag.tagging_needed, canClear: canClearFlag(s, { by: flag.tagging_needed_by, byDevice: flag.tagging_needed_by_device }) },
       }}
     />
   );

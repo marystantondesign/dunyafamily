@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { badRequest, canRemove, forbidden, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { resolveOccasions, resolvePeople } from "@/lib/tags";
+import { setTaggingNeeded } from "@/lib/taggingNeeded";
 
 type Ctx = { params: Promise<{ id: string }> };
-type Body = { people: (number | string)[]; occasions: (number | string)[]; year: number | null; decade: number | null };
+type Body = { people: (number | string)[]; occasions: (number | string)[]; year: number | null; decade: number | null; taggingNeeded?: boolean };
 
 /**
  * Tagging mode saves a whole photo in one call: who's here, the occasions, and when.
@@ -54,6 +55,9 @@ export async function POST(req: Request, { params }: Ctx) {
   if (occasionIds.length)
     await q(`insert into photo_occasions (photo_id, occasion_id, added_by_device) select $1, unnest($2::int[]), $3 on conflict do nothing`, [id, occasionIds, s.did]);
   if (yearChanged || decadeChanged) await q(`update photos set year = $1, decade = $2 where id = $3`, [year, decade, id]);
+  // "I'm not sure who this is!" Whoever is tagging can set or clear it here, since they're naming who's in it.
+  if (typeof body.taggingNeeded === "boolean") await setTaggingNeeded(id, body.taggingNeeded, s);
+  const [flag] = await q<{ tagging_needed: boolean }>(`select tagging_needed from photos where id = $1`, [id]);
 
   // Send back the saved state with real ids, so names typed in this session become regular people.
   const [people, occasions] = await Promise.all([
@@ -63,5 +67,5 @@ export async function POST(req: Request, { params }: Ctx) {
       `select o.id, o.name, t.added_by_device as by from photo_occasions t join occasions o on o.id = t.occasion_id where t.photo_id = $1`, [id]),
   ]);
   const shape = (t: { id: number; name: string; by: string | null }) => ({ id: t.id, name: t.name, removable: owner || canRemove(s, t.by) });
-  return NextResponse.json({ people: people.map(shape), occasions: occasions.map(shape), year, decade });
+  return NextResponse.json({ people: people.map(shape), occasions: occasions.map(shape), year, decade, taggingNeeded: !!flag?.tagging_needed });
 }

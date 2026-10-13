@@ -18,7 +18,7 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
   photos: BrowsePhoto[]; query: string; people: Option[]; occasions: Option[];
   total: number;
   /** Browse only: the sort control, count, and slideshow. Album pages leave it out. */
-  sort?: { value: string; fallback: string; params: Record<string, string>; filtered: boolean; favorites?: boolean };
+  sort?: { value: string; fallback: string; params: Record<string, string>; filtered: boolean; favorites?: boolean; tagging?: boolean };
   albums: AlbumOption[];
   /** On an album page: select mode can also take photos out of this album. */
   inAlbum?: { id: number; title: string };
@@ -88,15 +88,20 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
   return (
     <>
       <div className="browse-tools">
-        <span className={`browse-count${sort?.favorites ? " fav-count" : ""}`}>
-          {sort?.favorites ? (
+        <span className={`browse-count${sort?.favorites || sort?.tagging ? " fav-count" : ""}`}>
+          {sort?.tagging ? (
+            <>
+              <span className="desktop-only">{total} {total === 1 ? "photo needs" : "photos need"} tagging. Know someone? Open the photo and tag them.</span>
+              <span className="phone-only">{total} {total === 1 ? "photo needs" : "photos need"} tagging</span>
+            </>
+          ) : sort?.favorites ? (
             <>
               <span className="desktop-only">{total} {total === 1 ? "favorite" : "favorites"}{SORT_WORD[sort.value] ?? ""}. Only you see this list.</span>
               <span className="phone-only">{total} {total === 1 ? "favorite" : "favorites"}. Only you see these.</span>
             </>
           ) : <>{total} {total === 1 ? "photo" : "photos"}{sort?.value === "shuffled" ? ", shuffled" : ""}</>}
           {sort?.value === "shuffled" && (
-            <button type="button" className={`icon-btn shuffle-btn${sort.favorites ? " desktop-only" : ""}`} aria-label="Shuffle again" title="Shuffle again" onClick={() => {
+            <button type="button" className={`icon-btn shuffle-btn${sort.favorites || sort.tagging ? " desktop-only" : ""}`} aria-label="Shuffle again" title="Shuffle again" onClick={() => {
               document.cookie = `df_shuffle=${Math.random().toString(36).slice(2, 10)}; path=/; samesite=lax`;
               const qs = new URLSearchParams(sort.params); qs.delete("page");
               router.push(`${window.location.pathname}${qs.size ? `?${qs}` : ""}`, { scroll: false });
@@ -117,7 +122,7 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
       </div>
       {message && !selecting && <p className="small muted" role="status">{message}</p>}
 
-      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} starred={sort?.favorites} />
+      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} starred={sort?.favorites} flagged={sort?.tagging} />
 
       {selecting && (
         <div className="select-bar-wrap">

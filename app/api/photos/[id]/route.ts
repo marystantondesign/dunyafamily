@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { badRequest, canRemove, forbidden, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
+import { canClearFlag, setTaggingNeeded } from "@/lib/taggingNeeded";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 async function load(id: number) {
-  const [p] = await q<{ uploaded_by_device: string; year: number | null; decade: number | null; caption: string | null; title: string | null }>(
-    `select uploaded_by_device, year, decade, caption, title from photos where id = $1 and deleted_at is null`,
+  const [p] = await q<{ uploaded_by_device: string; year: number | null; decade: number | null; caption: string | null; title: string | null;
+    tagging_needed: boolean; tagging_needed_by: number | null; tagging_needed_by_device: string | null }>(
+    `select uploaded_by_device, year, decade, caption, title, tagging_needed, tagging_needed_by, tagging_needed_by_device from photos where id = $1 and deleted_at is null`,
     [id],
   );
   return p;
@@ -31,8 +33,21 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const id = Number((await params).id);
   const p = await load(id);
   if (!p) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
-  const body = (await req.json()) as { year?: number | null; decade?: number | null; caption?: string | null; title?: string | null };
+  const body = (await req.json()) as {
+    year?: number | null; decade?: number | null; caption?: string | null; title?: string | null;
+    /** everyone: "Yes, that's everyone" after tagging, which anyone can say. */
+    taggingNeeded?: boolean; everyone?: boolean;
+  };
   const owner = canRemove(s, p.uploaded_by_device);
+
+  // Tagging needed: anyone can flag a photo. Clearing it is for whoever flagged it or the admin, or anyone who
+  // has just tagged it and says that's everyone.
+  if (typeof body.taggingNeeded === "boolean") {
+    if (!body.taggingNeeded && p.tagging_needed && !body.everyone && !canClearFlag(s, { by: p.tagging_needed_by, byDevice: p.tagging_needed_by_device }))
+      return NextResponse.json({ error: "Only the person who marked this, or Mary, can take it off. Tag who you know and the family will finish it." }, { status: 403 });
+    await setTaggingNeeded(id, body.taggingNeeded, s);
+    if (Object.keys(body).every((k) => k === "taggingNeeded" || k === "everyone")) return NextResponse.json({ ok: true });
+  }
 
   const sets: string[] = [];
   const vals: unknown[] = [];

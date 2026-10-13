@@ -33,6 +33,8 @@ export type Filters = {
   albums?: number[];
   /** This person's favorites. Set only from the session, never from the URL's say-so. */
   favoritesOf?: number;
+  /** Photos marked "Tagging needed". */
+  taggingNeeded?: boolean;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -64,6 +66,7 @@ function build(f: Filters) {
   if (f.albums?.length)
     where.push(`exists (select 1 from album_photos x where x.photo_id = p.id and x.album_id = any(${$(f.albums)}::int[]))`);
   if (f.favoritesOf) where.push(`exists (select 1 from favorites x where x.photo_id = p.id and x.person_id = ${$(f.favoritesOf)})`);
+  if (f.taggingNeeded) where.push("p.tagging_needed");
   if (f.batch) where.push(UUID.test(f.batch) ? `p.upload_batch = ${$(f.batch)}::uuid` : "false");
   return { where: where.join(" and "), params, $ };
 }
@@ -114,7 +117,7 @@ export function withThumbs(rows: PhotoRow[]): Promise<Photo[]> {
 export { whenLabel } from "./when";
 
 export type TagTarget = {
-  id: number; width: number | null; height: number | null; year: number | null; decade: number | null;
+  id: number; width: number | null; height: number | null; year: number | null; decade: number | null; tagging_needed: boolean;
   uploaded_by_device: string;
   people: { id: number; by: string | null }[];
   occasions: { id: number; by: string | null }[];
@@ -125,7 +128,7 @@ export type TagTarget = {
 export async function findForTagging(f: Filters, order: Order, limit = 1000, seed?: string): Promise<TagTarget[]> {
   const { where, params, $ } = build(f);
   const rows = await q<Omit<TagTarget, "thumb" | "url"> & { original_key: string; thumb_key: string }>(
-    `select p.id, p.width, p.height, p.year, p.decade, p.uploaded_by_device, p.original_key, p.thumb_key,
+    `select p.id, p.width, p.height, p.year, p.decade, p.tagging_needed, p.uploaded_by_device, p.original_key, p.thumb_key,
             coalesce((select json_agg(json_build_object('id', x.person_id, 'by', x.added_by_device))
                         from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
                        where x.photo_id = p.id), '[]') as people,

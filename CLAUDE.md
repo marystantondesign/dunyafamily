@@ -48,6 +48,7 @@ See db/schema.sql.
 - homepage_photos: up to 10 photos with captions and positions for the Home Polaroid; settings.homepage_interval is the speed.
 - recipes and recipe_notes (round 11, soft delete, restorable): the recipe box. Not a nav tab; the way in is the Home card. person_id links to the tree, from_name is anyone else. "Sort it out for me" (app/api/recipes/parse) uses the Anthropic SDK on the server with ANTHROPIC_API_KEY; without the key people fill the form by hand.
 - favorites (person_id, photo_id): each person's starred photos, tied to the person picked under "who are you" (session pid), never the device. Only that person ever sees them; the API never takes a person id from the client. Shown through Browse ?favorites=1 (lib/filters favoritesOf), sort order=favorited.
+- photos.tagging_needed (+ _by person, _by_device, _at): "Tagging needed", someone in the photo nobody has named yet. Set from Tag photos ("I'm not sure who this is!") or Edit details; cleared by the flagger, the admin, or anyone answering "Yes, that's everyone" after tagging. Browse ?tagging=1. Separate from the older untagged ("Needs tags") filter.
 - settings: key and value (home_photo_id from before homepage_photos, homepage_interval, family password hash and version).
 
 ## Roadmap

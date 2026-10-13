@@ -7,6 +7,7 @@ import { FavoriteButton, FavoriteIcon, FavoriteToast, useFavorite } from "./Favo
 import { Icon } from "./Icon";
 import { PhotoDetails, type DetailsData } from "./PhotoDetails";
 import { Reactions, Thread, type Comment, type Reaction } from "./PhotoTalk";
+import { QBadge } from "./TaggingNeeded";
 
 /**
  * The photo page (mockups 32 and 33 on desktop, 8 and 9 on phones). The photo sits centered with round Previous
@@ -41,6 +42,10 @@ export function PhotoScreen(props: {
   };
   const talking = !editing && talkOpen;
   const fav = useFavorite(props.photoId, props.favorite);
+  // "Yes, I'll tag them" opens Edit details ready to add people; "Thanks for tagging!" follows "Yes, that's everyone".
+  const [helping, setHelping] = useState(false);
+  const [thanks, setThanks] = useState<{ text: string; star: boolean; key: number } | null>(null);
+  useEffect(() => { if (!thanks) return; const t = setTimeout(() => setThanks(null), 2200); return () => clearTimeout(t); }, [thanks]);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -72,12 +77,23 @@ export function PhotoScreen(props: {
 
   const n = props.comments.filter((c) => !c.removed).length;
   const nComments = `${n} ${n === 1 ? "comment" : "comments"}`;
+  // Tagging needed: under the caption, its own row so a narrow photo doesn't squeeze it.
+  const askCard = props.details.taggingNeeded.on && (
+    <div className="tn-card">
+      <QBadge size={24} />
+      <strong>Do you know who this is?</strong>
+      <button type="button" className="btn btn-primary" onClick={() => { setHelping(true); setEditing(true); }}>Yes, I&apos;ll tag them</button>
+    </div>
+  );
   const heading = (
     <>
       <h1>{props.title}</h1>
-      <p>{withLine}{props.addedBy}.</p>
+      <div className="pv-meta-row">
+        <p>{withLine}{props.addedBy}.</p>
+        <Reactions photoId={props.photoId} reactions={props.reactions} />
+      </div>
       {note && <p className="pv-note" role="status">{note}</p>}
-      <Reactions photoId={props.photoId} reactions={props.reactions} />
+
     </>
   );
 
@@ -133,10 +149,11 @@ export function PhotoScreen(props: {
                 <span className="pv-count">{count}</span>
               </div>
             </div>
+            {askCard && <div className="pv-under pv-under-card desktop-only">{askCard}</div>}
           </div>
         </div>
 
-        {!editing && <div className="pv-caption phone-only"><div className="pv-cap-text">{heading}</div></div>}
+        {!editing && <div className="pv-caption phone-only"><div className="pv-cap-text">{heading}{askCard}</div></div>}
       </div>
 
       <aside className="pv-talk desktop-only" aria-label={nComments} aria-hidden={!talking} inert={!talking}>
@@ -173,7 +190,8 @@ export function PhotoScreen(props: {
           <div className="pv-sheet-backdrop phone-only" onClick={() => setEditing(false)} aria-hidden="true" />
           <aside className="pv-panel" role="dialog" aria-label="Edit details">
             <div className="sheet-grip phone-only" aria-hidden="true" />
-            <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => setEditing(false)}
+            <PhotoDetails d={props.details} tagHref={props.tagHref} onDone={() => { setEditing(false); setHelping(false); }}
+              helping={helping} onThanks={() => setThanks({ text: "Thanks for tagging!", star: false, key: Date.now() })}
               avatarFor={props.avatarFor}
               onAvatar={async (p) => {
                 try { await post(`/api/people/${p.id}`, "PATCH", { avatarPhotoId: props.photoId }); setNote(`Now ${p.name}'s profile photo.`); router.refresh(); }
@@ -184,7 +202,7 @@ export function PhotoScreen(props: {
         </>
       )}
 
-      <FavoriteToast toast={fav.toast} />
+      <FavoriteToast toast={thanks ?? fav.toast} />
 
       {confirming && (
         <ConfirmDialog

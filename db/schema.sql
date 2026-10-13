@@ -398,3 +398,11 @@ create table if not exists favorites (
   primary key (person_id, photo_id)
 );
 create index if not exists favorites_photo on favorites (photo_id);
+
+-- Tagging needed: someone marked this photo because there's at least one person in it nobody has named yet.
+-- It can still have people tagged. tagging_needed_by is the person who flagged it (device kept too, for anyone
+-- who hasn't picked a name), so they or the admin can clear it from Edit details.
+alter table photos add column if not exists tagging_needed boolean not null default false;
+alter table photos add column if not exists tagging_needed_by int;
+alter table photos add column if not exists tagging_needed_by_device text;
+alter table photos add column if not exists tagging_needed_at timestamptz;
