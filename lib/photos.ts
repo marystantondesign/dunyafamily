@@ -31,6 +31,8 @@ export type Filters = {
   batch?: string;
   /** Photos in any of these shared albums. */
   albums?: number[];
+  /** This person's favorites. Set only from the session, never from the URL's say-so. */
+  favoritesOf?: number;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,6 +63,7 @@ function build(f: Filters) {
     );
   if (f.albums?.length)
     where.push(`exists (select 1 from album_photos x where x.photo_id = p.id and x.album_id = any(${$(f.albums)}::int[]))`);
+  if (f.favoritesOf) where.push(`exists (select 1 from favorites x where x.photo_id = p.id and x.person_id = ${$(f.favoritesOf)})`);
   if (f.batch) where.push(UUID.test(f.batch) ? `p.upload_batch = ${$(f.batch)}::uuid` : "false");
   return { where: where.join(" and "), params, $ };
 }
@@ -73,11 +76,16 @@ const ORDER = {
   random: "random()",
   // Random, but the same for the whole visit: the seed comes from the df_shuffle cookie (see lib/shuffle).
   shuffled: "SHUFFLED",
+  // Newest favorited first: only with the favorites filter on (see orderBy).
+  favorited: "FAVORITED",
 };
 export type Order = keyof typeof ORDER;
 
-function orderBy(order: Order, $: (v: unknown) => string, seed?: string) {
-  return order === "shuffled" ? `md5(p.id::text || ${$(seed ?? "0")}), p.id` : ORDER[order];
+function orderBy(order: Order, $: (v: unknown) => string, seed: string | undefined, f: Filters) {
+  if (order === "shuffled") return `md5(p.id::text || ${$(seed ?? "0")}), p.id`;
+  if (order === "favorited")
+    return f.favoritesOf ? `(select x.created_at from favorites x where x.photo_id = p.id and x.person_id = ${$(f.favoritesOf)}) desc nulls last, p.id desc` : ORDER.newest;
+  return ORDER[order];
 }
 
 export async function findPhotos(f: Filters, opts: { order?: Order; seed?: string; limit?: number; offset?: number } = {}) {
@@ -86,7 +94,7 @@ export async function findPhotos(f: Filters, opts: { order?: Order; seed?: strin
     `select p.id, p.original_key, p.thumb_key, p.width, p.height, p.year, p.month, p.decade, p.caption,
             p.uploaded_by_device, p.uploaded_by_name, p.created_at
        from photos p where ${where}
-      order by ${orderBy(opts.order ?? "newest", $, opts.seed)}
+      order by ${orderBy(opts.order ?? "newest", $, opts.seed, f)}
       limit ${$(opts.limit ?? 120)} offset ${$(opts.offset ?? 0)}`,
     params,
   );
@@ -124,7 +132,7 @@ export async function findForTagging(f: Filters, order: Order, limit = 1000, see
             coalesce((select json_agg(json_build_object('id', x.occasion_id, 'by', x.added_by_device))
                         from photo_occasions x where x.photo_id = p.id), '[]') as occasions
        from photos p where ${where}
-      order by ${orderBy(order, $, seed)} limit ${$(limit)}`,
+      order by ${orderBy(order, $, seed, f)} limit ${$(limit)}`,
     params,
   );
   const hours6 = 6 * 60 * 60;
@@ -144,7 +152,7 @@ export async function neighbors(f: Filters, order: Order, id: number, seed?: str
     `select prev, next, pos::int, total::int from (
        select p.id, lag(p.id) over w as prev, lead(p.id) over w as next,
               row_number() over w as pos, count(*) over () as total
-         from photos p where ${where} window w as (order by ${orderBy(order, $, seed)})
+         from photos p where ${where} window w as (order by ${orderBy(order, $, seed, f)})
      ) t where id = ${$(id)}`,
     params,
   );
@@ -162,7 +170,7 @@ export async function findSlides(f: Filters, order: Order, seed?: string, limit 
             coalesce((select array_agg(pe.name order by pe.name) from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
                        where x.photo_id = p.id), '{}') as people
        from photos p where ${where}
-      order by ${orderBy(order, $, seed)} limit ${$(limit)}`,
+      order by ${orderBy(order, $, seed, f)} limit ${$(limit)}`,
     params,
   );
 }

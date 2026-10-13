@@ -13,7 +13,7 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const s = (await getSession())!;
   const [people, occasions] = await Promise.all([listPeople(), listOccasions()]);
-  const filters = filtersFrom(sp, occasions);
+  const filters = filtersFrom(sp, occasions, s.pid);
   // A batch or the needs-tags pile goes in upload order; anything else follows the browse order it came from.
   const order = filters.batch || filters.untagged ? "uploaded" : resolveOrder(sp, filters);
 

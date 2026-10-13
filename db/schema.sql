@@ -388,3 +388,13 @@ create table if not exists recipe_notes (
   deleted_by_name text
 );
 create index if not exists recipe_notes_recipe on recipe_notes (recipe_id, created_at);
+
+-- Favorites: each person's own starred photos. Only that person sees them. Belongs to the person picked
+-- under "who are you", not the device. Soft-deleted photos and people drop out of every favorites query.
+create table if not exists favorites (
+  person_id int not null references people(id) on delete cascade,
+  photo_id int not null references photos(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (person_id, photo_id)
+);
+create index if not exists favorites_photo on favorites (photo_id);

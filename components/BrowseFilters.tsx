@@ -2,17 +2,20 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "./Icon";
+import { Star } from "./Star";
 
 type Item = { id: number; name: string };
 const SHOW = 8;
 
 /** Sidebar checkboxes. Each change updates the URL, so filters can be shared and the back button works. */
-export function BrowseFilters({ people, occasions, decades, albums, selected, params, sort }: {
+export function BrowseFilters({ people, occasions, decades, albums, selected, params, sort, favorites }: {
   people: Item[]; occasions: Item[]; decades: number[]; albums: Item[];
   /** On phones, Sort lives in the filters panel. */
   sort?: { value: string; fallback: string };
   selected: { people: number[]; occasions: number[]; decades: number[]; albums: number[] };
   params: Record<string, string>;
+  /** Whether "Your favorites" is on. */
+  favorites: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -23,6 +26,13 @@ export function BrowseFilters({ people, occasions, decades, albums, selected, pa
     qs.delete("page");
     if (next.length) qs.set(key, next.join(",")); else qs.delete(key);
     if (key === "decade") qs.delete("year");
+    router.push(`/browse${qs.size ? `?${qs}` : ""}`, { scroll: false });
+  }
+
+  function toggleFavorites() {
+    const qs = new URLSearchParams(params);
+    qs.delete("page");
+    if (favorites) { qs.delete("favorites"); if (qs.get("order") === "favorited") qs.delete("order"); } else qs.set("favorites", "1");
     router.push(`/browse${qs.size ? `?${qs}` : ""}`, { scroll: false });
   }
 
@@ -40,7 +50,11 @@ export function BrowseFilters({ people, occasions, decades, albums, selected, pa
           <h2>Filters</h2>
           <a href="/browse" className="small">Clear all</a>
         </div>
-        {sort && <div className="phone-only"><SortSelect value={sort.value} fallback={sort.fallback} params={params} /></div>}
+        <label className={`fav-filter desktop-only${favorites ? " on" : ""}`}>
+          <input type="checkbox" checked={favorites} onChange={toggleFavorites} />
+          <Star on size={16} /> Your favorites
+        </label>
+        {sort && <div className="phone-only"><SortSelect value={sort.value} fallback={sort.fallback} params={params} favorites={favorites} /></div>}
         {group("People", "people", people, selected.people)}
         {albums.length > 0 && group("Albums", "albums", albums, selected.albums)}
         {group("Occasions", "occasions", occasions, selected.occasions)}
@@ -74,7 +88,7 @@ function FilterGroup({ title, items, checked, onToggle }: { title: string; items
   );
 }
 
-export function SortSelect({ value, fallback, params }: { value: string; fallback: string; params: Record<string, string> }) {
+export function SortSelect({ value, fallback, params, favorites }: { value: string; fallback: string; params: Record<string, string>; favorites?: boolean }) {
   const router = useRouter();
   return (
     <label className="sort">
@@ -91,6 +105,7 @@ export function SortSelect({ value, fallback, params }: { value: string; fallbac
         <option value="shuffled">Shuffled</option>
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
+        {favorites && <option value="favorited">Newest favorited</option>}
       </select>
     </label>
   );

@@ -5,6 +5,7 @@ import { YouLogOut } from "@/components/YouLogOut";
 import { Icon } from "@/components/Icon";
 import { getSession } from "@/lib/auth";
 import { whoAmI } from "@/lib/me";
+import { favoriteCount } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function YouPage() {
   const s = await getSession();
   if (!s) redirect("/enter");
-  const me = await whoAmI(s);
+  const [me, favs] = await Promise.all([whoAmI(s), favoriteCount(s.pid)]);
   const first = me.name.split(" ")[0];
   return (
     <div className="you">
@@ -32,6 +33,14 @@ export default async function YouPage() {
             <Icon name="chevronRight" className="chev" />
           </Link>
         </li>
+        {me.pid && (
+          <li>
+            <Link href="/browse?favorites=1">
+              <span><strong>Your favorites</strong><span>{favs ? `${favs} ${favs === 1 ? "photo" : "photos"}. Only you see these.` : "Tap the star on any photo to save it here"}</span></span>
+              <Icon name="chevronRight" className="chev" />
+            </Link>
+          </li>
+        )}
         <li>
           <Link href="/you/reminders">
             <span><strong>Text reminders</strong><span>A short text with your prayers and family dates</span></span>

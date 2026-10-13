@@ -1,4 +1,5 @@
 import { Slideshow } from "@/components/Slideshow";
+import { getSession } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { albumOptions } from "@/lib/albums";
 import { filterQuery, filtersFrom, hasFilters, ids, resolveOrder, type SP } from "@/lib/filters";
@@ -19,7 +20,7 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 export default async function SlideshowPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const [people, occasions, albums] = await Promise.all([listPeople(), listOccasions(), albumOptions()]);
-  const filters = filtersFrom(sp, occasions);
+  const filters = filtersFrom(sp, occasions, (await getSession())?.pid);
   const order = resolveOrder(sp, filters);
   const slides = (await findSlides(filters, order, await shuffleSeed())).map((s) => ({ ...s, people: s.people.map(displayName) }));
   const qs = filterQuery(sp);
@@ -37,6 +38,7 @@ export default async function SlideshowPage({ searchParams }: { searchParams: Pr
     ...(filters.year ? [String(filters.year)] : []),
     ...(sp.month ? [`${MONTHS[Number(sp.month) - 1]}s`] : []),
     ...(sp.season ? [`${sp.season}s`] : []),
+    ...(filters.favoritesOf ? ["Your favorites"] : []),
     ...(filters.untagged ? ["Needs tags"] : []),
     ...(filters.batch ? ["One upload"] : []),
   ].filter((c): c is string => !!c);

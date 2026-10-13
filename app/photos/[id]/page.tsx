@@ -11,6 +11,7 @@ import { filterQuery, filtersFrom, resolveOrder, type SP } from "@/lib/filters";
 import { shuffleSeed } from "@/lib/shuffle";
 import { neighbors, whenLabel, type PhotoRow } from "@/lib/photos";
 import { signGet } from "@/lib/r2";
+import { isFavorite } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +37,12 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   ]);
   const admin = isAdmin(s);
   const [hpEntry, hpUsed] = admin ? await Promise.all([homepageEntry(id), spotsUsed()]) : [null, 0];
-  const talk = await photoTalk(id, s);
+  const [talk, favorite] = await Promise.all([photoTalk(id, s), isFavorite(s?.pid, id)]);
   const tagged = taggedRaw.map((t) => ({ ...t, name: displayName(t.name) }));
 
   // Previous and next follow the view this photo was opened from (its browse filters ride along in the URL).
   const qs = filterQuery(sp);
-  const filters = filtersFrom(sp, occasions);
+  const filters = filtersFrom(sp, occasions, s?.pid);
   const order = resolveOrder(sp, filters);
   const near = await neighbors(filters, order, id, await shuffleSeed());
   const link = (pid: number | null | undefined) => (pid ? `/photos/${pid}${qs ? `?${qs}` : ""}` : undefined);
@@ -83,6 +84,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
       comments={talk.comments}
       reactions={talk.reactions}
       me={s?.name ? displayName(s.name) : "You"}
+      favorite={favorite}
       avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
       details={{
         photoId: id,

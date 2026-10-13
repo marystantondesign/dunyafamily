@@ -6,7 +6,8 @@ export type SP = Record<string, string | undefined>;
 export const ids = (v?: string) => (v ? v.split(",").map(Number).filter(Boolean) : []);
 
 /** The same query params work on /browse and /tag, so a browse view can be tagged as-is. */
-export function filtersFrom(sp: SP, occasions: Occasion[]): Filters {
+/** `pid` is the person this visit picked: ?favorites=1 means their favorites, and nobody else's. */
+export function filtersFrom(sp: SP, occasions: Occasion[], pid?: number): Filters {
   const f: Filters = {
     people: ids(sp.people),
     occasions: ids(sp.occasions),
@@ -16,14 +17,16 @@ export function filtersFrom(sp: SP, occasions: Occasion[]): Filters {
     untagged: sp.untagged === "1",
     batch: sp.batch || undefined,
     albums: ids(sp.albums),
+    // With no one picked there are no favorites to show, so the filter matches nothing.
+    favoritesOf: sp.favorites === "1" ? pid ?? -1 : undefined,
   };
   if (sp.season && seasonMonths(sp.season))
     f.season = { months: seasonMonths(sp.season), occasionId: occasions.find((o) => o.name === sp.season)?.id };
   return f;
 }
 
-const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "order"];
-const ORDERS = new Set(["oldest", "newest", "recent", "shuffled"]);
+const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "favorites", "order"];
+const ORDERS = new Set(["oldest", "newest", "recent", "shuffled", "favorited"]);
 
 /** Just the filter params, in a stable order, for links and for remembering a place. */
 export function filterQuery(sp: SP) {
@@ -34,10 +37,16 @@ export function filterQuery(sp: SP) {
 
 /** Whether any filter is on. With none, browse shows everything shuffled. */
 export const hasFilters = (f: Filters) =>
-  !!(f.people?.length || f.occasions?.length || f.decades?.length || f.decade || f.year || f.months?.length || f.season || f.untagged || f.batch || f.albums?.length);
+  !!(f.people?.length || f.occasions?.length || f.decades?.length || f.decade || f.year || f.months?.length || f.season || f.untagged || f.batch || f.albums?.length || f.favoritesOf);
 
-/** The order a view uses: what the person picked, else shuffled with no filters and newest first with filters. */
+/** Favorites on their own count as a view of everything you starred, so they shuffle like the full set does. */
+const onlyFavorites = (f: Filters) => !!f.favoritesOf && !hasFilters({ ...f, favoritesOf: undefined });
+
+/** The order a view gets when nobody picked one: shuffled with no filters (or just favorites), newest first with filters. */
+export const defaultOrder = (f: Filters): Order => (!hasFilters(f) || onlyFavorites(f) ? "shuffled" : "newest");
+
+/** The order a view uses: what the person picked, else the default. Newest favorited only applies with favorites on. */
 export function resolveOrder(sp: SP, f: Filters): Order {
-  if (sp.order && ORDERS.has(sp.order)) return sp.order as Order;
-  return hasFilters(f) ? "newest" : "shuffled";
+  if (sp.order && ORDERS.has(sp.order) && (sp.order !== "favorited" || f.favoritesOf)) return sp.order as Order;
+  return defaultOrder(f);
 }

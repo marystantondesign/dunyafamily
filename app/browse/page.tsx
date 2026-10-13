@@ -6,7 +6,9 @@ import { Icon } from "@/components/Icon";
 import { albumOptions } from "@/lib/albums";
 import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
-import { filterQuery, filtersFrom, hasFilters, ids, resolveOrder, type SP } from "@/lib/filters";
+import { defaultOrder, filterQuery, filtersFrom, hasFilters, ids, resolveOrder, type SP } from "@/lib/filters";
+import { favoriteCount } from "@/lib/favorites";
+import { Star } from "@/components/Star";
 import { shuffleSeed } from "@/lib/shuffle";
 import { countPhotos, findPhotos } from "@/lib/photos";
 
@@ -37,17 +39,19 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   }
 
   const sel = { people: ids(sp.people), occasions: ids(sp.occasions), decades: ids(sp.decade), albums: ids(sp.albums) };
-  const filters = filtersFrom(sp, occasions);
-  const page = Math.max(1, Number(sp.page) || 1);
   const s = await getSession();
+  const filters = filtersFrom(sp, occasions, s?.pid);
+  const favorites = sp.favorites === "1";
+  const page = Math.max(1, Number(sp.page) || 1);
   const qs = filterQuery(sp);
   // No filters: everything, shuffled once per visit. With filters: newest first, unless a sort was picked.
   const order = resolveOrder(sp, filters);
-  const fallback = hasFilters(filters) ? "newest" : "shuffled";
+  const fallback = defaultOrder(filters);
   const seed = await shuffleSeed();
-  const [photos, total] = await Promise.all([
+  const [photos, total, nFavorites] = await Promise.all([
     findPhotos(filters, { order, seed, limit: PAGE, offset: (page - 1) * PAGE }),
     countPhotos(filters),
+    favorites ? favoriteCount(s?.pid) : Promise.resolve(0),
   ]);
   const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q")) as Record<string, string>;
 
@@ -75,6 +79,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
         selected={sel}
         params={params}
         sort={{ value: order, fallback }}
+        favorites={favorites}
       />
       <div className="browse-main">
         <form action="/browse" role="search">
@@ -86,6 +91,11 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
         </form>
 
         <div className="browse-bar">
+          {/* Phones: Favorites comes first in the chip row. Desktop has "Your favorites" at the top of Filters. */}
+          <Link href={href(sp, { favorites: favorites ? undefined : "1", order: favorites && sp.order === "favorited" ? undefined : sp.order })}
+            className={`fav-chip phone-only${favorites ? " on" : ""}`} aria-pressed={favorites}>
+            <Star on size={14} /> Favorites
+          </Link>
           {chips.map((c) => (
             <Link key={c.key} href={href(sp, c.clear)} className="chip" aria-label={`Remove ${c.label}`}>
               <Icon name={c.icon} size={16} /> {c.label} <Icon name="x" size={14} stroke={2} />
@@ -100,11 +110,16 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             photos={photos.map((p) => ({ id: p.id, url: p.url, width: p.width, height: p.height, year: p.year, decade: p.decade, month: p.month, removable: canRemove(s, p.uploaded_by_device) }))}
             query={qs}
             total={total}
-            sort={{ value: order, fallback, params, filtered: hasFilters(filters) }}
+            sort={{ value: order, fallback, params, filtered: hasFilters(filters), favorites }}
             people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
             occasions={occasions}
             albums={albums}
           />
+        ) : favorites && nFavorites === 0 ? (
+          <div className="fav-empty">
+            <p>No favorites yet. Tap the star on any photo to save it here.</p>
+            <Link href={href(sp, { favorites: undefined, order: sp.order === "favorited" ? undefined : sp.order })} className="btn">Show all photos</Link>
+          </div>
         ) : <p className="muted">No photos match all of those yet. Try removing a filter.</p>}
 
         {total > page * PAGE && (

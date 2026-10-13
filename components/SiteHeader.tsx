@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
+import { Star } from "./Star";
 
 const NAV: { href: string; label: string; also?: string }[] = [
   { href: "/", label: "Home" },
@@ -63,6 +64,12 @@ function AccountMenu({ me }: { me: Me }) {
   const box = useRef<HTMLDivElement>(null);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
+  // How many favorites, asked fresh each time the menu opens so it's right after starring a photo.
+  const [favs, setFavs] = useState(0);
+  useEffect(() => {
+    if (!open || !me.pid) return;
+    fetch("/api/favorites").then((r) => (r.ok ? r.json() : null)).then((d) => d && setFavs(d.photoIds.length)).catch(() => undefined);
+  }, [open, me.pid]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -87,6 +94,11 @@ function AccountMenu({ me }: { me: Me }) {
           </div>
           <div className="account-group">
             <Link role="menuitem" href={me.pid ? `/people/${me.pid}` : "/enter/who"}><Icon name="person" size={20} /> Your page</Link>
+            {me.pid && (
+              <Link role="menuitem" href="/browse?favorites=1" className="menu-fav">
+                <Star on size={20} /> Your favorites{favs > 0 && <span className="menu-count">{favs}</span>}
+              </Link>
+            )}
             <Link role="menuitem" href="/you"><Icon name="gear" size={20} /> Settings</Link>
             <Link role="menuitem" href="/you/reminders"><Icon name="mail" size={20} /> Text reminders</Link>
             <Link role="menuitem" href="/enter/who"><Icon name="swap" size={20} /> Not {first}? Switch person</Link>

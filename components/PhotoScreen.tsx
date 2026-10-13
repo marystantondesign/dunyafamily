@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { FavoriteButton, FavoriteIcon, FavoriteToast, useFavorite } from "./FavoriteButton";
 import { Icon } from "./Icon";
 import { PhotoDetails, type DetailsData } from "./PhotoDetails";
 import { Reactions, Thread, type Comment, type Reaction } from "./PhotoTalk";
@@ -23,6 +24,8 @@ export function PhotoScreen(props: {
   canDelete: boolean; avatarFor: { id: number; name: string }[];
   details: DetailsData;
   comments: Comment[]; reactions: Reaction[]; me: string;
+  /** Whether the person this visit picked has starred it. Only they ever see this. */
+  favorite: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -37,6 +40,7 @@ export function PhotoScreen(props: {
     try { localStorage.setItem(COMMENTS_KEY, on ? "1" : "0"); } catch { /* private window */ }
   };
   const talking = !editing && talkOpen;
+  const fav = useFavorite(props.photoId, props.favorite);
   const [confirming, setConfirming] = useState(false);
   const [note, setNote] = useState("");
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -94,6 +98,7 @@ export function PhotoScreen(props: {
                 <Icon name="comment" size={18} /> {n ? <>Comments <span className="pv-n">{n}</span></> : "Comment"}
               </button>
             )}
+            <span className="phone-only"><FavoriteIcon on={fav.on} onToggle={fav.toggle} /></span>
             <Link href={props.slideshowHref} className="icon-btn phone-only" aria-label="Slideshow"><Icon name="play" size={20} /></Link>
             <button type="button" className="icon-btn phone-only" aria-label="Edit details" onClick={() => setEditing(true)}><Icon name="pencil" size={20} /></button>
           </span>
@@ -119,7 +124,12 @@ export function PhotoScreen(props: {
             <div className="pv-under desktop-only">
               <div className="pv-cap-text">{heading}</div>
               <div className="pv-under-side">
-                {!editing && <button type="button" className="btn pv-bar-btn" onClick={() => setEditing(true)}><Icon name="pencil" size={16} /> Edit details</button>}
+                {!editing && (
+                  <span className="pv-under-btns">
+                    <FavoriteButton on={fav.on} onToggle={fav.toggle} />
+                    <button type="button" className="btn pv-bar-btn" onClick={() => setEditing(true)}><Icon name="pencil" size={16} /> Edit details</button>
+                  </span>
+                )}
                 <span className="pv-count">{count}</span>
               </div>
             </div>
@@ -173,6 +183,8 @@ export function PhotoScreen(props: {
           </aside>
         </>
       )}
+
+      <FavoriteToast toast={fav.toast} />
 
       {confirming && (
         <ConfirmDialog

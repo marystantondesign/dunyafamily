@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { whenLabel } from "@/lib/when";
+import { Star } from "./Star";
 
 type GalleryPhoto = { id: number; url: string; width: number | null; height: number | null; year: number | null; decade: number | null; month: number | null };
 
@@ -7,8 +8,10 @@ type GalleryPhoto = { id: number; url: string; width: number | null; height: num
  * Justified rows of photos. `query` carries the view's filters to the photo page so previous and next follow them.
  * With `onToggle`, tiles become checkboxes for select mode.
  */
-export function Gallery({ photos, base = 220, showWhen = false, query, selected, onToggle }: {
+export function Gallery({ photos, base = 220, showWhen = false, query, selected, onToggle, starred }: {
   photos: GalleryPhoto[]; base?: number; showWhen?: boolean; query?: string;
+  /** Your favorites view: a small gold star on every tile. */
+  starred?: boolean;
   selected?: number[]; onToggle?: (id: number) => void;
 }) {
   if (!photos.length) return null;
@@ -23,6 +26,7 @@ export function Gallery({ photos, base = 220, showWhen = false, query, selected,
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={p.url} alt={when ? `Family photo from ${when}` : "Family photo"} loading="lazy" />
             {showWhen && when && <span className="when">{when}</span>}
+            {starred && !onToggle && <span className="fav-badge" aria-hidden="true"><Star on size={14} /></span>}
             {onToggle && <span className="check" aria-hidden="true" />}
           </>
         );

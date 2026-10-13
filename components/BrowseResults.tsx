@@ -11,13 +11,14 @@ import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type BrowsePhoto = { id: number; url: string; width: number | null; height: number | null; year: number | null; decade: number | null; month: number | null; removable: boolean };
 type Panel = "date" | "occasion" | "person" | "album" | null;
+const SORT_WORD: Record<string, string> = { shuffled: ", shuffled", newest: ", newest first", oldest: ", oldest first", favorited: ", newest favorited first" };
 
 /** The browse gallery, plus select mode: check photos, then change them all at once. */
 export function BrowseResults({ photos, query, people, occasions, albums, inAlbum, total, sort }: {
   photos: BrowsePhoto[]; query: string; people: Option[]; occasions: Option[];
   total: number;
   /** Browse only: the sort control, count, and slideshow. Album pages leave it out. */
-  sort?: { value: string; fallback: string; params: Record<string, string>; filtered: boolean };
+  sort?: { value: string; fallback: string; params: Record<string, string>; filtered: boolean; favorites?: boolean };
   albums: AlbumOption[];
   /** On an album page: select mode can also take photos out of this album. */
   inAlbum?: { id: number; title: string };
@@ -87,10 +88,15 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
   return (
     <>
       <div className="browse-tools">
-        <span className="browse-count">
-          {total} {total === 1 ? "photo" : "photos"}{sort?.value === "shuffled" ? ", shuffled" : ""}
+        <span className={`browse-count${sort?.favorites ? " fav-count" : ""}`}>
+          {sort?.favorites ? (
+            <>
+              <span className="desktop-only">{total} {total === 1 ? "favorite" : "favorites"}{SORT_WORD[sort.value] ?? ""}. Only you see this list.</span>
+              <span className="phone-only">{total} {total === 1 ? "favorite" : "favorites"}. Only you see these.</span>
+            </>
+          ) : <>{total} {total === 1 ? "photo" : "photos"}{sort?.value === "shuffled" ? ", shuffled" : ""}</>}
           {sort?.value === "shuffled" && (
-            <button type="button" className="icon-btn shuffle-btn" aria-label="Shuffle again" title="Shuffle again" onClick={() => {
+            <button type="button" className={`icon-btn shuffle-btn${sort.favorites ? " desktop-only" : ""}`} aria-label="Shuffle again" title="Shuffle again" onClick={() => {
               document.cookie = `df_shuffle=${Math.random().toString(36).slice(2, 10)}; path=/; samesite=lax`;
               const qs = new URLSearchParams(sort.params); qs.delete("page");
               router.push(`${window.location.pathname}${qs.size ? `?${qs}` : ""}`, { scroll: false });
@@ -99,7 +105,7 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
           )}
         </span>
         <span className="browse-actions">
-          {sort && <SortSelect value={sort.value} fallback={sort.fallback} params={sort.params} />}
+          {sort && <SortSelect value={sort.value} fallback={sort.fallback} params={sort.params} favorites={sort.favorites} />}
           {selecting
             ? <button type="button" className="btn btn-dark-outline" onClick={stop}>Done selecting</button>
             : <button type="button" className="btn select-btn" onClick={() => { setSelecting(true); setMessage(""); }}>Select</button>}
@@ -111,7 +117,7 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
       </div>
       {message && !selecting && <p className="small muted" role="status">{message}</p>}
 
-      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} />
+      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} starred={sort?.favorites} />
 
       {selecting && (
         <div className="select-bar-wrap">
