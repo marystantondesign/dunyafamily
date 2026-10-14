@@ -112,10 +112,14 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
   const byParent = new Map<number | null, number[]>();
   const put = (kid: number, other: number | null) => { if (!byParent.has(other)) byParent.set(other, []); byParent.get(other)!.push(kid); };
   const placed = new Set<number>();
+  // A couple's children are drawn from the dash between them. When a child's second parent isn't recorded but this
+  // person has exactly one partner (and that partner isn't marked a co-parent), the child is taken to be the couple's:
+  // families often add the spouse and the children without linking the spouse to each child.
+  const couplePartner = partnerIds.length === 1 && !f.byId.get(partnerIds[0])?.coparent ? partnerIds[0] : null;
   for (const kid of f.children(id)) {
     if (seen.has(kid)) continue;
     const others = f.parents(kid).filter((p) => p !== id);
-    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? null);
+    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? (root ? null : couplePartner));
     placed.add(kid);
   }
   for (const p of partnerIds) for (const kid of f.children(p)) if (!seen.has(kid) && !placed.has(kid)) { put(kid, p); placed.add(kid); }

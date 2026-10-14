@@ -2115,3 +2115,4 @@ main.wrap:has(.tree) { max-width: none; }
 .tree.narrow .ft-note { display: none; }
 .tpartner-row .tdot-face { width: 22px; height: 22px; font-size: 10px; border-width: 1.5px; }
 .tpartner-row .tcard-name { font-size: 12px !important; }
+.tl-face .halo { margin: 0 !important; }

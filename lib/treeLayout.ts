@@ -166,16 +166,17 @@ function layoutMember(node: TreeNode, d: number, m: Measure): Sub[] {
   const slots: Slot[] = node.groups.flatMap((g) => (g.coparent && g.partner)
     ? [{ variants: [coGroup(g, d, splitY, top, m)], anchor: "co" as const }]
     : g.children.map((c) => personSlot(c, d + 1, top, m)));
-  const dropX = kidsPartner ? size / 2 + DASH / 2 : 0;
+  // A couple's children drop from the middle of the dash between them, on whichever side the partner sits.
+  // Children with a co-parent, or with one recorded parent, drop from the family member.
   const dropY = kidsPartner ? cy : h + 2;
-  const kids = childrenRow(slots, dropX, dropY, splitY, top);
+  const kidsFor = (side: 1 | -1) => childrenRow(slots, kidsPartner ? side * (size / 2 + DASH / 2) : 0, dropY, splitY, top);
 
-  // A partner with children together sits on the right, with the drop line from the middle of the dash.
-  // A partner without children together goes on whichever side has room.
-  const sides: (1 | -1)[][] = kidsPartner ? [[1, ...others.map(() => -1 as const)]]
-    : others.length === 1 ? [[1], [-1]]
+  // The partner (with or without children together) goes on whichever side has room.
+  const sides: (1 | -1)[][] = (kidsPartner ? 1 : 0) + others.length === 1 ? [[1], [-1]]
+    : kidsPartner ? [[1, ...others.map(() => -1 as const)]]
     : [others.map((_, i) => (i % 2 ? -1 : 1) as 1 | -1)];
   const list = kidsPartner ? [kidsPartner, ...others] : others;
+  const rows = new Map<number, Sub | null>();
   return sides.map((sideList) => {
     const items: Item[] = [me];
     const segs: Seg[] = [];
@@ -189,6 +190,9 @@ function layoutMember(node: TreeNode, d: number, m: Measure): Sub[] {
       segs.push(pa.dash);
       row = { l: Math.min(row.l, pa.ext.l), r: Math.max(row.r, pa.ext.r) };
     });
+    const side = sideList[0] ?? 1;
+    if (!rows.has(side)) rows.set(side, kidsFor(side));
+    const kids = rows.get(side)!;
     const base: Sub = { items, segs, contour: [row], bottom: h };
     if (!kids) return base;
     // The person row above the band, then the band (co-parents), then each generation below.
