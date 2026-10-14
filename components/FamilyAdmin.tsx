@@ -159,7 +159,6 @@ export function FamilyAdmin({ data, everyone }: { data: AdminData; everyone: P[]
     : data.parents.length === 1 && data.parents[0].role === "father" ? { label: `Add ${me.name}'s mother (optional)`, role: "mother" }
     : data.parents.length === 1 ? { label: "Add a second parent (optional)", role: "parent" }
     : { label: "Add a parent", role: "parent" };
-  const sibNames = data.siblings.map((s) => s.person.name);
   const kind = kindOf(role);
 
   return (
@@ -264,11 +263,6 @@ export function FamilyAdmin({ data, everyone }: { data: AdminData; everyone: P[]
               <input id="fa-birth" placeholder="Optional" value={birth} onChange={(e) => setBirth(e.target.value)} />
             </div>
             <button className="btn btn-primary" disabled={busy}>{busy ? "Adding" : "Add connection"}</button>
-            <p className="fa-note">
-              {kind === "parent" && sibNames.length > 0 && `Adding ${me.name}'s ${role} also adds them for ${sibNames.join(", ").replace(/, ([^,]*)$/, " and $1")}, since they share parents. `}
-              {kind === "sibling" && data.parents.length > 0 && `A new brother or sister gets ${me.name}'s parents too. `}
-              To add grandparents, aunts, or uncles, switch Editing to one of {me.name}&apos;s parents and add their parents and siblings.
-            </p>
           </form>
         </aside>
       </div>

@@ -2051,3 +2051,67 @@ a.rd-from:hover { color: var(--plum); }
 .ep-parents { list-style: none; margin: 0 0 8px; padding: 0; }
 .ep-parents li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .ft-root .ft-spouse .tpartner-line { width: 14px; margin: var(--c) 2px 0 6px; border-top: 1px solid var(--check); }
+
+/* Tree fit: when the whole tree can't fit the window, the list version shows instead of a sideways scroll. */
+.tree.narrow .tree-root .tcouple:has(.tpartner) { transform: none; }
+.tree.narrow .tdot-root .tdot-face { width: 112px; height: 112px; }
+.tree.narrow .tdot-root .tdot-name { font-size: 22px; }
+.tree.narrow .tree-phone { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 8px 0 0; padding: 0 0 0 16px; width: 100%; border-left: 1px solid var(--check); }
+.tree.narrow .tcard { position: relative; }
+.tree.narrow .tcard::before { content: ""; position: absolute; left: -16px; top: 30px; width: 16px; border-top: 1px solid var(--check); }
+.tree.narrow .tcard > .tcard-head { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+.tree.narrow .tcard-head { display: flex; align-items: center; }
+.tree.narrow .tcard-link { flex: 1; display: flex; align-items: center; gap: 14px; padding: 6px 8px; text-decoration: none; color: var(--ink); min-height: 52px; }
+.tree.narrow .tcard > .tcard-head .tdot-face { width: 46px; height: 46px; font-size: 16px; border-width: 0; box-shadow: none; }
+.tree.narrow .tcard-name { display: block; font-family: var(--serif); font-size: 17px; }
+.tree.narrow .tcard-toggle { width: 48px; height: 48px; border: 0; background: none; color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.tree.narrow .tsub { list-style: none; margin: 6px 0 4px 34px; padding: 0 0 0 16px; border-left: 1px solid var(--check); display: flex; flex-direction: column; gap: 2px; }
+.tree.narrow .trow { position: relative; }
+.tree.narrow .trow::before { content: ""; position: absolute; left: -16px; top: 24px; width: 14px; border-top: 1px solid var(--check); }
+.tree.narrow .trow .tdot-face { width: 40px; height: 40px; font-size: 15px; border-width: 0; box-shadow: none; }
+.tree.narrow .trow .tcard-link { padding: 4px 0; min-height: 48px; }
+.tree.narrow .trow .tcard-name { font-size: 16px; }
+.tree.narrow .tree-phone-top { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.tree.narrow .tree-phone-earlier { width: 100%; padding: 4px 12px 14px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255, 252, 246, 0.6); }
+.tree.narrow .tree-phone-earlier section { margin: 0; }
+.tree.narrow .tree-phone-earlier ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.tree.narrow .tree-phone-label { align-self: stretch; margin: 14px 0 10px; font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.tree.narrow .tree-phone-top > .tree-phone-label { margin: 22px 0 4px; }
+.tree.narrow .tree-phone-top .tdot-root .tdot-face { width: 76px; height: 76px; font-size: 30px; }
+.tree.narrow .tcard.plain::before { display: none; }
+.tree.narrow .tcard-link .tdot-sub { display: block; font-size: 13px; color: var(--ink-3); margin-top: 1px; }
+.tree.narrow .tcard-chev { margin-left: auto; color: var(--ink); flex: none; }
+.tree.narrow .tcard > .tcard-head .tcard-link { padding: 10px 14px; min-height: 64px; }
+.tree.narrow .tcard > .tcard-head .tcard-toggle { margin-right: 4px; }
+.tree.narrow .tcard-name { font-size: 19px !important; }
+.tree.narrow .tree-phone-groups { display: block; width: 100%; }
+.tree.narrow .tree-phone-group + .tree-phone-group { margin-top: 6px; }
+.tree.narrow .tl-desk { display: none; }
+
+/* ===== Tree fit: the desktop tree, laid out to fit the page (components/TreeCanvas). ===== */
+main.wrap:has(.tree) { max-width: none; }
+.tl-desk { display: block; width: 100%; }
+.tl-wrap { position: relative; width: 100%; }
+.tl { position: absolute; left: 0; top: 0; transform-origin: top left; }
+.tl-lines { position: absolute; left: 0; top: 0; overflow: visible; }
+.tl-lines line { stroke: var(--check); stroke-width: 1; }
+.tl-box { fill: rgba(255, 252, 246, 0.55); stroke: var(--line); }
+.tl-face { display: inline-flex; flex: none; }
+.tl-face .tdot-face { width: var(--s); height: var(--s); font-size: calc(var(--s) * 0.38); }
+.tl-p { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: var(--ink); text-align: center; }
+.tl-p:hover { color: var(--plum); }
+.tl-p .tl-name { font-family: var(--serif); line-height: 1.15; white-space: nowrap; }
+.tl-sub { font-size: 11px; color: var(--muted); }
+.tl-p.small { color: var(--ink-3); gap: 2px; }
+.tl-p.small .tdot-face { border-width: 1.5px; }
+.tl-p.side { flex-direction: row; align-items: center; gap: 5px; }
+.tl-p.side.to-left { flex-direction: row-reverse; }
+.tl-tab { position: absolute; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; font-size: 13px; color: var(--ink); text-decoration: none; }
+.tl-tab:hover { color: var(--plum); }
+.tl-tab strong { font-weight: 600; white-space: nowrap; }
+@media (max-width: 760px) { .tl-desk { display: none; } }
+.tl-face { line-height: 0; }
+.tl-face .halo { display: flex; }
+.tree.narrow .ft-note { display: none; }
+.tpartner-row .tdot-face { width: 22px; height: 22px; font-size: 10px; border-width: 1.5px; }
+.tpartner-row .tcard-name { font-size: 12px !important; }

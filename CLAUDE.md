@@ -52,6 +52,7 @@ See db/schema.sql.
 - In memory (lib/inMemory): isInMemory/livingSql, and inUpcoming/upcomingSql for anything forward-looking (Coming up, calendar upcoming and feed, reminders). Someone in memory has no address or Coming up; remembrance days still work.
 - people.is_coparent: had a child with a family member but isn't family. Small on the tree on the drop line to the children they share (each child has both parent links), no partner label, left out of Home's list, suggestions order, and reminders. Admin, Family tree has the Co-parent switch.
 - Tree (tune-up): no relationship labels. One partner with children together, or a partner with none, stands beside the family member, small (26px). Children by more than one other parent (or some with none recorded): each other parent goes small (20px) on their own drop line, and children with no second parent hang straight off the family member. A second parent is optional (Edit details shows Parents for the admin).
+- Desktop tree (lib/treeLayout + components/TreeCanvas): laid out bottom-up with a contour per row, absolutely positioned with SVG lines, spread to the full page width with Dunya's boxes sized to their contents. Shrinks to 90% at most; narrower than that, the phone list shows instead (.tree.narrow). Partners and co-parents are one small size (22px).
 - Photos with no name show "Untitled"; the occasion and year show beside "Added by" (photo page) and under the title (slideshow).
 - settings: key and value (home_photo_id from before homepage_photos, homepage_interval, family password hash and version).
 
