@@ -73,7 +73,11 @@ export type TreePartner = { person: FPerson; label: string };
 /** Someone's children with one other parent (or none recorded), oldest first. */
 export type KidGroup = {
   partner: FPerson | null; label: string; children: TreeNode[];
-  /** The other parent is a co-parent: drawn small on this group's own drop line, with no relationship label. */
+  /**
+   * Drawn as a co-parent: smallest, on this group's own drop line. True when the other parent is marked co-parent,
+   * or when the person has children with more than one other parent (or some with none recorded), so each pair's
+   * children are clearly theirs. A single partner with children together stands beside the person instead.
+   */
   coparent: boolean;
 };
 export type TreeNode = {
@@ -98,7 +102,7 @@ export function partnerLabel(label: string | null | undefined, g: Gender) {
  * Dunya and everyone descended from her. Each person's children are grouped by their other parent, so children
  * with different partners sit apart. Partners with no children together stand beside the person. Never loops.
  */
-function descend(f: Family, id: number, seen: Set<number>): TreeNode {
+function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNode {
   seen.add(id);
   const partnerIds = f.partners(id).filter((p) => !seen.has(p));
   partnerIds.forEach((p) => seen.add(p));
@@ -128,6 +132,9 @@ function descend(f: Family, id: number, seen: Set<number>): TreeNode {
       children: g.kids.filter((k) => !seen.has(k)).map((k) => descend(f, k, seen)),
     }));
 
+  // Several groups: every other parent goes on their own drop line. Dunya's groups stay as cards.
+  if (!root && groups.length > 1) for (const g of groups) if (g.partner) g.coparent = true;
+  if (root) for (const g of groups) g.coparent = false;
   const inGroups = new Set(groups.map((g) => g.partner?.id).filter((x): x is number => x != null));
   return {
     person: f.byId.get(id)!,
@@ -171,7 +178,7 @@ export async function familyTree() {
   const f = await loadFamily();
   const dunya = await findDunya();
   const seen = new Set<number>();
-  const tree = dunya && f.byId.has(dunya.id) ? descend(f, dunya.id, seen) : null;
+  const tree = dunya && f.byId.has(dunya.id) ? descend(f, dunya.id, seen, true) : null;
   const earlier = dunya && tree ? ancestors(f, dunya.id, seen) : [];
   // Dunya's brothers and sisters stand beside her, in the earlier generations box.
   const rootSiblings: Elder[] = dunya && tree

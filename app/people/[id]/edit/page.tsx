@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { EditPerson } from "@/components/EditPerson";
-import { getSession } from "@/lib/auth";
+import { ParentsCard } from "@/components/ParentsCard";
+import { getSession, isAdmin } from "@/lib/auth";
+import { relationsFor } from "@/lib/family";
 import { listPeople } from "@/lib/data";
 import { personDetails } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
@@ -18,5 +20,11 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
   ]);
   const person = all.find((p) => p.id === id);
   if (!person || !det) notFound();
-  return <EditPerson det={det} avatarUrl={person.avatar_url} photos={photos.map((p) => ({ id: p.id, url: p.url }))} />;
+  // Parents are Mary's to set (the tree is admin only). A second parent is optional.
+  const parents = isAdmin(s) ? (await relationsFor(id, s)).parents.map((r) => ({ id: r.person.id, name: r.person.name })) : null;
+  return (
+    <EditPerson det={det} avatarUrl={person.avatar_url} photos={photos.map((p) => ({ id: p.id, url: p.url }))}>
+      {parents && <ParentsCard personId={id} name={det.name} parents={parents} />}
+    </EditPerson>
+  );
 }

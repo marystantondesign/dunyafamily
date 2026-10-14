@@ -2014,19 +2014,40 @@ a.rd-from:hover { color: var(--plum); }
   .pv-arrow.next { right: 0; }
 }
 
-/* ===== Round 14: co-parents on the tree. Small, no label, beside their own drop line. ===== */
+/* ===== Tree tune-up: no labels. Partners small beside the family member; co-parents smallest, on the drop line. ===== */
+/* Partner: 26px circle, centered on the family member's circle and joined by a short dash; name under it, 11px serif. */
+.ft .tcouple { --c: 26px; align-items: flex-start; }
+.ft .tcouple:has(> .ft-d0) { --c: 36px; }
+.ft .tcouple:has(> .ft-d1) { --c: 26px; }
+.ft .tcouple:has(> .ft-d2) { --c: 21px; }
+.ft .tcouple:has(> .ft-d3) { --c: 17px; }
+.ft .tcouple:has(> .ft-d4) { --c: 14px; }
+.ft .tpartner { display: inline-flex; align-items: flex-start; }
+.ft .tcouple .tpartner-line, .ft .tcouple:has(> .tdot) .tpartner-line { width: 14px; margin: var(--c) 2px 0 4px; border-top: 1px solid var(--check); }
+.ft-partner { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: calc(var(--c) - 13px); text-decoration: none; }
+.ft-partner .tdot-face { width: 26px; height: 26px; font-size: 11px; border-width: 2px; }
+.ft-partner-name { font-family: var(--serif); font-size: 11px; line-height: 1.15; color: var(--ink-3); white-space: nowrap; }
+.ft-partner:hover .ft-partner-name { color: var(--plum); }
+.ft-root .ft-spouse { --c: 36px; top: 0; }
+/* Co-parent: 20px circle on its own drop line, joined by a short notch at the circle's center, name to the right. */
 .ft-cogroup > ul { padding-top: 0; }
 .ft-cogroup > ul::before { display: none; }
-.ft-co { display: grid; grid-template-columns: 64px 1px 64px; height: 50px; align-items: center; }
-.ft-co-stem { align-self: stretch; border-left: 1px solid var(--check); }
-.ft-co-who { display: flex; align-items: flex-start; text-decoration: none; color: var(--muted); }
-.ft-co-who:hover { color: var(--plum); }
-.ft-co-tie { width: 12px; margin-top: 15px; border-top: 1px solid var(--check); flex: none; }
-.ft-co-face { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.ft-co-face .tdot-face { width: 30px; height: 30px; font-size: 12px; border-width: 2px; }
-.ft-co-name { font-size: 11px; line-height: 1.1; color: var(--muted); white-space: nowrap; }
+.ft-co { display: grid; grid-template-columns: 84px 1px 84px; height: 44px; }
+.ft-co-stem { border-left: 1px solid var(--check); }
+.ft-co-who { display: flex; align-items: center; align-self: center; gap: 0; text-decoration: none; }
+.ft-co-tie { width: 10px; border-top: 1px solid var(--check); flex: none; }
+.ft-co-who .tdot-face { width: 20px; height: 20px; font-size: 9px; border-width: 1.5px; }
+.ft-co-name { margin-left: 5px; font-family: var(--serif); font-size: 11px; line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.ft-co-who:hover .ft-co-name { color: var(--plum); }
 /* Phone: the same idea in the list. */
 .tco-group { list-style: none; }
 .tco { display: inline-flex; align-items: center; gap: 8px; padding: 4px 0 2px; font-size: 12px; color: var(--muted); text-decoration: none; }
 .tco .tdot-face { width: 26px; height: 26px; font-size: 11px; border-width: 2px; }
 .tco-group > .tsub { margin-top: 4px; }
+.tco { font-family: var(--serif); font-size: 12px; color: var(--ink-3); }
+.tco .tdot-face { width: 22px; height: 22px; font-size: 10px; border-width: 1.5px; }
+.tpartner-row .tdot-face { width: 30px; height: 30px; font-size: 12px; border-width: 2px; }
+.tpartner-row .tcard-name { font-size: 14px; color: var(--ink-3); }
+.ep-parents { list-style: none; margin: 0 0 8px; padding: 0; }
+.ep-parents li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ft-root .ft-spouse .tpartner-line { width: 14px; margin: var(--c) 2px 0 6px; border-top: 1px solid var(--check); }

@@ -155,8 +155,9 @@ export function FamilyAdmin({ data, everyone }: { data: AdminData; everyone: P[]
   );
 
   const parentAdd = data.parents.length >= 2 ? null
-    : data.parents.length === 1 && data.parents[0].role === "mother" ? { label: `Add ${me.name}'s father`, role: "father" }
-    : data.parents.length === 1 && data.parents[0].role === "father" ? { label: `Add ${me.name}'s mother`, role: "mother" }
+    : data.parents.length === 1 && data.parents[0].role === "mother" ? { label: `Add ${me.name}'s father (optional)`, role: "father" }
+    : data.parents.length === 1 && data.parents[0].role === "father" ? { label: `Add ${me.name}'s mother (optional)`, role: "mother" }
+    : data.parents.length === 1 ? { label: "Add a second parent (optional)", role: "parent" }
     : { label: "Add a parent", role: "parent" };
   const sibNames = data.siblings.map((s) => s.person.name);
   const kind = kindOf(role);
@@ -203,6 +204,7 @@ export function FamilyAdmin({ data, everyone }: { data: AdminData; everyone: P[]
             <h2>Parents</h2>
             <ul>{data.parents.map((r) => <li key={r.person.id}>{row("parent", r)}</li>)}</ul>
             {parentAdd && <button type="button" className="fa-add" onClick={() => startAdd(parentAdd.role)}>+ <span>{parentAdd.label}</span></button>}
+            {data.parents.length === 1 && <p className="hint">One parent is fine. With no second parent, {me.name} hangs straight from their parent on the tree.</p>}
           </section>
 
           <section className="fa-card">
