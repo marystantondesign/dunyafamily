@@ -9,6 +9,7 @@ import { relationsFor } from "@/lib/family";
 import { displayName } from "@/lib/names";
 import { comingUp, monthDay, personDetails, shortMonthDay, updatedLabel } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
+import { isInMemory } from "@/lib/inMemory";
 import { whenLabel } from "@/lib/when";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const familyLine = ([["Parents", rel.parents], ["Partner", rel.partners], ["Children", rel.children]] as const).filter(([, list]) => list.length);
   const anniversary = det.dates.find((d) => d.kind === "anniversary");
   const soon = comingUp(det);
+  const gone = isInMemory(det);
   const query = `people=${id}&order=oldest`;
 
   return (
@@ -61,7 +63,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="details-card">
-          <div className="detail">
+          {!gone && <div className="detail">
             <p className="detail-label"><Icon name="mail" size={20} /> Mailing address</p>
             {det.address ? (
               <>
@@ -74,17 +76,17 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             ) : (
               <Link href={`/people/${id}/edit#address`} className="small">Add an address</Link>
             )}
-          </div>
+          </div>}
           <div className="detail">
             <p className="detail-label"><Icon name="heart" size={20} /> Anniversary</p>
             {anniversary
               ? <p>{monthDay(anniversary.month, anniversary.day)}{anniversary.label && `, ${anniversary.label.replace(/^with /i, "with ")}`}</p>
               : <Link href={`/people/${id}/edit#dates`} className="small">Add a date</Link>}
           </div>
-          <div className="detail">
+          {!gone && <div className="detail">
             <p className="detail-label"><Icon name="calendar" size={20} /> Coming up</p>
             {soon ? <p>{soon.title}, {shortMonthDay(soon.month, soon.day)}</p> : <p className="muted">Nothing in the next two months</p>}
-          </div>
+          </div>}
         </div>
       </div>
 

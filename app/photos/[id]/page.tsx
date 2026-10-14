@@ -12,6 +12,7 @@ import { shuffleSeed } from "@/lib/shuffle";
 import { neighbors, whenLabel, type PhotoRow } from "@/lib/photos";
 import { signGet } from "@/lib/r2";
 import { isFavorite } from "@/lib/favorites";
+import { whoAmI } from "@/lib/me";
 import { canClearFlag } from "@/lib/taggingNeeded";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const when = whenLabel(photo);
   // A photo name wins. Otherwise the occasion and year, like "NYC, 2026".
   const fallback = [occasionTags[0]?.name, when].filter(Boolean).join(", ");
-  const title = (photo as PhotoRow & { title: string | null }).title || fallback || "Date unknown";
+  // A photo with no name is "Untitled". Its occasion and year still show, beside "Added by".
+  const title = (photo as PhotoRow & { title: string | null }).title || "Untitled";
   const flag = photo as PhotoRow & { tagging_needed?: boolean; tagging_needed_by: number | null; tagging_needed_by_device: string | null };
   const added = new Date(photo.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
@@ -74,6 +76,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
       title={title}
       people={tagged.map(({ id, name }) => ({ id, name }))}
       addedBy={`Added by ${byName(photo.uploaded_by_name)}, ${added}`}
+      about={fallback}
       pos={near?.pos ?? null}
       total={near?.total ?? null}
       prevHref={link(near?.prev)}
@@ -85,7 +88,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
       canDelete={owner}
       comments={talk.comments}
       reactions={talk.reactions}
-      me={s?.name ? displayName(s.name) : "You"}
+      me={s ? await whoAmI(s).then((m) => ({ name: m.name, avatarUrl: m.avatarUrl })) : { name: "You", avatarUrl: null }}
       favorite={favorite}
       avatarFor={tagged.filter((t) => canSetAvatar(t.id) && personInfo.get(t.id)?.avatar_photo_id !== id).map((t) => ({ id: t.id, name: t.name }))}
       details={{

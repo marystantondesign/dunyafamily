@@ -1,3 +1,4 @@
+import { isInMemory } from "./inMemory";
 import { canRemove, isAdmin } from "./auth";
 import { displayName } from "./names";
 import { q } from "./db";
@@ -24,14 +25,14 @@ function nextOccurrence(month: number, day: number, now: Date) {
 }
 
 export type UpcomingDate = {
-  id: number; person_id: number; name: string; in_memory: boolean; kind: DateKind; label: string;
+  id: number; person_id: number; name: string; in_memory: boolean; is_coparent: boolean; kind: DateKind; label: string;
   month: number; day: number; year: number | null; next: Date; inDays: number;
 };
 
 /** Anniversaries, remembrances, and other dates, soonest first. */
 export async function importantDates(now = new Date()): Promise<UpcomingDate[]> {
   const rows = await q<Omit<UpcomingDate, "next" | "inDays">>(
-    `select d.id, d.person_id, pe.name, pe.in_memory, d.kind, d.label, d.month, d.day, d.year
+    `select d.id, d.person_id, pe.name, pe.in_memory, coalesce(pe.is_coparent, false) as is_coparent, d.kind, d.label, d.month, d.day, d.year
        from person_dates d join people pe on pe.id = d.person_id
       where d.deleted_at is null and pe.deleted_at is null`,
   );
@@ -71,7 +72,9 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
       `select id, kind, label, month, day, year, created_by_device from person_dates
         where person_id = $1 and deleted_at is null order by month, day`, [id]),
   ]);
-  const hidden = !!p.address && !p.share_address && !isAdmin(s);
+  // In memory: no address at all. It stays in the database, just never shown.
+  const gone = isInMemory(p);
+  const hidden = !gone && !!p.address && !p.share_address && !isAdmin(s);
   const ownsPerson = canRemove(s, p.created_by_device);
   return {
     id,
@@ -81,10 +84,10 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
     canRemovePerson: ownsPerson,
     canChangePhoto: !p.avatar_photo_id || ownsPerson,
     birthday: b ? { id: b.id, month: b.month, day: b.day, year: b.year, removable: canRemove(s, b.created_by_device) } : null,
-    address: hidden ? null : p.address,
+    address: hidden || gone ? null : p.address,
     addressHidden: hidden,
-    addressUpdatedAt: hidden ? null : p.address_updated_at,
-    canEditAddress: !hidden && (!p.address || canRemove(s, p.address_by_device)),
+    addressUpdatedAt: hidden || gone ? null : p.address_updated_at,
+    canEditAddress: !gone && !hidden && (!p.address || canRemove(s, p.address_by_device)),
     shareAddress: p.share_address,
     inMemory: p.in_memory,
     canChangeMemory: !p.in_memory || canRemove(s, p.in_memory_by_device),
@@ -92,10 +95,11 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
   };
 }
 
-/** The soonest of someone's birthday and important dates, within the next two months. */
+/** The soonest of someone's birthday and important dates, within the next two months. Never for someone in memory. */
 export function comingUp(det: PersonDetails, now = new Date()) {
+  if (isInMemory(det)) return null;
   const all = [
-    ...(det.birthday ? [{ title: det.inMemory ? "Birthday, a day to remember" : "Birthday", month: det.birthday.month, day: det.birthday.day }] : []),
+    ...(det.birthday ? [{ title: "Birthday", month: det.birthday.month, day: det.birthday.day }] : []),
     ...det.dates.map((d) => ({ title: d.kind === "anniversary" ? "Anniversary" : d.label, month: d.month, day: d.day })),
   ].map((x) => ({ ...x, ...nextOccurrence(x.month, x.day, now) })).filter((x) => x.inDays <= 60).sort((a, b) => a.inDays - b.inDays);
   return all[0] ?? null;

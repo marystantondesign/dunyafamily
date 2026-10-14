@@ -1,3 +1,4 @@
+import { upcomingSql } from "./inMemory";
 import { createHash, randomInt } from "crypto";
 import { q } from "./db";
 import { displayName } from "./names";
@@ -147,10 +148,10 @@ export async function composeMessage(personId: number, s: ReminderSettings, now:
       where r.deleted_at is null and r.answered_at > $2 order by r.answered_at desc`, [personId, since]) : [];
   const birthdays = s.include.birthdays ? await q<{ name: string }>(
     `select pe.name from birthdays b join people pe on pe.id = b.person_id and pe.deleted_at is null
-      where b.deleted_at is null and not pe.in_memory and b.month = $1 and b.day = $2 order by pe.name`, [local.month, local.day]) : [];
+      where b.deleted_at is null and ${upcomingSql()} and b.month = $1 and b.day = $2 order by pe.name`, [local.month, local.day]) : [];
   const dates = s.include.anniversaries || s.include.remembrance ? await q<{ name: string; kind: string }>(
     `select pe.name, d.kind from person_dates d join people pe on pe.id = d.person_id and pe.deleted_at is null
-      where d.deleted_at is null and d.month = $1 and d.day = $2 and d.kind in ('anniversary', 'remembrance') order by pe.name`, [local.month, local.day]) : [];
+      where d.deleted_at is null and d.month = $1 and d.day = $2 and ((d.kind = 'remembrance' and not coalesce(pe.is_coparent, false)) or (d.kind = 'anniversary' and ${upcomingSql()})) order by pe.name`, [local.month, local.day]) : [];
 
   const line = (r: { about: string; for_name: string | null; fp: string | null }) => {
     const who = r.fp ? displayName(r.fp) : r.for_name;

@@ -1,6 +1,7 @@
 import { canRemove } from "./auth";
 import { q } from "./db";
 import { byName, displayName } from "./names";
+import { signGet } from "./r2";
 import type { Session } from "./session";
 
 /** The quick picks. Any other emoji works too. */
@@ -21,6 +22,7 @@ export type CommentView = {
   removed: boolean;
   // Reactions on the comment, in the order each emoji was first used, like the photo's.
   reactions: ReactionView[];
+  avatarUrl: string | null;
 };
 export type ReactionView = { emoji: string; count: number; names: string[]; mine: boolean };
 
@@ -31,11 +33,16 @@ export type ReactionView = { emoji: string; count: number; names: string[]; mine
 export async function photoTalk(photoId: number, s: Session | null): Promise<{ comments: CommentView[]; reactions: ReactionView[] }> {
   const [comments, reactions, cr] = await Promise.all([
     q<{ id: number; body: string; author_name: string | null; created_by_device: string | null; created_at: string; edited_at: string | null;
-      parent_id: number | null; reply_to_name: string | null; deleted_at: string | null }>(
-      `select id, body, author_name, created_by_device, created_at, edited_at, parent_id, reply_to_name, deleted_at from photo_comments c
-        where photo_id = $1 and (deleted_at is null or (parent_id is null and exists (
+      parent_id: number | null; reply_to_name: string | null; deleted_at: string | null; pe_name: string | null; thumb_key: string | null }>(
+      // The author's person record gives their current name and profile photo.
+      `select c.id, c.body, c.author_name, c.created_by_device, c.created_at, c.edited_at, c.parent_id, c.reply_to_name, c.deleted_at,
+              pe.name as pe_name, ph.thumb_key
+         from photo_comments c
+         left join people pe on pe.id = c.author_pid and pe.deleted_at is null
+         left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
+        where c.photo_id = $1 and (c.deleted_at is null or (c.parent_id is null and exists (
           select 1 from photo_comments r where r.parent_id = c.id and r.deleted_at is null)))
-        order by created_at, id`, [photoId]),
+        order by c.created_at, c.id`, [photoId]),
     q<{ emoji: string; created_by_device: string; author_name: string | null }>(
       `select emoji, created_by_device, author_name from photo_reactions where photo_id = $1 order by created_at`, [photoId]),
     q<{ comment_id: number; emoji: string; person_id: number | null; device: string | null; name: string | null; person_name: string | null }>(
@@ -43,6 +50,7 @@ export async function photoTalk(photoId: number, s: Session | null): Promise<{ c
          join photo_comments c on c.id = r.comment_id left join people pe on pe.id = r.person_id
         where c.photo_id = $1 order by r.created_at, r.id`, [photoId]),
   ]);
+  const thumbs = new Map(await Promise.all(comments.filter((c) => c.thumb_key && !c.deleted_at).map(async (c) => [c.id, await signGet(c.thumb_key!)] as const)));
   const live = new Set(comments.filter((c) => !c.parent_id).map((c) => c.id));
   const shown = comments.filter((c) => !c.parent_id || live.has(c.parent_id));
   return {
@@ -50,7 +58,7 @@ export async function photoTalk(photoId: number, s: Session | null): Promise<{ c
       const rows = cr.filter((r) => r.comment_id === c.id);
       const isMe = (r: (typeof rows)[number]) => (r.person_id != null ? r.person_id === s?.pid : !!s && r.device === s.did);
       return {
-        id: c.id, author: c.deleted_at ? "" : byName(c.author_name), body: c.deleted_at ? "" : c.body, createdAt: c.created_at, editedAt: c.edited_at,
+        id: c.id, author: c.deleted_at ? "" : byName(c.pe_name ?? c.author_name), avatarUrl: thumbs.get(c.id) ?? null, body: c.deleted_at ? "" : c.body, createdAt: c.created_at, editedAt: c.edited_at,
         canDelete: !c.deleted_at && canRemove(s, c.created_by_device), removed: !!c.deleted_at,
         parentId: c.parent_id, replyTo: c.reply_to_name ? displayName(c.reply_to_name) : null,
         reactions: [...new Set(rows.map((r) => r.emoji))].map((emoji) => {

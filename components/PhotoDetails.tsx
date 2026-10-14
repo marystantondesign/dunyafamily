@@ -138,9 +138,7 @@ export function PhotoDetails({ d, onDone, tagHref, onRemove, avatarFor = [], onA
           <input type="checkbox" checked={flagOn} disabled={d.taggingNeeded.on && !d.taggingNeeded.canClear}
             onChange={(e) => { setFlagOn(e.target.checked); patch({ taggingNeeded: e.target.checked }); }} />
           <span><strong>Tagging needed</strong>
-            <span className="hint">{d.taggingNeeded.on && !d.taggingNeeded.canClear
-              ? "Only the person who marked this, or Mary, can take this off."
-              : "There's someone here nobody has named yet."}</span>
+            {d.taggingNeeded.on && !d.taggingNeeded.canClear && <span className="hint">Only the person who marked this, or Mary, can take this off.</span>}
           </span>
         </label>
       </div>

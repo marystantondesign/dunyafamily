@@ -2,14 +2,15 @@ import { q } from "./db";
 import { displayName } from "./names";
 import { signGet } from "./r2";
 
-export type Person = { id: number; name: string; aliases: string[]; avatar_url: string | null; in_memory: boolean };
+export type Person = { id: number; name: string; aliases: string[]; avatar_url: string | null; in_memory: boolean; coparent: boolean };
 export type Occasion = { id: number; name: string; kind: string };
 
 export async function listPeople(): Promise<Person[]> {
-  const rows = await q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean }>(
-    `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory
+  // Family first, A to Z; co-parents after, so they never come up ahead of family in suggestions.
+  const rows = await q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; is_coparent: boolean }>(
+    `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, coalesce(pe.is_coparent, false) as is_coparent
        from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
-      where pe.deleted_at is null order by lower(pe.name)`,
+      where pe.deleted_at is null order by coalesce(pe.is_coparent, false), lower(pe.name)`,
   );
   return Promise.all(
     rows.map(async (r) => ({
@@ -18,6 +19,7 @@ export async function listPeople(): Promise<Person[]> {
       aliases: r.aliases ?? [],
       avatar_url: r.thumb_key ? await signGet(r.thumb_key) : null,
       in_memory: !!r.in_memory,
+      coparent: !!r.is_coparent,
     })),
   );
 }
@@ -37,11 +39,11 @@ export async function decadesInUse() {
   return rows.map((r) => r.d);
 }
 
-export type Birthday = { id: number; person_id: number; name: string; in_memory: boolean; month: number; day: number; year: number | null; created_by_device: string | null; next: Date; inDays: number };
+export type Birthday = { id: number; person_id: number; name: string; in_memory: boolean; is_coparent: boolean; month: number; day: number; year: number | null; created_by_device: string | null; next: Date; inDays: number };
 
 export async function birthdays(now = new Date()): Promise<Birthday[]> {
   const rows = await q<Omit<Birthday, "next" | "inDays">>(
-    `select b.id, b.person_id, pe.name, pe.in_memory, b.month, b.day, b.year, b.created_by_device
+    `select b.id, b.person_id, pe.name, pe.in_memory, coalesce(pe.is_coparent, false) as is_coparent, b.month, b.day, b.year, b.created_by_device
        from birthdays b join people pe on pe.id = b.person_id
       where b.deleted_at is null and pe.deleted_at is null`,
   );

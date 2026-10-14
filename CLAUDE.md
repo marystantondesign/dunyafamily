@@ -49,6 +49,9 @@ See db/schema.sql.
 - recipes and recipe_notes (round 11, soft delete, restorable): the recipe box. Not a nav tab; the way in is the Home card. person_id links to the tree, from_name is anyone else. "Sort it out for me" (app/api/recipes/parse) uses the Anthropic SDK on the server with ANTHROPIC_API_KEY; without the key people fill the form by hand.
 - favorites (person_id, photo_id): each person's starred photos, tied to the person picked under "who are you" (session pid), never the device. Only that person ever sees them; the API never takes a person id from the client. Shown through Browse ?favorites=1 (lib/filters favoritesOf), sort order=favorited.
 - photos.tagging_needed (+ _by person, _by_device, _at): "Tagging needed", someone in the photo nobody has named yet. Set from Tag photos ("I'm not sure who this is!") or Edit details; cleared by the flagger, the admin, or anyone answering "Yes, that's everyone" after tagging. Browse ?tagging=1. Separate from the older untagged ("Needs tags") filter.
+- In memory (lib/inMemory): isInMemory/livingSql, and inUpcoming/upcomingSql for anything forward-looking (Coming up, calendar upcoming and feed, reminders). Someone in memory has no address or Coming up; remembrance days still work.
+- people.is_coparent: had a child with a family member but isn't family. Small on the tree on the drop line to the children they share (each child has both parent links), no partner label, left out of Home's list, suggestions order, and reminders. Admin, Family tree has the Co-parent switch.
+- Photos with no name show "Untitled"; the occasion and year show beside "Added by" (photo page) and under the title (slideshow).
 - settings: key and value (home_photo_id from before homepage_photos, homepage_interval, family password hash and version).
 
 ## Roadmap

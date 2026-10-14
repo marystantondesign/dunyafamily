@@ -34,13 +34,35 @@ function Dot({ p, depth, label }: { p: FPerson; depth: number; label?: string })
 const names = (list: string[]) =>
   list.length <= 1 ? list.join("") : list.length === 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
 
-/** A person, partners beside them, and their children below, grouped by the other parent when there's more than one. */
+/** A co-parent: small, no label, sitting just beside the line that drops to the children they share. */
+function CoParent({ p }: { p: FPerson }) {
+  return (
+    <span className="ft-co" aria-hidden="false">
+      <span className="ft-co-gap" />
+      <span className="ft-co-stem" />
+      <Link href={`/people/${p.id}`} className="ft-co-who">
+        <span className="ft-co-tie" aria-hidden="true" />
+        <span className="ft-co-face"><Face p={p} /><span className="ft-co-name">{p.name}</span></span>
+      </Link>
+    </span>
+  );
+}
+
+/**
+ * A person, partners beside them, and their children below, grouped by the other parent when there's more than
+ * one. Each co-parent group gets its own drop line with the co-parent small beside it; children with no other
+ * parent recorded hang straight off the person's line.
+ */
 function Branch({ node, depth }: { node: TreeNode; depth: number }) {
-  const single = node.groups.length === 1 ? node.groups[0] : null;
+  const normal = node.groups.filter((g) => !g.coparent);
+  const single = normal.length === 1 && node.groups.length === 1 ? normal[0] : null;
   const beside = [
     ...(single?.partner ? [{ person: single.partner, label: single.label }] : []),
     ...node.partners,
   ];
+  const kids = (g: KidGroup) => g.children.map((c) => <Branch key={c.person.id} node={c} depth={depth + 1} />);
+  // Children with no other parent recorded, alongside co-parent groups, hang straight off the person's line.
+  const hasCo = node.groups.some((g) => g.coparent);
   return (
     <li>
       <div className="tcouple">
@@ -52,15 +74,26 @@ function Branch({ node, depth }: { node: TreeNode; depth: number }) {
           </span>
         ))}
       </div>
-      {single && single.children.length > 0 && <ul>{single.children.map((c) => <Branch key={c.person.id} node={c} depth={depth + 1} />)}</ul>}
-      {node.groups.length > 1 && (
+      {single && single.children.length > 0 && <ul>{kids(single)}</ul>}
+      {!single && node.groups.length > 0 && (
         <ul>
-          {node.groups.map((g) => (
-            <li key={g.partner?.id ?? "none"} className="ft-subgroup">
-              {g.partner && <span className="ft-subtab"><Face p={g.partner} /> With {g.partner.name}</span>}
-              <ul>{g.children.map((c) => <Branch key={c.person.id} node={c} depth={depth + 1} />)}</ul>
-            </li>
-          ))}
+          {node.groups.flatMap((g) => {
+            if (g.coparent && g.partner) {
+              return [(
+                <li key={`co${g.partner.id}`} className="ft-cogroup">
+                  <CoParent p={g.partner} />
+                  <ul>{kids(g)}</ul>
+                </li>
+              )];
+            }
+            if (!g.partner && hasCo) return kids(g);
+            return [(
+              <li key={g.partner?.id ?? "none"} className="ft-subgroup">
+                {g.partner && <span className="ft-subtab"><Face p={g.partner} /> With {g.partner.name}</span>}
+                <ul>{kids(g)}</ul>
+              </li>
+            )];
+          })}
         </ul>
       )}
     </li>
@@ -87,7 +120,9 @@ function GroupCard({ root, g }: { root: FPerson; g: KidGroup }) {
 /** Phone: a list of cards under Dunya. Tap the arrow to see a partner and children. */
 function PhoneBranch({ node, depth }: { node: TreeNode; depth: number }) {
   const [open, setOpen] = useState(false);
-  const partners = [...node.groups.filter((g) => g.partner).map((g) => ({ person: g.partner!, label: g.label })), ...node.partners];
+  const partners = [...node.groups.filter((g) => g.partner && !g.coparent).map((g) => ({ person: g.partner!, label: g.label })), ...node.partners];
+  const coGroups = node.groups.filter((g) => g.coparent && g.partner);
+  const coKids = new Set(coGroups.flatMap((g) => g.children.map((c) => c.person.id)));
   const hasMore = partners.length > 0 || node.children.length > 0;
   return (
     <li className={depth === 1 ? "tcard" : "trow"}>
@@ -115,7 +150,14 @@ function PhoneBranch({ node, depth }: { node: TreeNode; depth: number }) {
               </div>
             </li>
           ))}
-          {node.children.map((c) => <PhoneBranch key={c.person.id} node={c} depth={depth + 1} />)}
+          {node.children.filter((c) => !coKids.has(c.person.id)).map((c) => <PhoneBranch key={c.person.id} node={c} depth={depth + 1} />)}
+          {/* Co-parents: small, on the line that leads to the children they share. */}
+          {coGroups.map((g) => (
+            <li key={`co${g.partner!.id}`} className="tco-group">
+              <Link href={`/people/${g.partner!.id}`} className="tco"><Face p={g.partner!} /> {g.partner!.name}</Link>
+              <ul className="tsub">{g.children.map((c) => <PhoneBranch key={c.person.id} node={c} depth={depth + 1} />)}</ul>
+            </li>
+          ))}
         </ul>
       )}
     </li>
@@ -147,6 +189,8 @@ function useFit() {
     if (!w || !el) return;
     const measure = () => {
       const natural = el.scrollWidth, room = w.clientWidth;
+      // Hidden (phones): nothing to measure.
+      if (!natural || !room) return;
       const scale = Math.max(MIN_SCALE, Math.min(1, room / natural));
       setFit({ scale, height: el.offsetHeight * scale, offset: Math.max(0, (room - natural * scale) / 2) });
     };
@@ -178,7 +222,7 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
 
   const root = tree?.person;
   const rootName = root ? [root.name, ...root.aliases.filter((a) => a.toLowerCase() !== root.name.toLowerCase()).slice(0, 1)].join(" / ") : "";
-  const allPartners = tree ? [...tree.partners, ...tree.groups.filter((g) => g.partner).map((g) => ({ person: g.partner!, label: g.label }))] : [];
+  const allPartners = tree ? [...tree.partners, ...tree.groups.filter((g) => g.partner && !g.coparent).map((g) => ({ person: g.partner!, label: g.label }))] : [];
   const rootBlock = root && (
     <div className="ft-root">
       <Link href={`/people/${root.id}`} className="tdot ft-d0">

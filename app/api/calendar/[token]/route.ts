@@ -2,6 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { birthdays } from "@/lib/data";
 import { q } from "@/lib/db";
 import { importantDates } from "@/lib/people";
+import { inUpcoming } from "@/lib/inMemory";
 
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -24,14 +25,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Dunya Family//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Dunya Family", "REFRESH-INTERVAL;VALUE=DURATION:PT12H", "X-PUBLISHED-TTL:PT12H"];
 
-  for (const b of await birthdays()) {
+  // Nothing forward-looking for someone in memory; their days of remembrance still come through.
+  for (const b of (await birthdays()).filter(inUpcoming)) {
     const start = new Date(2020, b.month - 1, b.day);
     const end = new Date(2020, b.month - 1, b.day + 1);
     lines.push("BEGIN:VEVENT", `UID:birthday-${b.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${esc(`${b.name}'s birthday`)}`, "TRANSP:TRANSPARENT", "END:VEVENT");
   }
 
   // Anniversaries, remembrances, and other important dates repeat every year. Names and dates only.
-  for (const d of await importantDates()) {
+  for (const d of (await importantDates()).filter((d) => (d.kind === "remembrance" && !d.is_coparent) || inUpcoming(d))) {
     const start = new Date(2020, d.month - 1, d.day);
     const end = new Date(2020, d.month - 1, d.day + 1);
     const summary = d.kind === "anniversary" ? `${d.name}'s anniversary`

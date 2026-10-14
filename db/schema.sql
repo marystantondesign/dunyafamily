@@ -406,3 +406,15 @@ alter table photos add column if not exists tagging_needed boolean not null defa
 alter table photos add column if not exists tagging_needed_by int;
 alter table photos add column if not exists tagging_needed_by_device text;
 alter table photos add column if not exists tagging_needed_at timestamptz;
+
+-- Comment authors: link older comments to the person who wrote them, so their profile photo shows. Only fills in
+-- a missing link, and only when exactly one person has that name.
+update photo_comments c set author_pid = pe.id
+  from people pe
+ where c.author_pid is null and c.author_name is not null and pe.deleted_at is null
+   and lower(pe.name) = lower(trim(c.author_name))
+   and (select count(*) from people x where x.deleted_at is null and lower(x.name) = lower(trim(c.author_name))) = 1;
+
+-- Co-parents (round 14): someone who had a child with a family member but isn't family themselves. They sit small on
+-- the tree beside the children they share, and are left out of the family list, suggestions, and reminders.
+alter table people add column if not exists is_coparent boolean not null default false;

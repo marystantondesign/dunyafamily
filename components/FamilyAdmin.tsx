@@ -9,7 +9,7 @@ import { TagPicker, type Picked } from "./TagPicker";
 type P = { id: number; name: string; avatarUrl: string | null; inMemory: boolean; birthYear?: number | null; aliases?: string[] };
 type Row = { person: P; role: string };
 type Kind = "parent" | "sibling" | "partner" | "child";
-export type AdminData = { person: P & { birthYear: number | null; friend: boolean }; parents: Row[]; siblings: Row[]; partners: Row[]; children: Row[] };
+export type AdminData = { person: P & { birthYear: number | null; friend: boolean; coparent: boolean }; parents: Row[]; siblings: Row[]; partners: Row[]; children: Row[] };
 
 const ROLE_SETS: Record<Kind, string[]> = {
   parent: ["mother", "father", "parent"], sibling: ["sister", "brother", "sibling"], partner: ["spouse", "former_spouse", "partner", "former_partner"], child: ["daughter", "son", "child"],
@@ -182,6 +182,11 @@ export function FamilyAdmin({ data, everyone }: { data: AdminData; everyone: P[]
           <input type="checkbox" role="switch" className="switch" checked={me.friend}
             onChange={(e) => fetch(`/api/people/${me.id}/relations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "friend", on: e.target.checked }) }).then(() => router.refresh())} />
           Friend of the family
+        </label>
+        <label className="fa-friend" title="Had a child with someone in the family. Shown small on the tree beside the children they share, and left out of the family list and reminders.">
+          <input type="checkbox" role="switch" className="switch" checked={me.coparent}
+            onChange={(e) => fetch(`/api/people/${me.id}/relations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "coparent", on: e.target.checked }) }).then(() => router.refresh())} />
+          Co-parent
         </label>
         <label className="fa-birth">
           <span className="label">Birth year</span>

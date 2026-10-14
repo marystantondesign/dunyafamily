@@ -6,7 +6,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FavoriteButton, FavoriteIcon, FavoriteToast, useFavorite } from "./FavoriteButton";
 import { Icon } from "./Icon";
 import { PhotoDetails, type DetailsData } from "./PhotoDetails";
-import { Reactions, Thread, type Comment, type Reaction } from "./PhotoTalk";
+import { Reactions, Thread, type Comment, type Me, type Reaction } from "./PhotoTalk";
 import { QBadge } from "./TaggingNeeded";
 
 /**
@@ -20,11 +20,13 @@ const COMMENTS_KEY = "df_comments_open";
 export function PhotoScreen(props: {
   photoId: number; imgUrl: string; thumbUrl: string; alt: string;
   title: string; people: { id: number; name: string }[]; addedBy: string;
+  /** The occasion and year, like "Christmas, 1958", shown beside "Added by". */
+  about: string;
   pos: number | null; total: number | null; prevHref?: string; nextHref?: string;
   backHref: string; backLabel: string; slideshowHref: string; tagHref: string;
   canDelete: boolean; avatarFor: { id: number; name: string }[];
   details: DetailsData;
-  comments: Comment[]; reactions: Reaction[]; me: string;
+  comments: Comment[]; reactions: Reaction[]; me: Me;
   /** Whether the person this visit picked has starred it. Only they ever see this. */
   favorite: boolean;
 }) {
@@ -75,6 +77,8 @@ export function PhotoScreen(props: {
     ))}. </>
   );
 
+  const peopleText = props.people.length <= 1 ? props.people.map((p) => p.name).join("")
+    : `${props.people.slice(0, -1).map((p) => p.name).join(", ")} and ${props.people[props.people.length - 1].name}`;
   const n = props.comments.filter((c) => !c.removed).length;
   const nComments = `${n} ${n === 1 ? "comment" : "comments"}`;
   // Tagging needed: under the caption, its own row so a narrow photo doesn't squeeze it.
@@ -85,11 +89,12 @@ export function PhotoScreen(props: {
       <button type="button" className="btn btn-primary" onClick={() => { setHelping(true); setEditing(true); }}>Yes, I&apos;ll tag them</button>
     </div>
   );
+  const added = [props.about, props.addedBy].filter(Boolean).join(" · ");
   const heading = (
     <>
       <h1>{props.title}</h1>
       <div className="pv-meta-row">
-        <p>{withLine}{props.addedBy}.</p>
+        <p>{withLine}{added}.</p>
         <Reactions photoId={props.photoId} reactions={props.reactions} />
       </div>
       {note && <p className="pv-note" role="status">{note}</p>}
@@ -130,6 +135,8 @@ export function PhotoScreen(props: {
             if (dx < 0 && props.nextHref) router.push(props.nextHref);
             if (dx > 0 && props.prevHref) router.push(props.prevHref);
           }}>
+          {/* Wide screens: a fixed box with the arrows pinned to its edges, so they stay put from photo to photo. */}
+          <div className="pv-box">
           <div className="pv-frame">
             <div className="pv-photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,6 +157,36 @@ export function PhotoScreen(props: {
               </div>
             </div>
             {askCard && <div className="pv-under pv-under-card desktop-only">{askCard}</div>}
+          </div>
+          </div>
+        </div>
+
+        {/* Wide screens: the info row under the photo. Title and people stay on one line each. */}
+        <div className="pv-info">
+          <div className="pv-info-main">
+            <h1 title={props.title}>{props.title}</h1>
+            {props.people.length > 0 && (
+              <p className="pv-with" title={`With ${peopleText}`}>
+                With {props.people.map((p, i) => (
+                  <span key={p.id}>{i > 0 && (i === props.people.length - 1 ? " and " : ", ")}<Link href={`/people/${p.id}`}>{p.name}</Link></span>
+                ))}
+              </p>
+            )}
+            <div className="pv-meta-row">
+              <p>{added}</p>
+              <Reactions photoId={props.photoId} reactions={props.reactions} />
+            </div>
+            {note && <p className="pv-note" role="status">{note}</p>}
+            {askCard}
+          </div>
+          <div className="pv-under-side">
+            {!editing && (
+              <span className="pv-under-btns">
+                <FavoriteButton on={fav.on} onToggle={fav.toggle} />
+                <button type="button" className="btn pv-bar-btn" onClick={() => setEditing(true)}><Icon name="pencil" size={16} /> Edit details</button>
+              </span>
+            )}
+            <span className="pv-count">{count}</span>
           </div>
         </div>
 

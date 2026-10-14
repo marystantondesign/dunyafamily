@@ -4,6 +4,7 @@ import { Icon } from "@/components/Icon";
 import { MonthCalendar, type CalItem } from "@/components/MonthCalendar";
 import { birthdays, calendarGatherings, listPeople } from "@/lib/data";
 import { importantDates, shortMonthDay } from "@/lib/people";
+import { inUpcoming } from "@/lib/inMemory";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const feed = process.env.CALENDAR_TOKEN ? `webcal://${host}/api/calendar/${process.env.CALENDAR_TOKEN}.ics` : null;
   const avatar = new Map(people.map((p) => [p.id, p.avatar_url]));
 
-  // Birthdays of family in memory, and days of remembrance, are quiet: no party cards, just a line.
-  const upcoming = bdays.filter((b) => !b.in_memory).slice(0, 4);
+  // Upcoming leaves out everyone in memory (lib/inMemory). Days of remembrance are quiet: just a line.
+  const upcoming = bdays.filter(inUpcoming).slice(0, 4);
   const quiet = [
-    ...bdays.filter((b) => b.in_memory && b.inDays <= 30).map((b) => ({ key: `b${b.id}`, text: `Remembering ${b.name} on their birthday`, inDays: b.inDays, when: shortMonthDay(b.month, b.day), href: `/people/${b.person_id}` })),
     ...dates.filter((d) => d.kind === "remembrance" && d.inDays <= 30).map((d) => ({ key: `d${d.id}`, text: d.label || `Remembering ${d.name}`, inDays: d.inDays, when: shortMonthDay(d.month, d.day), href: `/people/${d.person_id}` })),
   ].sort((a, b) => a.inDays - b.inDays);
 

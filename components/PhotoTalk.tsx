@@ -8,7 +8,10 @@ export type Reaction = { emoji: string; count: number; names: string[]; mine: bo
 export type Comment = {
   id: number; author: string; body: string; createdAt: string; editedAt: string | null; canDelete: boolean;
   parentId: number | null; replyTo: string | null; removed: boolean; reactions: Reaction[];
+  /** The commenter's profile photo, when they have one. */
+  avatarUrl: string | null;
 };
+export type Me = { name: string; avatarUrl: string | null };
 
 const names = (list: string[]) =>
   list.length <= 1 ? list.join("") : list.length === 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
@@ -88,8 +91,14 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 /** A warm tint per person, so avatars are easy to tell apart. */
 const TINTS = ["#B39A80", "#9C8670", "#C4B095", "#A88B7A", "#B9A58C", "#8F7B68"];
 const tint = (name: string) => TINTS[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % TINTS.length];
-function Avatar({ name, small }: { name: string; small?: boolean }) {
-  return <span className={`comment-avatar${small ? " small" : ""}`} style={{ background: tint(name) }} aria-hidden="true">{initial(name)}</span>;
+/** Their profile photo, or their initial when they have none. */
+function Avatar({ name, url, small }: { name: string; url?: string | null; small?: boolean }) {
+  return (
+    <span className={`comment-avatar${small ? " small" : ""}`} style={{ background: tint(name) }} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {url ? <img src={url} alt="" /> : initial(name)}
+    </span>
+  );
 }
 
 async function send(url: string, body: unknown, method = "POST") {
@@ -138,7 +147,7 @@ function CommentItem({ c, fresh, onReply, onError }: { c: Comment; fresh: boolea
 
   return (
     <div className={`cm${c.parentId ? " reply" : ""}${fresh ? " fresh" : ""}`} data-comment={c.id}>
-      <Avatar name={c.author} small={!!c.parentId} />
+      <Avatar name={c.author} url={c.avatarUrl} small={!!c.parentId} />
       <div className="cm-main">
         <div className={`cm-bubble${editing ? " editing" : ""}`}>
           <p className="cm-author">
@@ -176,7 +185,7 @@ function CommentItem({ c, fresh, onReply, onError }: { c: Comment; fresh: boolea
 
 /** A box to write in, with a round send button. Enter sends; Shift-Enter starts a new line. */
 function Composer({ me, placeholder, mention, onSend, autoFocus, onCancel, small }: {
-  me: string; placeholder: string; mention?: string; onSend: (text: string) => Promise<boolean>; autoFocus?: boolean; onCancel?: () => void; small?: boolean;
+  me: Me; placeholder: string; mention?: string; onSend: (text: string) => Promise<boolean>; autoFocus?: boolean; onCancel?: () => void; small?: boolean;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -198,7 +207,7 @@ function Composer({ me, placeholder, mention, onSend, autoFocus, onCancel, small
   }
   return (
     <form className={`cm-compose${small ? " small" : ""}`} onSubmit={go}>
-      <Avatar name={me} small={small} />
+      <Avatar name={me.name} url={me.avatarUrl} small={small} />
       <div className="cm-field" onClick={() => area.current?.focus()}>
         {mention && <span className="cm-mention">{mention}</span>}
         <label className="sr-only" htmlFor={`cm-${placeholder}-${mention ?? ""}`}>{mention ? `Reply to ${mention}` : "Write a comment"}</label>
@@ -219,7 +228,7 @@ function Composer({ me, placeholder, mention, onSend, autoFocus, onCancel, small
  * the new comment scrolls into view with a soft gold highlight, and "Comment posted" shows above the box.
  */
 export function Thread({ photoId, comments, me, compose = "Share a memory, or who else was there", focus }: {
-  photoId: number; comments: Comment[]; me: string; compose?: string; focus?: boolean;
+  photoId: number; comments: Comment[]; me: Me; compose?: string; focus?: boolean;
 }) {
   const router = useRouter();
   const [replying, setReplying] = useState<Comment | null>(null);

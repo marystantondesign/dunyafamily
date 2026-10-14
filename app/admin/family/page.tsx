@@ -19,7 +19,7 @@ export default async function FamilyAdminPage({ searchParams }: { searchParams: 
     <FamilyAdmin
       key={data.person.id}
       data={{
-        person: { id: data.person.id, name: data.person.name, avatarUrl: data.person.avatarUrl, inMemory: data.person.inMemory, birthYear: data.person.birthYear, friend: data.person.friend },
+        person: { id: data.person.id, name: data.person.name, avatarUrl: data.person.avatarUrl, inMemory: data.person.inMemory, birthYear: data.person.birthYear, friend: data.person.friend, coparent: data.person.coparent },
         parents: data.parents.map(strip), siblings: data.siblings.map(strip), partners: data.partners.map(strip), children: data.children.map(strip),
       }}
       everyone={data.everyone}

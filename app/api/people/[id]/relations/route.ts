@@ -3,7 +3,7 @@ import { badRequest, canRemove, forbidden, getSession, isAdmin, unauthorized } f
 import { q } from "@/lib/db";
 import { addRelation } from "@/lib/family";
 
-type Body = { kind: "parent" | "child" | "partner"; other: number | string } | { kind: "friend"; on: boolean };
+type Body = { kind: "parent" | "child" | "partner"; other: number | string } | { kind: "friend" | "coparent"; on: boolean };
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const s = await getSession();
@@ -12,6 +12,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!isAdmin(s)) return forbidden();
   const id = Number((await params).id);
   const body = (await req.json().catch(() => ({}))) as Body;
+  if (body.kind === "coparent") {
+    await q(`update people set is_coparent = $1 where id = $2 and deleted_at is null`, [!!body.on, id]);
+    return NextResponse.json({ ok: true });
+  }
   if (body.kind === "friend") {
     const [p] = await q<{ family_friend_by_device: string | null; created_by_device: string | null }>(
       `select family_friend_by_device, created_by_device from people where id = $1 and deleted_at is null`, [id]);
@@ -21,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await q(`update people set family_friend = $1, family_friend_by_device = $2 where id = $3`, [!!body.on, body.on ? s.did : null, id]);
     return NextResponse.json({ ok: true });
   }
-  if (!["parent", "child", "partner"].includes(body.kind)) return badRequest("Unknown relationship.");
+  if (body.kind !== "parent" && body.kind !== "child" && body.kind !== "partner") return badRequest("Unknown relationship.");
   const error = await addRelation(id, body.kind, body.other, s);
   return error ? badRequest(error) : NextResponse.json({ ok: true });
 }

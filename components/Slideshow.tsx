@@ -19,7 +19,9 @@ const HINT_KEY = "df_ss_hint";
 
 const names = (list: string[]) =>
   list.length <= 1 ? list.join("") : list.length === 2 ? list.join(" and ") : `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
-const titleOf = (s: Slide) => s.title || [s.occasion, whenLabel(s)].filter(Boolean).join(", ") || "Date unknown";
+// A photo with no name is "Untitled". Its occasion and year still show, on the line under it.
+const titleOf = (s: Slide) => s.title || "Untitled";
+const aboutOf = (s: Slide) => [s.occasion, whenLabel(s)].filter(Boolean).join(", ");
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Each photo is fully decoded before it's shown, so a change never shows a half-loaded frame.
@@ -229,7 +231,9 @@ export function Slideshow({ slides, start, chips, exitHref, initialSpeed, labels
             {labels && (
               <>
                 <p className="ssv-title">{titleOf(current)}</p>
-                {current.people.length > 0 && <p className="ssv-people">{names(current.people)}</p>}
+                {(aboutOf(current) || current.people.length > 0) && (
+                  <p className="ssv-people">{[aboutOf(current), current.people.length ? names(current.people) : ""].filter(Boolean).join(" · ")}</p>
+                )}
               </>
             )}
           </div>

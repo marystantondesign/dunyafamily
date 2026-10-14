@@ -42,7 +42,8 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
         body.birthday = { month: Number(bm), day: Number(bd), year: by ? Number(by) : null };
       } else if (det.birthday) body.birthday = null;
     }
-    if (det.canEditAddress) { body.address = address; body.shareAddress = share; }
+    // Someone in memory has no mailing address; anything stored stays as it was.
+    if (det.canEditAddress && !inMemory) { body.address = address; body.shareAddress = share; }
     if (det.canChangeMemory) body.inMemory = inMemory;
     setBusy(true);
     try {
@@ -136,7 +137,7 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
             </div>
           </section>
 
-          <section className="edit-card" id="address">
+          {!inMemory && <section className="edit-card" id="address">
             <h2>Mailing address</h2>
             {det.addressHidden ? (
               <p className="muted">{det.name}&apos;s address isn&apos;t shared with the family.</p>
@@ -154,7 +155,7 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
                 {!det.canEditAddress && <p className="hint">Only the person who added this address, or Mary, can change it.</p>}
               </>
             )}
-          </section>
+          </section>}
 
           <section className="edit-card" id="dates">
             <h2>Important dates</h2>

@@ -9,6 +9,8 @@ import { resolvePeople } from "./tags";
 export type Gender = "female" | "male" | null;
 export type FPerson = {
   id: number; name: string; aliases: string[]; avatarUrl: string | null; inMemory: boolean; friend: boolean;
+  /** Had a child with a family member but isn't family: small on the tree, on the line to the children they share. */
+  coparent: boolean;
   gender: Gender; birthYear: number | null; birthOrder: number | null;
   /** Birth year, or the year on their birthday if that is all we have. Shown as "b. 1955" and used for oldest first. */
   year: number | null;
@@ -18,8 +20,8 @@ type Rel = { id: number; person_id: number; related_id: number; kind: "parent" |
 /** Everyone, and every relationship between two people who are still in the family. */
 export async function loadFamily() {
   const [people, rels] = await Promise.all([
-    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean; gender: string | null; birth_year: number | null; birth_order: number | null; known_year: number | null }>(
-      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend, pe.gender, pe.birth_year, pe.birth_order,
+    q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; family_friend: boolean; is_coparent: boolean; gender: string | null; birth_year: number | null; birth_order: number | null; known_year: number | null }>(
+      `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, pe.family_friend, coalesce(pe.is_coparent, false) as is_coparent, pe.gender, pe.birth_year, pe.birth_order,
               coalesce(pe.birth_year, (select b.year from birthdays b where b.person_id = pe.id and b.deleted_at is null and b.year is not null order by b.id desc limit 1)) as known_year
          from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
         where pe.deleted_at is null order by lower(pe.name)`),
@@ -31,7 +33,7 @@ export async function loadFamily() {
   ]);
   const byId = new Map<number, FPerson>();
   await Promise.all(people.map(async (p) => byId.set(p.id, {
-    id: p.id, name: displayName(p.name), aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend,
+    id: p.id, name: displayName(p.name), aliases: p.aliases ?? [], inMemory: !!p.in_memory, friend: !!p.family_friend, coparent: !!p.is_coparent,
     gender: p.gender === "female" || p.gender === "male" ? p.gender : null, birthYear: p.birth_year, birthOrder: p.birth_order, year: p.known_year,
     avatarUrl: p.thumb_key ? await signGet(p.thumb_key) : null,
   })));
@@ -69,7 +71,11 @@ export type Family = Awaited<ReturnType<typeof loadFamily>>;
 /** A partner beside someone, with what they are: Husband, Wife, Former husband, Partner, Former partner. */
 export type TreePartner = { person: FPerson; label: string };
 /** Someone's children with one other parent (or none recorded), oldest first. */
-export type KidGroup = { partner: FPerson | null; label: string; children: TreeNode[] };
+export type KidGroup = {
+  partner: FPerson | null; label: string; children: TreeNode[];
+  /** The other parent is a co-parent: drawn small on this group's own drop line, with no relationship label. */
+  coparent: boolean;
+};
 export type TreeNode = {
   person: FPerson;
   /** Partners with no children together: shown beside the person. */
@@ -117,14 +123,16 @@ function descend(f: Family, id: number, seen: Set<number>): TreeNode {
     // Groups go in the order of their oldest child.
     .sort((a, b) => f.sortByAge([a.kids[0], b.kids[0]])[0] === a.kids[0] ? -1 : 1)
     .map((g) => ({
-      partner: g.partner, label: g.partner ? partnerLabel(label(g.partner.id), g.partner.gender) : "",
+      partner: g.partner, coparent: !!g.partner?.coparent,
+      label: g.partner && !g.partner.coparent ? partnerLabel(label(g.partner.id), g.partner.gender) : "",
       children: g.kids.filter((k) => !seen.has(k)).map((k) => descend(f, k, seen)),
     }));
 
   const inGroups = new Set(groups.map((g) => g.partner?.id).filter((x): x is number => x != null));
   return {
     person: f.byId.get(id)!,
-    partners: partnerIds.filter((p) => !inGroups.has(p)).map((p) => ({ person: f.byId.get(p)!, label: partnerLabel(label(p), f.byId.get(p)!.gender) })),
+    // A co-parent with no children recorded together isn't shown beside them as a partner.
+    partners: partnerIds.filter((p) => !inGroups.has(p) && !f.byId.get(p)!.coparent).map((p) => ({ person: f.byId.get(p)!, label: partnerLabel(label(p), f.byId.get(p)!.gender) })),
     groups,
     children: groups.flatMap((g) => g.children),
   };
