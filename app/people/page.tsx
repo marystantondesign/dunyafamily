@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { FamilyTree } from "@/components/FamilyTree";
-import { familyTree, groupPhotos } from "@/lib/family";
+import { earlierTree, familyTree, groupPhotos } from "@/lib/family";
 
 export const dynamic = "force-dynamic";
 
-export default async function People() {
+export default async function People({ searchParams }: { searchParams: Promise<{ earlier?: string }> }) {
   const { tree, earlier, rootSiblings, groups, everyone } = await familyTree();
+  const elders = await earlierTree();
+  const openEarlier = (await searchParams).earlier === "1";
   const cards = await Promise.all(groups.filter((g) => g.people.length).map(async (g) => ({ ...g, photos: await groupPhotos(g.people.map((p) => p.id)) })));
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
     <>
       <h1 className="sr-only">Our family</h1>
-      <FamilyTree tree={tree} earlier={earlier} siblings={rootSiblings} everyone={everyone.map(({ id, name }) => ({ id, name }))} />
+      <FamilyTree tree={tree} earlier={earlier} siblings={rootSiblings} everyone={everyone.map(({ id, name }) => ({ id, name }))}
+        earlierTree={elders} openEarlier={openEarlier} />
 
       {cards.length > 0 && (
         <section className="family-groups">

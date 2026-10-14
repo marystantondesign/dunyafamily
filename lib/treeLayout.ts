@@ -18,15 +18,19 @@ const font = (d: number) => FONT[Math.min(d, FONT.length - 1)];
 /** Partners and co-parents: one small size for everyone who married into or had a child with the family. */
 export const SMALL = 22;
 export const SMALL_FONT = 11;
-const DASH = 14;
+/** The dash between a family member and their partner: 26px, so the partner's name never crowds theirs. */
+const DASH = 26;
 const NOTCH = 10;
 const GAP = 22;
+/** The gap in use. Boxes with room to spare widen it so the tree spreads to fill them; sizes never change. */
+let gap = GAP;
 const BAND = 72;
 const NAME_GAP = 3;
 const LH = 1.15;
 /** A partner's name goes under their circle unless it's wider than this; then it goes on the outer side. */
 const UNDER_MAX = 46;
-const BOX_PAD = 26;
+/** Space between the outermost person (circle or name) and the box's left and right edges. */
+const BOX_PAD = 20;
 const BOX_GAP = 20;
 const TAB_H = 40;
 
@@ -41,8 +45,8 @@ export type Item = {
   name: "under" | "left" | "right"; bold?: boolean; sub?: string;
 };
 export type Seg = [number, number, number, number];
-export type Box = { x: number; y: number; w: number; h: number; tab: { x: number; w: number; p: FPerson } | null };
-export type Layout = { width: number; height: number; items: Item[]; segs: Seg[]; boxes: Box[] };
+export type Box = { x: number; y: number; w: number; h: number; tab: { x: number; w: number; p: FPerson } | null; label?: string };
+export type Layout = { width: number; height: number; items: Item[]; segs: Seg[]; boxes: Box[]; pills: Pill[] };
 
 type Ext = { l: number; r: number };
 type Sub = { items: Item[]; segs: Seg[]; contour: Ext[]; bottom: number };
@@ -89,7 +93,7 @@ function placeRow(slots: Slot[]) {
       let x = 0;
       if (placed.length) {
         x = -Infinity;
-        v.contour.forEach((e, i) => { if (merged[i]) x = Math.max(x, merged[i].r - e.l + GAP); });
+        v.contour.forEach((e, i) => { if (merged[i]) x = Math.max(x, merged[i].r - e.l + gap); });
         if (x === -Infinity) x = 0;
       }
       const right = Math.max(...merge(merged, v.contour, x).map((e) => e.r));
@@ -151,7 +155,7 @@ function personSlot(node: TreeNode, d: number, top: number, m: Measure): Slot {
 }
 
 /** One family member with partners and descendants, in their own frame: circle top at y = 0, centered on x = 0. */
-function layoutMember(node: TreeNode, d: number, m: Measure): Sub[] {
+function layoutMember(node: TreeNode, d: number, m: Measure, rootDrop?: number): Sub[] {
   const size = dia(d), fs = font(d), cy = size / 2;
   const nameW = m(node.person.name, fs);
   const me: Item = { key: `m${node.person.id}`, p: node.person, kind: "member", x: 0, y: cy, size, fontSize: fs, name: "under" };
@@ -162,14 +166,17 @@ function layoutMember(node: TreeNode, d: number, m: Measure): Sub[] {
   const others = node.partners.map((pt) => pt.person);
 
   // Children: co-parent groups on their own drop lines; the rest hang straight off the parent's line.
-  const h = blockH(d), splitY = h + 14, top = h + BAND;
+  // `rootDrop`: the root of a sibling's own tree, whose children's line drops straight from below the line under
+  // their name (as Dunya's does), even with a partner beside them.
+  const h = blockH(d), splitY = rootDrop ? rootDrop + 16 : h + 14, top = h + BAND + splitY - (h + 14);
   const slots: Slot[] = node.groups.flatMap((g) => (g.coparent && g.partner)
     ? [{ variants: [coGroup(g, d, splitY, top, m)], anchor: "co" as const }]
     : g.children.map((c) => personSlot(c, d + 1, top, m)));
   // A couple's children drop from the middle of the dash between them, on whichever side the partner sits.
   // Children with a co-parent, or with one recorded parent, drop from the family member.
-  const dropY = kidsPartner ? cy : h + 2;
-  const kidsFor = (side: 1 | -1) => childrenRow(slots, kidsPartner ? side * (size / 2 + DASH / 2) : 0, dropY, splitY, top);
+  const fromDash = kidsPartner && !rootDrop;
+  const dropY = rootDrop ?? (kidsPartner ? cy : h + 2);
+  const kidsFor = (side: 1 | -1) => childrenRow(slots, fromDash ? side * (size / 2 + DASH / 2) : 0, dropY, splitY, top);
 
   // The partner (with or without children together) goes on whichever side has room.
   const sides: (1 | -1)[][] = (kidsPartner ? 1 : 0) + others.length === 1 ? [[1], [-1]]
@@ -200,11 +207,101 @@ function layoutMember(node: TreeNode, d: number, m: Measure): Sub[] {
   });
 }
 
-type Group = { g: KidGroup; kids: Sub | null; ext: Ext; tabW: number; w: number; h: number };
-type Prepared = { items: Item[]; segs: Seg[]; rootW: number; rootH: number; boxTop: number; boxH: number; groups: Group[]; natural: number };
+/** A brother or sister of the root, for the earlier generations section. */
+export type Sib = { person: FPerson; partners: FPerson[]; count: number; href: string | null };
+/** Dunya's parents (each with their own parents), and her brothers and sisters older and younger than her. */
+export type Earlier = { parents: { person: FPerson; parents: FPerson[] }[]; older: Sib[]; younger: Sib[]; label: string };
+export type Pill = { x: number; y: number; w: number; text: string; href: string };
+type EarlierOut = { items: Item[]; segs: Seg[]; pills: Pill[]; frame: { l: number; r: number; top: number; bottom: number } };
+
+const PILL_H = 26;
+const SIB_GAP = 40;
+
+/**
+ * Above Dunya, in Dunya's own frame (her circle's top at y = 0, centered on x = 0): her brothers and sisters on
+ * either side of her (older to the left, younger to the right) hanging from one bar, her parents as a couple
+ * centered over her with the drop from the middle of their dash, and each parent's parents as a couple above them.
+ */
+function layoutEarlier(e: Earlier, rootExt: Ext, rootBottom: number, m: Measure, pillMeasure: Measure): EarlierOut | null {
+  if (!e.parents.length && !e.older.length && !e.younger.length) return null;
+  const items: Item[] = [], segs: Seg[] = [], pills: Pill[] = [];
+  const S1 = dia(1), F1 = font(1), S2 = dia(2), F2 = font(2);
+  const cy = dia(0) / 2;
+  const barY = -22;
+  let l = rootExt.l, r = rootExt.r, bottom = rootBottom;
+  const anchors = [0];
+  segs.push([0, barY, 0, 0]);
+  let xr = rootExt.r + SIB_GAP, xl = rootExt.l - SIB_GAP;
+  const sib = (s: Sib, side: 1 | -1) => {
+    const nameW = m(s.person.name, F1);
+    const text = s.href ? `${s.person.name.split(" ")[0]}'s family · ${s.count}` : "";
+    const pillW = text ? Math.ceil(pillMeasure(text, 13) + 30) : 0;
+    let el = -Math.max(S1, nameW, pillW) / 2, er = -el;
+    const part = s.partners.map((p, i) => partnerAt(p, 1, S1 + i * (DASH + SMALL + 6) * 2, cy, m));
+    for (const pa of part) er = Math.max(er, pa.ext.r);
+    const x0 = side > 0 ? xr - el : xl - er;
+    if (side > 0) xr = x0 + er + SIB_GAP; else xl = x0 + el - SIB_GAP;
+    l = Math.min(l, x0 + el); r = Math.max(r, x0 + er);
+    items.push({ key: `m${s.person.id}`, p: s.person, kind: "member", x: x0, y: cy, size: S1, fontSize: F1, name: "under" });
+    for (const pa of part) { items.push({ ...pa.item, x: pa.item.x + x0 }); segs.push([pa.dash[0] + x0, pa.dash[1], pa.dash[2] + x0, pa.dash[3]]); }
+    segs.push([x0, barY, x0, cy - S1 / 2]);
+    anchors.push(x0);
+    const pillY = cy + S1 / 2 + NAME_GAP + nameH(F1) + 8;
+    if (text) { pills.push({ x: x0 - pillW / 2, y: pillY, w: pillW, text, href: s.href! }); bottom = Math.max(bottom, pillY + PILL_H); }
+    else bottom = Math.max(bottom, cy + S1 / 2 + NAME_GAP + nameH(F1));
+  };
+  // Nearest to Dunya first: the youngest of the older ones on the left, the next younger on the right.
+  [...e.older].reverse().forEach((s) => sib(s, -1));
+  e.younger.forEach((s) => sib(s, 1));
+  if (anchors.length > 1) segs.push([Math.min(...anchors), barY, Math.max(...anchors), barY]);
+
+  let top = barY;
+  if (e.parents.length) {
+    const PY = barY - 96;
+    // Half the room each grandparent couple needs: wide enough that their names, side by side, keep a gap
+    // for the line that drops from the middle of their dash.
+    const gHalf = (pp: Earlier["parents"][number]) => Math.max(S2 / 2 + 22, ...pp.parents.map((g) => m(g.name, F2) / 2 + 12));
+    const gReach = (pp: Earlier["parents"][number]) =>
+      pp.parents.length === 2 ? gHalf(pp) + Math.max(...pp.parents.map((g) => Math.max(S2, m(g.name, F2)) / 2)) : pp.parents.length ? Math.max(S2, m(pp.parents[0].name, F2)) / 2 : 0;
+    const spread = e.parents.length === 2
+      ? Math.max(110, S2 + 52, ...e.parents.map((pp) => gReach(pp) + 16), ...e.parents.map((pp) => Math.max(S1, m(pp.person.name, F1)) / 2 + 24))
+      : 0;
+    const xs = e.parents.length === 2 ? [-spread, spread] : [0];
+    e.parents.forEach((pp, i) => {
+      const px = xs[i];
+      items.push({ key: `m${pp.person.id}`, p: pp.person, kind: "member", x: px, y: PY, size: S1, fontSize: F1, name: "under" });
+      l = Math.min(l, px - Math.max(S1, m(pp.person.name, F1)) / 2); r = Math.max(r, px + Math.max(S1, m(pp.person.name, F1)) / 2);
+      // Their parents, a couple above them with the line from the middle of their dash.
+      if (pp.parents.length) {
+        const GY = PY - 118;
+        const gx = pp.parents.length === 2 ? [px - gHalf(pp), px + gHalf(pp)] : [px];
+        pp.parents.forEach((g, j) => {
+          items.push({ key: `m${g.id}`, p: g, kind: "member", x: gx[j], y: GY, size: S2, fontSize: F2, name: "under" });
+          const w = Math.max(S2, m(g.name, F2)) / 2;
+          l = Math.min(l, gx[j] - w); r = Math.max(r, gx[j] + w);
+        });
+        if (pp.parents.length === 2) {
+          segs.push([gx[0] + S2 / 2, GY, gx[1] - S2 / 2, GY]);
+          segs.push([px, GY, px, PY - S1 / 2]);
+        } else segs.push([px, GY + S2 / 2 + NAME_GAP + nameH(F2) + 2, px, PY - S1 / 2]);
+        top = Math.min(top, GY - S2 / 2);
+      }
+    });
+    if (e.parents.length === 2) {
+      segs.push([xs[0] + S1 / 2, PY, xs[1] - S1 / 2, PY]);
+      segs.push([0, PY, 0, barY]);
+    } else segs.push([0, PY + S1 / 2 + NAME_GAP + nameH(F1) + 2, 0, barY]);
+    top = Math.min(top, PY - S1 / 2);
+  }
+  return { items, segs, pills, frame: { l: l - 32, r: r + 32, top: top - 58, bottom: bottom + 22 } };
+}
+
+type Built = { kids: Sub | null; ext: Ext };
+type Group = { g: KidGroup; kids: Sub | null; ext: Ext; tabW: number; w: number; h: number; build: (gap: number) => Built };
+type Prepared = { items: Item[]; segs: Seg[]; rootW: number; rootH: number; boxTop: number; boxH: number; groups: Group[]; natural: number; earlier: EarlierOut | null; earlierLabel?: string; rootTop: number };
 
 /** Dunya, any partner beside her, and a box for each set of her children. Measured at natural size. */
-function prepare(tree: TreeNode, m: Measure, tabMeasure: Measure): Prepared {
+function prepare(tree: TreeNode, m: Measure, tabMeasure: Measure, earlier?: Earlier | null): Prepared {
   const root = tree.person;
   const size = dia(0);
   const rootNameW = m(root.name, font(0), true);
@@ -223,20 +320,28 @@ function prepare(tree: TreeNode, m: Measure, tabMeasure: Measure): Prepared {
     segs.push(pa.dash);
     r = Math.max(r, pa.item.x + SMALL / 2 + 5 + m(pt.person.name, SMALL_FONT));
   }
-  const rootW = 2 * Math.max(-l, r);
-  const boxTop = rootH + 30;
+  // Earlier generations, when open, sit above Dunya in her own frame; everything else moves down to make room.
+  const before = earlier ? layoutEarlier({ ...earlier }, { l, r }, rootH, m, tabMeasure) : null;
+  const rootTop = before ? -before.frame.top : 0;
+  const rootW = 2 * Math.max(-l, r, before ? Math.max(-before.frame.l, before.frame.r) : 0);
+  const boxTop = rootTop + Math.max(rootH, before ? before.frame.bottom + 14 : 0) + 30;
   const contentTop = TAB_H + 34;
   const groups: Group[] = tree.groups.map((g) => {
-    const slots = g.children.map((c) => personSlot(c, 1, contentTop, m));
-    const kids = childrenRow(slots, 0, g.partner ? TAB_H : 0, TAB_H + 14, contentTop);
-    const ext = kids ? kids.contour.reduce((a, e) => ({ l: Math.min(a.l, e.l), r: Math.max(a.r, e.r) }), { l: Infinity, r: -Infinity }) : { l: -60, r: 60 };
     const tabW = g.partner ? Math.ceil(24 + 8 + tabMeasure(g.partner.name, 13, true) + 34) : 0;
-    // The tab sits over the children's line (x = 0), so make room for it on both sides.
-    const lo = Math.min(ext.l, -tabW / 2), hi = Math.max(ext.r, tabW / 2);
-    return { g, kids, ext: { l: lo, r: hi }, tabW, w: Math.ceil(hi - lo) + BOX_PAD * 2, h: (kids?.bottom ?? contentTop) + BOX_PAD };
+    const build = (withGap: number) => {
+      gap = withGap;
+      const slots = g.children.map((c) => personSlot(c, 1, contentTop, m));
+      const kids = childrenRow(slots, 0, g.partner ? TAB_H : 0, TAB_H + 14, contentTop);
+      gap = GAP;
+      const ext = kids ? kids.contour.reduce((a, e) => ({ l: Math.min(a.l, e.l), r: Math.max(a.r, e.r) }), { l: Infinity, r: -Infinity }) : { l: -60, r: 60 };
+      // The tab sits over the children's line (x = 0), so make room for it on both sides.
+      return { kids, ext: { l: Math.min(ext.l, -tabW / 2), r: Math.max(ext.r, tabW / 2) } };
+    };
+    const { kids, ext } = build(GAP);
+    return { g, kids, ext, tabW, build, w: Math.ceil(ext.r - ext.l) + BOX_PAD * 2, h: (kids?.bottom ?? contentTop) + BOX_PAD + 18 };
   });
   const boxesW = groups.reduce((a, b) => a + b.w, 0) + BOX_GAP * Math.max(0, groups.length - 1);
-  return { items, segs, rootW, rootH, boxTop, boxH: Math.max(0, ...groups.map((b) => b.h)), groups, natural: Math.max(boxesW, rootW) };
+  return { items, segs, rootW, rootH, boxTop, boxH: Math.max(0, ...groups.map((b) => b.h)), groups, natural: Math.max(boxesW, rootW), earlier: before, earlierLabel: earlier?.label, rootTop };
 }
 
 /** Spread the boxes across `width`: each grows in proportion to its contents, which sit centered in it. */
@@ -251,37 +356,87 @@ function place(pr: Prepared, width: number): Layout {
   let x = 0;
   for (const b of pr.groups) {
     const w = b.w + (extra * b.w) / total;
-    const dx = x + w / 2 - (b.ext.l + b.ext.r) / 2;
+    // Spread the tree to fill the box: widen the gaps between branches until it reaches the padding.
+    let built: Built = { kids: b.kids, ext: b.ext };
+    if (w - b.w > 4 && b.kids) {
+      let lo = GAP, hi = GAP + 400;
+      for (let i = 0; i < 18; i++) {
+        const mid = (lo + hi) / 2;
+        const t = b.build(mid);
+        if (t.ext.r - t.ext.l <= w - BOX_PAD * 2) { lo = mid; built = t; } else hi = mid;
+      }
+    }
+    const dx = x + w / 2 - (built.ext.l + built.ext.r) / 2;
     boxes.push({ x, y: pr.boxTop, w, h: pr.boxH, tab: b.g.partner ? { x: dx - b.tabW / 2, w: b.tabW, p: b.g.partner } : null });
-    if (b.kids) {
-      const s = move(b.kids, dx, pr.boxTop);
+    if (built.kids) {
+      const s = move(built.kids, dx, pr.boxTop);
       items.push(...s.items);
       segs.push(...s.segs);
     }
     drops.push(dx);
     x += w + BOX_GAP;
   }
-  // Dunya centered on the page, with her line down to each box.
-  const rootX = width / 2;
-  for (const it of pr.items) items.push({ ...it, x: it.x + rootX });
-  for (const sg of pr.segs) segs.push([sg[0] + rootX, sg[1], sg[2] + rootX, sg[3]]);
+  // Dunya centered on the page, with her line down to each box. Earlier generations, if open, above her.
+  const rootX = width / 2, dy = pr.rootTop;
+  const pills: Pill[] = [];
+  const e = pr.earlier;
+  if (e) {
+    boxes.push({ x: rootX + e.frame.l, y: dy + e.frame.top, w: e.frame.r - e.frame.l, h: e.frame.bottom - e.frame.top, tab: null, label: pr.earlierLabel });
+    for (const it of e.items) items.push({ ...it, x: it.x + rootX, y: it.y + dy });
+    for (const sg of e.segs) segs.push([sg[0] + rootX, sg[1] + dy, sg[2] + rootX, sg[3] + dy]);
+    for (const p of e.pills) pills.push({ ...p, x: p.x + rootX, y: p.y + dy });
+  }
+  for (const it of pr.items) items.push({ ...it, x: it.x + rootX, y: it.y + dy });
+  for (const sg of pr.segs) segs.push([sg[0] + rootX, sg[1] + dy, sg[2] + rootX, sg[3] + dy]);
   if (drops.length) {
-    const lineY = pr.rootH + 12;
-    segs.push([rootX, pr.rootH, rootX, lineY]);
+    const lineY = pr.boxTop - 18;
+    segs.push([rootX, dy + pr.rootH, rootX, lineY]);
     const xs = [...drops, rootX];
     segs.push([Math.min(...xs), lineY, Math.max(...xs), lineY]);
     for (const t of drops) segs.push([t, lineY, t, pr.boxTop]);
   }
-  return { width, height: pr.boxTop + pr.boxH + 2, items, segs, boxes };
+  return { width, height: pr.boxTop + pr.boxH + 2, items, segs, boxes, pills };
 }
 
 /** The tree at its natural (narrowest) width, or spread to `width` when there's more room. */
-export function layoutTree(tree: TreeNode, m: Measure, tabMeasure: Measure, width = 0): Layout {
-  const pr = prepare(tree, m, tabMeasure);
+export function layoutTree(tree: TreeNode, m: Measure, tabMeasure: Measure, width = 0, earlier?: Earlier | null): Layout {
+  const pr = prepare(tree, m, tabMeasure, earlier);
   return place(pr, Math.max(width, pr.natural));
 }
 
 /** The narrowest width the tree needs. */
-export function naturalWidth(tree: TreeNode, m: Measure, tabMeasure: Measure) {
-  return prepare(tree, m, tabMeasure).natural;
+export function naturalWidth(tree: TreeNode, m: Measure, tabMeasure: Measure, earlier?: Earlier | null) {
+  return prepare(tree, m, tabMeasure, earlier).natural;
 }
+
+/**
+ * One family member's own tree (a sibling's family page): them at the top with any partner beside them, their
+ * children and descendants below, built exactly like the main tree. `sub` is the line under their name.
+ */
+function prepareBranch(node: TreeNode, sub: string, m: Measure) {
+  const h = blockH(0);
+  // The root's name is bold with a line under it, so the line down to their children starts below that line.
+  const variants = layoutMember(node, 0, m, h + 18);
+  const span = (v: Sub) => {
+    const l = Math.min(...v.contour.map((e) => e.l)), r = Math.max(...v.contour.map((e) => e.r));
+    return { l: Math.min(l, -m(sub, 13) / 2), r: Math.max(r, m(sub, 13) / 2) };
+  };
+  const v = variants.reduce((a, b) => (span(b).r - span(b).l < span(a).r - span(a).l ? b : a));
+  const ext = span(v);
+  const segs = v.segs;
+  const items = v.items.map((it) => (it.key === `m${node.person.id}` ? { ...it, bold: true, sub } : it));
+  return { items, segs, ext, bottom: v.bottom, natural: Math.ceil(ext.r - ext.l) + BOX_PAD * 2 };
+}
+
+export function layoutBranch(node: TreeNode, sub: string, m: Measure, width = 0): Layout {
+  const b = prepareBranch(node, sub, m);
+  const w = Math.max(width, b.natural);
+  const dx = w / 2 - (b.ext.l + b.ext.r) / 2, dy = 12;
+  return {
+    width: w, height: b.bottom + dy + 30, boxes: [], pills: [],
+    items: b.items.map((it) => ({ ...it, x: it.x + dx, y: it.y + dy })),
+    segs: b.segs.map(([a, c, e, f]) => [a + dx, c + dy, e + dx, f + dy] as Seg),
+  };
+}
+
+export const branchWidth = (node: TreeNode, sub: string, m: Measure) => prepareBranch(node, sub, m).natural;

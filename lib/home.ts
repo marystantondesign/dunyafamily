@@ -1,3 +1,4 @@
+import { familyOrder } from "./familyOrder";
 import { listAlbums } from "./albums";
 import { q } from "./db";
 import { heroPortrait } from "./featured";
@@ -86,13 +87,22 @@ export async function featuredCollections(limit = 4): Promise<Collection[]> {
 
 export type Member = { id: number; name: string; avatarUrl: string | null; inMemory: boolean; photos: number };
 
+/** Everyone for Home: the family in family order, then partners and extended family A to Z (lib/familyOrder). */
+export async function everyoneInOrder(): Promise<{ family: Member[]; others: Member[] }> {
+  const [all, order] = await Promise.all([everyone(), familyOrder()]);
+  const byId = new Map(all.map((m) => [m.id, m]));
+  const family = order.map((id) => byId.get(id)).filter((m): m is Member => !!m);
+  const inFamily = new Set(family.map((m) => m.id));
+  return { family, others: all.filter((m) => !inFamily.has(m.id)) };
+}
+
 /** Everyone in the family with how many photos they're in, A to Z. */
 export async function everyone(): Promise<Member[]> {
   const rows = await q<{ id: number; name: string; thumb_key: string | null; in_memory: boolean; n: number }>(
     `select pe.id, pe.name, ph.thumb_key, pe.in_memory,
             (select count(*)::int from photo_people x join photos p on p.id = x.photo_id and p.deleted_at is null where x.person_id = pe.id) as n
        from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
-      where pe.deleted_at is null and not coalesce(pe.is_coparent, false) order by lower(pe.name)`);
+      where pe.deleted_at is null order by lower(pe.name)`);
   return Promise.all(rows.map(async (r) => ({
     id: r.id, name: displayName(r.name), inMemory: !!r.in_memory, photos: r.n, avatarUrl: r.thumb_key ? await signGet(r.thumb_key) : null,
   })));

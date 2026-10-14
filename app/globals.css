@@ -2116,3 +2116,22 @@ main.wrap:has(.tree) { max-width: none; }
 .tpartner-row .tdot-face { width: 22px; height: 22px; font-size: 10px; border-width: 1.5px; }
 .tpartner-row .tcard-name { font-size: 12px !important; }
 .tl-face .halo { margin: 0 !important; }
+
+/* ===== Family order: Home's Everyone list ===== */
+.everyone-title { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.everyone-title .section-title { margin: 0; }
+.order-toggle { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--wash); }
+.order-toggle button { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: none; font: inherit; font-size: 14px; color: var(--ink-3); cursor: pointer; }
+.order-toggle button[aria-pressed="true"] { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(43, 29, 26, 0.12); }
+.everyone-divider { display: flex; align-items: center; gap: 16px; margin: 28px 0 18px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.everyone-divider::after { content: ""; flex: 1; border-top: 1px solid var(--check); }
+@media (max-width: 760px) { .order-toggle button { padding: 0 10px; font-size: 13px; } .everyone-title { gap: 10px; } }
+
+/* Earlier generations box label, links to a sibling's family, and the way back from one. */
+.tl-box-label { position: absolute; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; line-height: 1; }
+.tl-pill { position: absolute; height: 26px; display: flex; align-items: center; justify-content: center; gap: 4px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: 13px; background: var(--paper); color: var(--plum); font-size: 13px; text-decoration: none; white-space: nowrap; }
+.tl-pill:hover { border-color: var(--plum); }
+.family-crumbs { font-size: 15px; margin: 0 0 16px; }
+.family-crumbs a { color: var(--plum); text-decoration: none; }
+.family-crumbs a:hover { text-decoration: underline; }

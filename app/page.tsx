@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { AlbumCard } from "@/components/AlbumCard";
-import { Avatar } from "@/components/Avatar";
-import { Halo } from "@/components/Halo";
 import { HeroPolaroid } from "@/components/HeroPolaroid";
-import { birthdaysToday, everyone, featuredCollections, heroSlides, HOME_COPY, onThisDay } from "@/lib/home";
+import { birthdaysToday, everyoneInOrder, featuredCollections, heroSlides, HOME_COPY, onThisDay } from "@/lib/home";
 import { Gallery } from "@/components/Gallery";
+import { EveryoneList } from "@/components/EveryoneList";
 import { BookSketch, RecipeBoxSketch } from "@/components/Sketches";
 import { Icon } from "@/components/Icon";
 import { recipeCount } from "@/lib/recipes";
@@ -12,10 +11,9 @@ import { whenLabel } from "@/lib/when";
 
 export const dynamic = "force-dynamic";
 
-const photos = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
 
 export default async function Home() {
-  const [hero, collections, people, bdays, past, recipes] = await Promise.all([heroSlides(), featuredCollections(), everyone(), birthdaysToday(), onThisDay(), recipeCount()]);
+  const [hero, collections, people, bdays, past, recipes] = await Promise.all([heroSlides(), featuredCollections(), everyoneInOrder(), birthdaysToday(), onThisDay(), recipeCount()]);
 
   // Birthday takeover: on someone's birthday the hero is theirs, fading through photos of them across the years.
   const celebrating = bdays.filter((b) => !b.inMemory);
@@ -107,26 +105,9 @@ export default async function Home() {
         </section>
       )}
 
-      {people.length > 0 && (
+      {people.family.length + people.others.length > 0 && (
         <section className="everyone" id="everyone">
-          <div className="section-head">
-            <h2 className="section-title">Everyone</h2>
-            <Link href="/people" className="text-link small">
-              <span className="desktop-only">See the family tree <span aria-hidden="true">→</span></span>
-              <span className="phone-only">Family tree</span>
-            </Link>
-          </div>
-          <ul className="everyone-grid">
-            {people.map((p) => (
-              <li key={p.id}>
-                <Link href={`/people/${p.id}`} className="member">
-                  <Halo on={p.inMemory} name={p.name}><Avatar name={p.name} url={p.avatarUrl} /></Halo>
-                  <span className="member-name">{p.name}</span>
-                  <span className="member-sub">{photos(p.photos)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <EveryoneList family={people.family} others={people.others} />
         </section>
       )}
     </>

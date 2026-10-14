@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FPerson, TreeNode } from "@/lib/family";
-import { estimate, layoutTree, naturalWidth, type Item, type Measure } from "@/lib/treeLayout";
+import { branchWidth, estimate, layoutBranch, layoutTree, naturalWidth, type Earlier, type Item, type Measure } from "@/lib/treeLayout";
 import { Halo } from "./Halo";
 
 /** Smallest the tree may shrink to fit before the page shows the list version instead of scrolling sideways. */
@@ -68,7 +68,13 @@ function Person({ it }: { it: Item }) {
  * The desktop family tree, laid out to fit the page: full content width, the family boxes side by side and sized
  * to what they hold. When it can't fit (even a little smaller), `onNarrow` tells the page to show the list instead.
  */
-export function TreeCanvas({ tree, onNarrow }: { tree: TreeNode; onNarrow: (narrow: boolean) => void }) {
+export function TreeCanvas({ tree, earlier, branch, onNarrow }: {
+  tree: TreeNode; onNarrow: (narrow: boolean) => void;
+  /** Earlier generations, drawn above Dunya when open. */
+  earlier?: Earlier | null;
+  /** A sibling's own family page: `tree` is rooted at them, with this line under their name. */
+  branch?: { sub: string };
+}) {
   const wrap = useRef<HTMLDivElement>(null);
   const measure = useMeasure();
   const [room, setRoom] = useState(0);
@@ -81,10 +87,13 @@ export function TreeCanvas({ tree, onNarrow }: { tree: TreeNode; onNarrow: (narr
     return () => ro.disconnect();
   }, []);
 
-  const natural = useMemo(() => naturalWidth(tree, measure, measure), [tree, measure]);
+  const natural = useMemo(() => (branch ? branchWidth(tree, branch.sub, measure) : naturalWidth(tree, measure, measure, earlier)), [tree, measure, earlier, branch]);
   const fits = !room || natural * MIN_SCALE <= room;
   const scale = room && natural > room ? room / natural : 1;
-  const layout = useMemo(() => layoutTree(tree, measure, measure, room && natural <= room ? room : natural), [tree, measure, room, natural]);
+  const layout = useMemo(() => {
+    const w = room && natural <= room ? room : natural;
+    return branch ? layoutBranch(tree, branch.sub, measure, w) : layoutTree(tree, measure, measure, w, earlier);
+  }, [tree, measure, room, natural, earlier, branch]);
   const narrowRef = useRef<boolean | null>(null);
   useLayoutEffect(() => {
     if (!room) return;
@@ -105,7 +114,11 @@ export function TreeCanvas({ tree, onNarrow }: { tree: TreeNode; onNarrow: (narr
               <strong>{b.tab.p.name}</strong>
             </Link>
           ))}
+          {layout.boxes.map((b, i) => b.label && <span key={`l${i}`} className="tl-box-label" style={{ left: b.x + 32, top: b.y + 22 }}>{b.label}</span>)}
           {layout.items.map((it) => <Person key={it.key} it={it} />)}
+          {layout.pills.map((p) => (
+            <Link key={p.href} href={p.href} className="tl-pill" style={{ left: p.x, top: p.y, width: p.w }}>{p.text} <span aria-hidden="true">›</span></Link>
+          ))}
         </div>
       )}
     </div>

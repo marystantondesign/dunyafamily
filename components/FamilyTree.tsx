@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Elder, FPerson, TreeNode } from "@/lib/family";
+import type { Earlier } from "@/lib/treeLayout";
 import { Halo } from "./Halo";
 import { Icon } from "./Icon";
 import { TreeCanvas } from "./TreeCanvas";
 
 
-function Face({ p }: { p: FPerson }) {
+export function Face({ p }: { p: FPerson }) {
   return (
     <Halo on={p.inMemory} name={p.name}>
       <span className="tdot-face" aria-hidden="true">
@@ -19,19 +20,8 @@ function Face({ p }: { p: FPerson }) {
   );
 }
 
-/** One person: the root is depth 0, children 1, grandchildren 2, and so on. Each depth is a little smaller. */
-function Dot({ p, depth, label }: { p: FPerson; depth: number; label?: string }) {
-  return (
-    <Link href={`/people/${p.id}`} className={`tdot ft-d${Math.min(depth, 4)}`}>
-      <Face p={p} />
-      <span className="tdot-name">{p.name}</span>
-      {label && <span className="tdot-sub">{label}</span>}
-    </Link>
-  );
-}
-
 /** Phone: a list of cards under Dunya. Tap the arrow to see a partner and children. */
-function PhoneBranch({ node, depth }: { node: TreeNode; depth: number }) {
+export function PhoneBranch({ node, depth }: { node: TreeNode; depth: number }) {
   const [open, setOpen] = useState(false);
   const partners = [...node.groups.filter((g) => g.partner && !g.coparent).map((g) => ({ person: g.partner!, label: g.label })), ...node.partners];
   const coGroups = node.groups.filter((g) => g.coparent && g.partner);
@@ -92,13 +82,18 @@ function PhoneRow({ p, role }: { p: FPerson; role: string }) {
   );
 }
 
-export function FamilyTree({ tree, earlier, siblings, everyone }: {
+export function FamilyTree({ tree, earlier, siblings, everyone, earlierTree, openEarlier = false }: {
   tree: TreeNode | null; earlier: Elder[][]; siblings: Elder[]; everyone: { id: number; name: string }[];
+  /** Parents, grandparents, and siblings for the desktop tree. */
+  earlierTree: Earlier | null;
+  /** Start with earlier generations showing (coming back from a sibling's family page). */
+  openEarlier?: boolean;
 }) {
   const router = useRouter();
   const hasEarlier = earlier.length > 0 || siblings.length > 0;
-  // Earlier generations start hidden on every visit.
-  const [showEarlier, setShowEarlier] = useState(false);
+  // Earlier generations start hidden, unless coming back from a sibling's tree.
+  const [showEarlier, setShowEarlier] = useState(openEarlier);
+  const deskEarlier = !!earlierTree && (earlierTree.parents.length + earlierTree.older.length + earlierTree.younger.length) > 0;
   const [phoneEarlier, setPhoneEarlier] = useState(false);
   const [find, setFind] = useState("");
   // Too narrow for the whole tree: show the list version instead of scrolling sideways.
@@ -123,7 +118,7 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
             onChange={(e) => go(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") go(find); }} />
           <datalist id="family-names">{everyone.map((p) => <option key={p.id} value={p.name} />)}</datalist>
         </div>
-        {hasEarlier && (
+        {deskEarlier && (
           <button type="button" className="btn desktop-only" aria-expanded={showEarlier} onClick={() => setShowEarlier(!showEarlier)}>
             <Icon name={showEarlier ? "chevronUp" : "chevronDown"} size={16} /> {showEarlier ? "Hide earlier generations" : "Show earlier generations"}
           </button>
@@ -173,23 +168,9 @@ export function FamilyTree({ tree, earlier, siblings, everyone }: {
 
           {/* Desktop: laid out to fit the page. Earlier generations, when shown, sit above in their own box. */}
           <div className="tree-desk tl-desk">
-            {hasEarlier && showEarlier && (
-              <div className="ft"><div className="tree-earlier-box">
-                {[...earlier].reverse().map((gen, i) => (
-                  <div key={i} className="tree-gen-row">
-                    {gen.map((p) => <Dot key={p.id} p={p} depth={3} label={p.role} />)}
-                  </div>
-                ))}
-                {siblings.length > 0 && (
-                  <div className="tree-gen-row">{siblings.map((p) => <Dot key={p.id} p={p} depth={2} label={p.role} />)}</div>
-                )}
-              </div></div>
-            )}
-            <TreeCanvas tree={tree} onNarrow={setNarrow} />
+            <TreeCanvas tree={tree} onNarrow={setNarrow} earlier={showEarlier ? earlierTree : null} />
           </div>
-          {tree.children.length > 0
-            ? <p className="ft-note desktop-only">Everyone is shown. Children are oldest to youngest, left to right.</p>
-            : <p className="muted tree-empty">No one is connected to {root.name} yet. Mary can add her children in Settings, then Family tree.</p>}
+          {tree.children.length === 0 && <p className="muted tree-empty">No one is connected to {root.name} yet. Mary can add her children in Settings, then Family tree.</p>}
         </div>
       ) : (
         <p className="muted tree-empty">The tree grows from Dunya. Mary can add her and her children in Settings, then Family tree.</p>

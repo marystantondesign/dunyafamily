@@ -271,3 +271,63 @@ export async function addRelation(id: number, kind: "parent" | "child" | "partne
      on conflict do nothing`, [a, b, kind === "partner" ? "partner" : "parent", s.did, s.name]);
   return null;
 }
+
+/** Everyone in a tree below its root: descendants, partners, and co-parents. */
+function treeCount(n: TreeNode): number {
+  return n.partners.length + n.groups.reduce((a, g) => a + (g.partner ? 1 : 0) + g.children.reduce((b, c) => b + 1 + treeCount(c), 0), 0);
+}
+
+const slugOf = (name: string) => name.toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]+/g, "") || "family";
+
+/** Dunya's brothers and sisters, each with a link to their own family tree when they have one. */
+function siblingsWithFamilies(f: Family, rootId: number) {
+  const sibs = f.siblings(rootId);
+  const slugs = new Map<number, string>();
+  for (const id of sibs) {
+    const base = slugOf(f.byId.get(id)!.name);
+    slugs.set(id, sibs.some((o) => o !== id && slugOf(f.byId.get(o)!.name) === base) ? `${base}-${id}` : base);
+  }
+  return sibs.map((id) => {
+    const node = descend(f, id, new Set([rootId]));
+    return { id, slug: slugs.get(id)!, node, count: treeCount(node) };
+  });
+}
+
+/**
+ * The earlier generations section: Dunya's parents (mother on the left), each with their own parents (father on
+ * the left), and her brothers and sisters split into those older and younger than her.
+ */
+export async function earlierTree() {
+  const f = await loadFamily();
+  const dunya = await findDunya();
+  if (!dunya || !f.byId.has(dunya.id)) return null;
+  const female = (id: number) => f.byId.get(id)?.gender === "female";
+  const parents = [...f.parents(dunya.id)].sort((a, b) => Number(!female(a)) - Number(!female(b)));
+  const sibs = siblingsWithFamilies(f, dunya.id);
+  const order = f.sortByAge([...sibs.map((s) => s.id), dunya.id]);
+  const at = order.indexOf(dunya.id);
+  const toSib = (id: number) => {
+    const s = sibs.find((x) => x.id === id)!;
+    return { person: f.byId.get(id)!, partners: f.partners(id).map((p) => f.byId.get(p)!).filter(Boolean), count: s.count, href: s.count ? `/family/${s.slug}` : null };
+  };
+  return {
+    label: `${f.byId.get(dunya.id)!.name}'s parents and siblings`,
+    parents: parents.map((p) => ({
+      person: f.byId.get(p)!,
+      parents: [...f.parents(p)].sort((a, b) => Number(female(a)) - Number(female(b))).map((g) => f.byId.get(g)!),
+    })),
+    older: order.slice(0, at).map(toSib),
+    younger: order.slice(at + 1).map(toSib),
+  };
+}
+
+/** One of Dunya's brothers or sisters as the root of their own tree, by the slug in /family/[slug]. */
+export async function siblingFamily(slug: string) {
+  const f = await loadFamily();
+  const dunya = await findDunya();
+  if (!dunya || !f.byId.has(dunya.id)) return null;
+  const s = siblingsWithFamilies(f, dunya.id).find((x) => x.slug === slug);
+  if (!s) return null;
+  const p = f.byId.get(s.id)!;
+  return { node: s.node, rootName: f.byId.get(dunya.id)!.name, sub: `${f.byId.get(dunya.id)!.name}'s ${siblingWord(p.gender).toLowerCase()}`, count: s.count };
+}
