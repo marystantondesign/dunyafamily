@@ -112,14 +112,12 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
   const byParent = new Map<number | null, number[]>();
   const put = (kid: number, other: number | null) => { if (!byParent.has(other)) byParent.set(other, []); byParent.get(other)!.push(kid); };
   const placed = new Set<number>();
-  // A couple's children are drawn from the dash between them. When a child's second parent isn't recorded but this
-  // person has exactly one partner (and that partner isn't marked a co-parent), the child is taken to be the couple's:
-  // families often add the spouse and the children without linking the spouse to each child.
-  const couplePartner = partnerIds.length === 1 && !f.byId.get(partnerIds[0])?.coparent ? partnerIds[0] : null;
+  // Children go by their actual recorded parents: a child with only this person recorded hangs from them alone,
+  // never from the partner beside them.
   for (const kid of f.children(id)) {
     if (seen.has(kid)) continue;
     const others = f.parents(kid).filter((p) => p !== id);
-    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? (root ? null : couplePartner));
+    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? null);
     placed.add(kid);
   }
   for (const p of partnerIds) for (const kid of f.children(p)) if (!seen.has(kid) && !placed.has(kid)) { put(kid, p); placed.add(kid); }
@@ -136,8 +134,13 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
       children: g.kids.filter((k) => !seen.has(k)).map((k) => descend(f, k, seen)),
     }));
 
-  // Several groups: every other parent goes on their own drop line. Dunya's groups stay as cards.
-  if (!root && groups.length > 1) for (const g of groups) if (g.partner) g.coparent = true;
+  // Several groups: the one recorded partner who had children with this person stays beside them (their children
+  // drop from the dash); every other parent goes small on their own drop line. Children with only this person
+  // recorded drop from below their name. Dunya's groups stay as cards.
+  if (!root && groups.length > 1) {
+    const beside = groups.filter((g) => g.partner && !g.partner.coparent && partnerIds.includes(g.partner.id));
+    for (const g of groups) if (g.partner) g.coparent = !(beside.length === 1 && g === beside[0]);
+  }
   if (root) for (const g of groups) g.coparent = false;
   const inGroups = new Set(groups.map((g) => g.partner?.id).filter((x): x is number => x != null));
   return {

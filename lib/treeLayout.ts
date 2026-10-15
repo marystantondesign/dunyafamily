@@ -109,11 +109,12 @@ function placeRow(slots: Slot[]) {
  * The children of one family member (or of a co-parent group), with the lines from `dropX` down to them.
  * `top` is the y of the children's circles; the split line sits just under the parent.
  */
-function childrenRow(slots: Slot[], dropX: number, dropY: number, splitY: number, top: number): Sub | null {
+function childrenRow(slots: Slot[], dropX: number, dropY: number, splitY: number, top: number, center = dropX): Sub | null {
   if (!slots.length) return null;
   const { placed } = placeRow(slots);
   const a0 = placed[0].x, a1 = placed[placed.length - 1].x;
-  const shift = dropX - (a0 + a1) / 2;
+  // The children sit centered on `center`, normally right under the drop.
+  const shift = center - (a0 + a1) / 2;
   let out: Sub = { items: [], segs: [], contour: [], bottom: top };
   for (const pl of placed) {
     const s = move(pl.sub, pl.x + shift, 0);
@@ -122,9 +123,31 @@ function childrenRow(slots: Slot[], dropX: number, dropY: number, splitY: number
   const xs = placed.map((pl) => pl.x + shift);
   // Down from the parent, across the children, and down to each one (a co-parent group draws its own stem).
   out.segs.push([dropX, dropY, dropX, splitY]);
-  if (xs.length > 1) out.segs.push([Math.min(...xs), splitY, Math.max(...xs), splitY]);
+  const lo = Math.min(...xs, dropX), hi = Math.max(...xs, dropX);
+  if (hi > lo) out.segs.push([lo, splitY, hi, splitY]);
   placed.forEach((_, i) => { if (slots[i].anchor === "person") out.segs.push([xs[i], splitY, xs[i], top]); });
   return out;
+}
+
+/**
+ * A couple's children (from the dash at `dashX`) and the family member's other children (from below their name at
+ * x = 0), side by side: the couple's on the partner's side. Each row's bar stays on its own side of the gap between
+ * the two drop lines, so the lines never meet or cross. Children stay as close to their drop line as they fit.
+ */
+function splitRows(dashSlots: Slot[], restSlots: Slot[], side: 1 | -1, dashX: number, dashY: number, nameY: number, splitY: number, top: number): Sub {
+  const half = (slots: Slot[]) => { const xs = placeRow(slots).placed.map((p) => p.x); return (Math.max(...xs) - Math.min(...xs)) / 2; };
+  const a0 = childrenRow(dashSlots, 0, dashY, splitY, top)!, b0 = childrenRow(restSlots, 0, nameY, splitY, top)!;
+  const wa = half(dashSlots), wb = half(restSlots);
+  // How far apart the two rows' centers must be so nothing touches, generation by generation.
+  const [lft, rgt] = side < 0 ? [a0, b0] : [b0, a0];
+  let sep = 0;
+  lft.contour.forEach((e, i) => { if (rgt.contour[i]) sep = Math.max(sep, e.r - rgt.contour[i].l + gap); });
+  // The couple's nearest child right under the dash, the other nearest child right under the family member.
+  let xa = dashX + side * wa, xb = -side * wb;
+  const apart = side * (xa - xb);
+  if (apart < sep) { const d = (sep - apart) / 2; xa += side * d; xb -= side * d; }
+  const a = childrenRow(dashSlots, dashX, dashY, splitY, top, xa)!, b = childrenRow(restSlots, 0, nameY, splitY, top, xb)!;
+  return { items: [...a.items, ...b.items], segs: [...a.segs, ...b.segs], contour: merge(a.contour, b.contour), bottom: Math.max(a.bottom, b.bottom) };
 }
 
 /** A co-parent and the children they share: the co-parent on the drop line, then the children below. */
@@ -161,22 +184,32 @@ function layoutMember(node: TreeNode, d: number, m: Measure, rootDrop?: number):
   const me: Item = { key: `m${node.person.id}`, p: node.person, kind: "member", x: 0, y: cy, size, fontSize: fs, name: "under" };
   const half = Math.max(size, nameW) / 2;
 
-  const single = node.groups.length === 1 && !node.groups[0].coparent ? node.groups[0] : null;
-  const kidsPartner = single?.partner ?? null;
+  // The partner beside them who is the other parent of some of their children (lib/family leaves at most one).
+  const dashGroup = node.groups.find((g) => g.partner && !g.coparent) ?? null;
+  const kidsPartner = dashGroup?.partner ?? null;
   const others = node.partners.map((pt) => pt.person);
 
   // Children: co-parent groups on their own drop lines; the rest hang straight off the parent's line.
   // `rootDrop`: the root of a sibling's own tree, whose children's line drops straight from below the line under
   // their name (as Dunya's does), even with a partner beside them.
   const h = blockH(d), splitY = rootDrop ? rootDrop + 16 : h + 14, top = h + BAND + splitY - (h + 14);
-  const slots: Slot[] = node.groups.flatMap((g) => (g.coparent && g.partner)
+  const slotsOf = (gs: KidGroup[]): Slot[] => gs.flatMap((g) => (g.coparent && g.partner)
     ? [{ variants: [coGroup(g, d, splitY, top, m)], anchor: "co" as const }]
     : g.children.map((c) => personSlot(c, d + 1, top, m)));
+  const slots = slotsOf(node.groups);
   // A couple's children drop from the middle of the dash between them, on whichever side the partner sits.
-  // Children with a co-parent, or with one recorded parent, drop from the family member.
+  // Children with a co-parent, or with one recorded parent, drop from below the family member's name. When there
+  // are both, each has its own line and its own bar, side by side, and the two never join.
   const fromDash = kidsPartner && !rootDrop;
+  const dashSlots = fromDash ? slotsOf([dashGroup!]) : [];
+  const restSlots = fromDash ? slotsOf(node.groups.filter((g) => g !== dashGroup)) : slots;
   const dropY = rootDrop ?? (kidsPartner ? cy : h + 2);
-  const kidsFor = (side: 1 | -1) => childrenRow(slots, fromDash ? side * (size / 2 + DASH / 2) : 0, dropY, splitY, top);
+  const kidsFor = (side: 1 | -1) => {
+    if (!fromDash) return childrenRow(slots, 0, dropY, splitY, top);
+    const dashX = side * (size / 2 + DASH / 2);
+    if (!restSlots.length) return childrenRow(dashSlots, dashX, cy, splitY, top);
+    return splitRows(dashSlots, restSlots, side, dashX, cy, h + 2, splitY, top);
+  };
 
   // The partner (with or without children together) goes on whichever side has room.
   const sides: (1 | -1)[][] = (kidsPartner ? 1 : 0) + others.length === 1 ? [[1], [-1]]

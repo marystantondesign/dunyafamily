@@ -41,7 +41,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const bday = det.birthday && monthDay(det.birthday.month, det.birthday.day, det.canEdit ? det.birthday.year : null);
   const bdaySoon = det.birthday && !gone ? soonLabel(det.birthday.month, det.birthday.day) : null;
   const annSoon = anniversary && !gone ? soonLabel(anniversary.month, anniversary.day) : null;
-  const annText = anniversary && `${monthDay(anniversary.month, anniversary.day)}${anniversary.label ? `, ${anniversary.label.replace(/^with /i, "with ")}` : ""}`;
+  const annDate = anniversary && monthDay(anniversary.month, anniversary.day, anniversary.year);
+  const annText = anniversary && `${annDate}${anniversary.label ? `, ${anniversary.label.replace(/^with /i, "with ")}` : ""}`;
   const pill = (t: string | null) => t && <span className="soon-pill">{t}</span>;
   const pickPhotos = photos.map((p) => ({ id: p.id, url: p.url }));
   const addressLines = det.address?.split("\n").map((l, i) => <span key={i}>{l}<br /></span>);
@@ -78,14 +79,14 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           <div className="profile-lines">
             <h1>{person.name}</h1>
             {det.inMemory && <p className="in-memory">In memory</p>}
-            {bday && <p className="profile-line"><Icon name="cake" size={18} /><span>Birthday, {bday} {pill(bdaySoon)}</span></p>}
+            {bday && <p className="profile-line" aria-label={`Birthday, ${bday}${bdaySoon ? `, ${bdaySoon}` : ""}`}><Icon name="cake" size={18} /><span aria-hidden="true">{bday} {pill(bdaySoon)}</span></p>}
             {!gone && !det.addressHidden && (
               <div className="profile-line"><Icon name="mail" size={18} />
                 {det.address ? <span>{addressLines}</span> : <span>{quickAddress("Add an address")}</span>}
               </div>
             )}
             {anniversary ? (
-              <p className="profile-line"><Icon name="heart" size={18} /><span>Anniversary, {monthDay(anniversary.month, anniversary.day)} {pill(annSoon)}</span></p>
+              <p className="profile-line" aria-label={`Anniversary, ${annDate}${annSoon ? `, ${annSoon}` : ""}`}><Icon name="heart" size={18} /><span aria-hidden="true">{annDate} {pill(annSoon)}</span></p>
             ) : det.canEdit && (
               <div className="profile-line"><Icon name="heart" size={18} /><span>{quickAnniversary("Add an anniversary")}</span></div>
             )}
@@ -106,7 +107,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           <div className="profile-name">
             <h1>{person.name}</h1>
             {det.inMemory && <p className="in-memory">In memory</p>}
-            {bday && <p className="profile-line"><Icon name="cake" size={18} /><span>Birthday, {bday}</span>{pill(bdaySoon)}</p>}
+            {bday && <p className="profile-line" aria-label={`Birthday, ${bday}${bdaySoon ? `, ${bdaySoon}` : ""}`}><Icon name="cake" size={18} /><span aria-hidden="true">{bday}</span><span aria-hidden="true">{pill(bdaySoon)}</span></p>}
             {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
           </div>
           <section className="profile-details" aria-label="Details">
@@ -120,7 +121,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             )}
             <div className="detail">
               <p className="detail-label"><Icon name="heart" size={20} /> Anniversary</p>
-              {anniversary ? <><p>{annText} {pill(annSoon)}</p>{quickAnniversary("Edit")}</> : quickAnniversary("Add a date")}
+              {anniversary ? <><p aria-label={`Anniversary, ${annText}${annSoon ? `, ${annSoon}` : ""}`}><span aria-hidden="true">{annText} {pill(annSoon)}</span></p>{quickAnniversary("Edit")}</> : quickAnniversary("Add a date")}
             </div>
           </section>
         </div>
