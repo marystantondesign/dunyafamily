@@ -15,7 +15,7 @@ function Polaroid({ photo }: { photo: string | null }) {
 }
 
 /**
- * "Who's here?": the people who can sign in, as a grid of tiles in family order. The search and the button stay
+ * "Who are you?": the people who can sign in, as a grid of tiles in family order. The search and the button stay
  * at the top while the grid scrolls. There's no way to add yourself; Mary adds people.
  */
 export function WhoPicker({ people, photo, initial = null, busy, error, onContinue, cancel }: {
@@ -30,7 +30,7 @@ export function WhoPicker({ people, photo, initial = null, busy, error, onContin
   return (
     <form className="who" onSubmit={(e) => { e.preventDefault(); if (picked) onContinue(picked); }}>
       <Polaroid photo={photo} />
-      <h1>Who&rsquo;s here?</h1>
+      <h1>Who are you?</h1>
       <p className="who-sub">Pick yourself so the family knows who shared what.</p>
       <div className="who-bar">
         <label className="who-find">

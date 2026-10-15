@@ -2136,20 +2136,14 @@ main.wrap:has(.tree) { max-width: none; }
 .family-crumbs a { color: var(--plum); text-decoration: none; }
 .family-crumbs a:hover { text-decoration: underline; }
 
-/* Signed out: the header is just the wordmark. */
-.site-header.bare .site-header-inner { display: flex; }
-@media (max-width: 760px) {
-  .site-header.bare .site-header-inner { display: flex; justify-content: center; padding: 14px 12px; }
-  .site-header.bare .site-header-inner .brand { display: block; }
-}
 
-/* Who's here? The sign-in picker (round 15). */
-.who { max-width: 1240px; margin: 0 auto; padding: 36px 0 64px; display: flex; flex-direction: column; align-items: center; }
+/* Who are you? The sign-in picker (round 15). */
+.who { max-width: 1240px; margin: 0 auto; padding: 8px 0 64px; display: flex; flex-direction: column; align-items: center; }
 .who-polaroid { background: #FFFDF8; padding: 8px 8px 26px; box-shadow: 0 6px 18px rgba(60, 40, 25, .18); transform: rotate(-4deg); }
 .who-polaroid img, .who-polaroid span { display: block; width: 92px; height: 92px; object-fit: cover; background: var(--line); }
-.who h1 { margin: 22px 0 6px; font-family: var(--serif); font-weight: 400; font-size: 44px; text-align: center; }
+.who h1 { margin: 16px 0 4px; font-family: var(--serif); font-weight: 400; font-size: 44px; text-align: center; }
 .who-sub { margin: 0; font-size: 17px; color: var(--ink-2); text-align: center; }
-.who-bar { position: sticky; top: 0; z-index: 2; width: 100%; display: flex; gap: 14px; align-items: center; padding: 22px 0 18px; background: var(--bg); }
+.who-bar { position: sticky; top: 0; z-index: 2; width: 100%; display: flex; gap: 14px; align-items: center; padding: 18px 0 14px; background: var(--bg); }
 .who-find { flex: 1; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border: 1px solid var(--input); border-radius: 999px; background: var(--paper); color: var(--muted); min-width: 0; }
 .who-find input { border: 0; outline: none; background: none; font: inherit; font-size: 16px; width: 100%; color: var(--ink); padding: 0; min-height: 0; box-shadow: none; }
 .who-find:focus-within { border-color: var(--ink-2); }
@@ -2166,7 +2160,7 @@ main.wrap:has(.tree) { max-width: none; }
 .who .error { width: 100%; margin: 0 0 12px; }
 .who-cancel { margin-top: 28px; font-size: 15px; }
 @media (max-width: 760px) {
-  .who { padding-top: 24px; }
+  .who { padding-top: 4px; }
   .who h1 { font-size: 34px; }
   .who-sub { font-size: 16px; }
   .who-bar { gap: 8px; padding: 16px 0 12px; }

@@ -10,7 +10,7 @@ export async function POST() {
 
 /**
  * After the family password changes, older family sessions land here: clear the cookie and say why. ?who=1 is a
- * device signed in as someone who can't sign in: back to Who's here with no message.
+ * device signed in as someone who can't sign in: back to Who are you? with no message.
  */
 export async function GET(req: NextRequest) {
   const res = NextResponse.redirect(new URL(req.nextUrl.searchParams.get("who") ? "/enter" : "/enter?changed=1", req.url));

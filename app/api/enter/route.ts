@@ -10,7 +10,7 @@ const WINDOW = "15 minutes";
 
 /**
  * Coming in: the family password first ({ password, check: true } returns the family list),
- * then "Who's here?" ({ password, personId }) signs this device in as that person. Only people who can sign in
+ * then "Who are you?" ({ password, personId }) signs this device in as that person. Only people who can sign in
  * (lib/signin) are offered or accepted; there's no way to add yourself.
  */
 export async function POST(req: NextRequest) {

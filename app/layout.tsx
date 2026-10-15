@@ -34,7 +34,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>
       <body>
-        {me ? <SiteHeader me={me} /> : <header className="site-header bare"><div className="site-header-inner"><span className="brand">Dunya Family</span></div></header>}
+        {/* Signed out (the password and Who are you? screens): no header, so more of the family fits on screen. */}
+        {me && <SiteHeader me={me} />}
         <main className="wrap">{children}</main>
       </body>
     </html>

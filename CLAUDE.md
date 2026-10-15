@@ -29,9 +29,9 @@ npm run build runs scripts/setup-db.ts first, which applies db/schema.sql (idemp
 
 ## Sessions and coming in
 
-- Come in is the family password, then "Who's here?" (components/PersonPicker WhoPicker): pick yourself from the people who can sign in. There is no self-signup; only Mary adds people. The session is { role, did, name, pid, v }: did is the device id (also kept in the df_device cookie across logouts), pid the person this device picked.
+- Come in is the family password, then "Who are you?" (components/PersonPicker WhoPicker): pick yourself from the people who can sign in. There is no self-signup; only Mary adds people. The session is { role, did, name, pid, v }: did is the device id (also kept in the df_device cookie across logouts), pid the person this device picked.
 - Who can sign in (lib/signin): people.can_sign_in when the admin set it (Edit profile, admin only), otherwise on for living blood relatives of Dunya (her, her descendants, her siblings; only the admin edits the tree) and off for everyone else. In memory is always off, and marking someone in memory sets it off. Abe was switched on once (settings can_sign_in_seeded). /api/enter and /api/enter/switch reject anyone else, and a family session for someone who can't sign in is signed out (sessionState stale "who").
-- The Dunya prom Polaroid on Who's here (lib/promPhoto, a data URI) is only sent after the password checks out, never as a public file. Signed out, the header is just the wordmark.
+- The Dunya prom Polaroid on Who are you? (lib/promPhoto, a data URI) is only sent after the password checks out, never as a public file. Signed out, there's no header at all, so more of the family fits on screen.
 - The family password hash lives in settings (family_password_hash), falling back to FAMILY_PASSWORD_HASH. Changing it bumps family_password_version; family sessions with an older v are signed out (lib/auth sessionState, and the root layout redirects to /api/logout). The admin password is only ADMIN_PASSWORD_HASH.
 - /api/enter allows five wrong passwords per IP per 15 minutes (login_attempts table).
 - Browse with no filters is shuffled with a seed from the df_shuffle session cookie (set in middleware, replaced by Shuffle again), ordered by md5(id || seed) so paging, Previous and Next, and slideshows agree. lib/filters resolveOrder picks the order for every view.
