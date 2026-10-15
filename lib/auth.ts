@@ -23,11 +23,19 @@ export async function roleForPassword(pw: string) {
   return null;
 }
 
-/** The session, plus whether it's a family session from before the last password change. */
-export const sessionState = cache(async (): Promise<{ session: Session | null; stale: boolean }> => {
+/**
+ * The session, plus why it no longer counts: a family session from before the last password change ("password"),
+ * or one for someone who can't sign in, or from before people picked who they are ("who").
+ */
+export const sessionState = cache(async (): Promise<{ session: Session | null; stale: false | "password" | "who" }> => {
   const c = await cookies();
   const s = await verifySession(c.get(SESSION_COOKIE)?.value);
-  if (s?.role === "family" && (s.v ?? 0) < (await familyPassword()).version) return { session: null, stale: true };
+  if (s?.role === "family" && (s.v ?? 0) < (await familyPassword()).version) return { session: null, stale: "password" };
+  if (s?.role === "family") {
+    // Imported here, not at the top: lib/signin reads the family tree, which reads this file.
+    const { canSignIn } = await import("./signin");
+    if (!(await canSignIn(s.pid))) return { session: null, stale: "who" };
+  }
   return { session: s, stale: false };
 });
 

@@ -58,7 +58,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const owner = canRemove(s, photo.uploaded_by_device);
   const removable = (dev: string | null) => owner || canRemove(s, dev);
   const personInfo = new Map(owners.map((o) => [o.id, o]));
-  const canSetAvatar = (pid: number) => { const o = personInfo.get(pid); return !o?.avatar_photo_id || canRemove(s, o.created_by_device); };
+  const canSetAvatar = (pid: number) => !personInfo.get(pid)?.avatar_photo_id || isAdmin(s) || s?.pid === pid;
   const when = whenLabel(photo);
   // A photo name wins. Otherwise the occasion and year, like "NYC, 2026".
   const fallback = [occasionTags[0]?.name, when].filter(Boolean).join(", ");

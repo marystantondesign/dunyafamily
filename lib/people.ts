@@ -2,6 +2,7 @@ import { isInMemory } from "./inMemory";
 import { canRemove, isAdmin } from "./auth";
 import { displayName } from "./names";
 import { q } from "./db";
+import { canSignIn } from "./signin";
 import type { Session } from "./session";
 
 export const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -16,6 +17,19 @@ export const shortMonthDay = (month: number, day: number) =>
 
 export const validMonthDay = (m: number, d: number) =>
   m >= 1 && m <= 12 && d >= 1 && d <= 31 && new Date(2000, m - 1, d).getMonth() === m - 1;
+
+/** Today in the family's time zone, so "today" and "tomorrow" turn over at their midnight. */
+const familyToday = () => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric" })
+    .formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return new Date(Number(p.year), Number(p.month) - 1, Number(p.day));
+};
+
+/** The rose pill beside a birthday or anniversary within 30 days: "today", "tomorrow", "in 18 days". */
+export function soonLabel(month: number, day: number) {
+  const { inDays } = nextOccurrence(month, day, familyToday());
+  return inDays === 0 ? "today" : inDays === 1 ? "tomorrow" : inDays <= 30 ? `in ${inDays} days` : null;
+}
 
 function nextOccurrence(month: number, day: number, now: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -43,10 +57,13 @@ export type PersonDetails = {
   id: number;
   name: string;
   avatarPhotoId: number | null;
-  /** Rename and remove: whoever added the person, or the admin. */
+  /** Edit profile: the person themselves (signed in as them) or the admin. */
+  canEdit: boolean;
+  isSelf: boolean;
+  /** Rename: the person themselves or the admin. Remove: whoever added the person, or the admin. */
   canRename: boolean;
   canRemovePerson: boolean;
-  /** Anyone can pick a first profile photo; changing it is for whoever added the person, or the admin. */
+  /** The camera badge: the person themselves or the admin. */
   canChangePhoto: boolean;
   birthday: { id: number; month: number; day: number; year: number | null; removable: boolean } | null;
   /** Null when there is none, or when it isn't shared and the viewer isn't the admin. */
@@ -57,12 +74,14 @@ export type PersonDetails = {
   shareAddress: boolean;
   inMemory: boolean;
   canChangeMemory: boolean;
+  /** "Can sign in": shown to and changed by the admin only (null for everyone else). */
+  canSignIn: boolean | null;
   dates: { id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; removable: boolean }[];
 };
 
 export async function personDetails(id: number, s: Session | null): Promise<PersonDetails | null> {
-  const [p] = await q<{ name: string; avatar_photo_id: number | null; created_by_device: string | null; address: string | null; address_updated_at: string | null; address_by_device: string | null; share_address: boolean; in_memory: boolean; in_memory_by_device: string | null }>(
-    `select name, avatar_photo_id, created_by_device, address, address_updated_at, address_by_device, share_address, in_memory, in_memory_by_device
+  const [p] = await q<{ name: string; avatar_photo_id: number | null; created_by_device: string | null; address: string | null; address_updated_at: string | null; address_by_device: string | null; share_address: boolean; in_memory: boolean; in_memory_by_device: string | null; can_sign_in: boolean | null }>(
+    `select name, avatar_photo_id, created_by_device, address, address_updated_at, address_by_device, share_address, in_memory, in_memory_by_device, can_sign_in
        from people where id = $1 and deleted_at is null`, [id]);
   if (!p) return null;
   const [[b], dates] = await Promise.all([
@@ -76,22 +95,27 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
   const gone = isInMemory(p);
   const hidden = !gone && !!p.address && !p.share_address && !isAdmin(s);
   const ownsPerson = canRemove(s, p.created_by_device);
+  const isSelf = !!s?.pid && s.pid === id;
+  const canEdit = isAdmin(s) || isSelf;
   return {
     id,
     name: displayName(p.name),
     avatarPhotoId: p.avatar_photo_id,
-    canRename: ownsPerson,
+    canEdit,
+    isSelf,
+    canRename: canEdit,
     canRemovePerson: ownsPerson,
-    canChangePhoto: !p.avatar_photo_id || ownsPerson,
-    birthday: b ? { id: b.id, month: b.month, day: b.day, year: b.year, removable: canRemove(s, b.created_by_device) } : null,
+    canChangePhoto: canEdit,
+    birthday: b ? { id: b.id, month: b.month, day: b.day, year: b.year, removable: canEdit } : null,
     address: hidden || gone ? null : p.address,
     addressHidden: hidden,
     addressUpdatedAt: hidden || gone ? null : p.address_updated_at,
-    canEditAddress: !gone && !hidden && (!p.address || canRemove(s, p.address_by_device)),
+    canEditAddress: !gone && !hidden,
     shareAddress: p.share_address,
     inMemory: p.in_memory,
-    canChangeMemory: !p.in_memory || canRemove(s, p.in_memory_by_device),
-    dates: dates.map(({ created_by_device, ...d }) => ({ ...d, removable: canRemove(s, created_by_device) })),
+    canChangeMemory: canEdit,
+    canSignIn: isAdmin(s) ? await canSignIn(id) : null,
+    dates: dates.map(({ created_by_device, ...d }) => ({ ...d, removable: canEdit || canRemove(s, created_by_device) })),
   };
 }
 

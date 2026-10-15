@@ -6,18 +6,19 @@ import { DATE_KINDS, validMonthDay, type DateKind } from "@/lib/people";
 type Ctx = { params: Promise<{ id: string }> };
 
 async function load(id: number) {
-  const [row] = await q<{ created_by_device: string | null }>(`select created_by_device from person_dates where id = $1 and deleted_at is null`, [id]);
+  const [row] = await q<{ created_by_device: string | null; kind: string; person_id: number }>(
+    `select created_by_device, kind, person_id from person_dates where id = $1 and deleted_at is null`, [id]);
   return row;
 }
 
-/** Changing a date is for whoever added it, or the admin. */
+/** Changing a date is for whoever added it, the person themselves, or the admin. Anyone can fix an anniversary. */
 export async function PATCH(req: Request, { params }: Ctx) {
   const s = await getSession();
   if (!s) return unauthorized();
   const id = Number((await params).id);
   const row = await load(id);
   if (!row) return NextResponse.json({ error: "That date isn't here anymore." }, { status: 404 });
-  if (!canRemove(s, row.created_by_device)) return forbidden();
+  if (row.kind !== "anniversary" && !canRemove(s, row.created_by_device) && s.pid !== row.person_id) return forbidden();
   const body = (await req.json()) as { kind?: string; label?: string; month?: number; day?: number; year?: number | null };
   const kind = (DATE_KINDS as readonly string[]).includes(body.kind ?? "") ? (body.kind as DateKind) : "other";
   const label = (body.label ?? "").trim().replace(/\s+/g, " ").slice(0, 80);

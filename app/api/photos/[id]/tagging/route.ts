@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { badRequest, canRemove, forbidden, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
-import { resolveOccasions, resolvePeople } from "@/lib/tags";
+import { noteRecent, resolveOccasions, resolvePeople } from "@/lib/tags";
 import { setTaggingNeeded } from "@/lib/taggingNeeded";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -52,6 +52,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (dropO.length) await q(`delete from photo_occasions where photo_id = $1 and occasion_id = any($2::int[])`, [id, dropO.map((t) => t.id)]);
   if (peopleIds.length)
     await q(`insert into photo_people (photo_id, person_id, added_by_device) select $1, unnest($2::int[]), $3 on conflict do nothing`, [id, peopleIds, s.did]);
+  await noteRecent(s, peopleIds);
   if (occasionIds.length)
     await q(`insert into photo_occasions (photo_id, occasion_id, added_by_device) select $1, unnest($2::int[]), $3 on conflict do nothing`, [id, occasionIds, s.did]);
   if (yearChanged || decadeChanged) await q(`update photos set year = $1, decade = $2 where id = $3`, [year, decade, id]);

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { SwitchPerson } from "@/components/SwitchPerson";
 import { getSession } from "@/lib/auth";
 import { pickablePeople } from "@/lib/me";
+import { PROM_PHOTO } from "@/lib/promPhoto";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +10,5 @@ export const dynamic = "force-dynamic";
 export default async function WhoPage() {
   const s = await getSession();
   if (!s) redirect("/enter");
-  return <SwitchPerson people={await pickablePeople()} current={s.pid ?? null} />;
+  return <SwitchPerson people={await pickablePeople()} current={s.pid ?? null} photo={PROM_PHOTO} />;
 }

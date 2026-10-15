@@ -20,24 +20,27 @@ export function Face({ p }: { p: FPerson }) {
   );
 }
 
-/** Phone: a list of cards under Dunya. Tap the arrow to see a partner and children. */
+/**
+ * Phone: a list of cards under Dunya. The chevron shows only for someone with children, and only opens or closes
+ * their branch (with their partner and children); tapping the photo or name opens their profile.
+ */
 export function PhoneBranch({ node, depth }: { node: TreeNode; depth: number }) {
   const [open, setOpen] = useState(false);
   const partners = [...node.groups.filter((g) => g.partner && !g.coparent).map((g) => ({ person: g.partner!, label: g.label })), ...node.partners];
   const coGroups = node.groups.filter((g) => g.coparent && g.partner);
   const coKids = new Set(coGroups.flatMap((g) => g.children.map((c) => c.person.id)));
-  const hasMore = partners.length > 0 || node.children.length > 0;
+  const kids = node.children.length;
   return (
     <li className={depth === 1 ? "tcard" : "trow"}>
       <div className="tcard-head">
         <Link href={`/people/${node.person.id}`} className="tcard-link">
           <Face p={node.person} />
           <span><span className="tcard-name">{node.person.name}</span>{node.person.year && <span className="tdot-sub">b. {node.person.year}</span>}</span>
-          {!hasMore && <Icon name="chevronRight" size={20} className="tcard-chev" />}
         </Link>
-        {hasMore && (
+        {kids > 0 && (
           <button type="button" className="tcard-toggle" aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} ${node.person.name}'s family`} onClick={() => setOpen(!open)}>
-            <Icon name={open ? "chevronDown" : "chevronRight"} size={22} />
+            {!open && <span className="tcard-count" aria-hidden="true">{kids} {kids === 1 ? "child" : "children"}</span>}
+            <Icon name={open ? "chevronUp" : "chevronDown"} size={22} />
           </button>
         )}
       </div>
@@ -75,7 +78,6 @@ function PhoneRow({ p, role }: { p: FPerson; role: string }) {
         <Link href={`/people/${p.id}`} className="tcard-link">
           <Face p={p} />
           <span><span className="tcard-name">{p.name}</span>{role && <span className="tdot-sub">{role}</span>}</span>
-          <Icon name="chevronRight" size={20} className="tcard-chev" />
         </Link>
       </div>
     </li>

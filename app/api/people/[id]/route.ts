@@ -5,7 +5,7 @@ import { q } from "@/lib/db";
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * Profile photo: anyone can set one if none exists yet; changing it is for whoever added the person, or the admin.
+ * Profile photo: anyone can set one if none exists yet; changing it is for the person themselves, or the admin.
  * Renaming and aliases: whoever added the person, or the admin.
  */
 export async function PATCH(req: Request, { params }: Ctx) {
@@ -18,13 +18,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!person) return NextResponse.json({ error: "Person not found." }, { status: 404 });
 
   if (body.avatarPhotoId !== undefined) {
-    if (person.avatar_photo_id !== null && !canRemove(s, person.created_by_device)) return forbidden();
+    // Anyone can give someone their first profile photo. Changing it is for them, or the admin.
+    if (person.avatar_photo_id !== null && !isAdmin(s) && s.pid !== id) return forbidden();
     const [photo] = await q(`select 1 from photos where id = $1 and deleted_at is null`, [body.avatarPhotoId]);
     if (!photo) return badRequest("That photo isn't on the site anymore.");
     await q(`update people set avatar_photo_id = $1 where id = $2`, [body.avatarPhotoId, id]);
   }
   if (body.name !== undefined || body.aliases !== undefined) {
-    if (!isAdmin(s) && !canRemove(s, person.created_by_device)) return forbidden();
+    if (!isAdmin(s) && s.pid !== id && !canRemove(s, person.created_by_device)) return forbidden();
     if (body.name !== undefined && !body.name.trim()) return badRequest("Name can't be empty.");
     await q(`update people set name = coalesce($1, name), aliases = coalesce($2, aliases) where id = $3`, [
       body.name?.trim() ?? null,

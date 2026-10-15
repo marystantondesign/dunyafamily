@@ -6,6 +6,9 @@ import { Icon } from "@/components/Icon";
 import { getSession } from "@/lib/auth";
 import { whoAmI } from "@/lib/me";
 import { favoriteCount } from "@/lib/favorites";
+import { ProfilePhotoPicker } from "@/components/PeopleBits";
+import { q } from "@/lib/db";
+import { findPhotos } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +18,18 @@ export default async function YouPage() {
   if (!s) redirect("/enter");
   const [me, favs] = await Promise.all([whoAmI(s), favoriteCount(s.pid)]);
   const first = me.name.split(" ")[0];
+  // Your own photo carries the camera badge, like on your profile.
+  const [mine, [row]] = me.pid
+    ? await Promise.all([findPhotos({ people: [me.pid] }, { order: "oldest", limit: 1000 }),
+        q<{ avatar_photo_id: number | null }>(`select avatar_photo_id from people where id = $1`, [me.pid])])
+    : [[], [undefined]];
   return (
     <div className="you">
       <div className="you-head">
-        <Avatar me={me} className="you-avatar" />
+        <div className="you-avatar-wrap">
+          <Avatar me={me} className="you-avatar" />
+          {me.pid && <ProfilePhotoPicker badge personId={me.pid} name={me.name} photos={mine.map((p) => ({ id: p.id, url: p.url }))} current={row?.avatar_photo_id ?? null} />}
+        </div>
         <div>
           <h1>{me.name}</h1>
           <Link href={me.pid ? `/people/${me.pid}` : "/enter/who"}>{me.pid ? "See your page" : "Pick yourself to get a page"}</Link>
@@ -68,6 +79,12 @@ export default async function YouPage() {
             <li>
               <Link href="/admin/family">
                 <span><strong>Family tree</strong><span>Parents, siblings, partners, children, and birth years</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/order">
+                <span><strong>Family order</strong><span>The order of Everyone, the sign-in screen, and tagging</span></span>
                 <Icon name="chevronRight" className="chev" />
               </Link>
             </li>

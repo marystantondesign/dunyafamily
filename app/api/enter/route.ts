@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { pickablePeople, resolveMe } from "@/lib/me";
 import { familyPassword, roleForPassword } from "@/lib/auth";
 import { q } from "@/lib/db";
+import { PROM_PHOTO } from "@/lib/promPhoto";
 import { cookieOptions, DEVICE_COOKIE, SESSION_COOKIE, signSession, verifySession } from "@/lib/session";
 
 const LIMIT = 5;
@@ -9,10 +10,11 @@ const WINDOW = "15 minutes";
 
 /**
  * Coming in: the family password first ({ password, check: true } returns the family list),
- * then "Which one is you?" ({ password, personId } or { password, newName }) signs this device in as that person.
+ * then "Who's here?" ({ password, personId }) signs this device in as that person. Only people who can sign in
+ * (lib/signin) are offered or accepted; there's no way to add yourself.
  */
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as { password?: string; check?: boolean; personId?: number; newName?: string };
+  const body = (await req.json()) as { password?: string; check?: boolean; personId?: number };
 
   // Slow down guessing: five wrong passwords from one place in 15 minutes, then a wait.
   const key = (req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown").trim();
@@ -29,12 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: left > 0 ? "That password didn't match. Ask a family member for the current one." : "Too many tries. Wait 15 minutes and try again." }, { status: left > 0 ? 401 : 429 });
   }
   await q(`delete from login_attempts where key = $1`, [key]);
-  if (body.check) return NextResponse.json({ ok: true, people: await pickablePeople() });
+  if (body.check) return NextResponse.json({ ok: true, people: await pickablePeople(), photo: PROM_PHOTO });
 
   // Keep the same device id across re-entries so people can still remove what they added.
   const existing = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
   const did = existing?.did ?? req.cookies.get(DEVICE_COOKIE)?.value ?? crypto.randomUUID();
-  const me = await resolveMe(body, did);
+  const me = await resolveMe(body);
   if ("error" in me) return NextResponse.json({ error: me.error }, { status: 400 });
 
   const res = NextResponse.json({ ok: true, name: me.name });

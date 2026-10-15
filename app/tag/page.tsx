@@ -5,6 +5,7 @@ import { q } from "@/lib/db";
 import { filterQuery, filtersFrom, resolveOrder, type SP } from "@/lib/filters";
 import { shuffleSeed } from "@/lib/shuffle";
 import { findForTagging } from "@/lib/photos";
+import { familyOrder } from "@/lib/familyOrder";
 
 export const dynamic = "force-dynamic";
 const MAX = 1000;
@@ -15,25 +16,20 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
   const [people, occasions] = await Promise.all([listPeople(), listOccasions()]);
   const filters = filtersFrom(sp, occasions, s.pid);
   // A batch or the needs-tags pile goes in upload order; anything else follows the browse order it came from.
-  const order = filters.batch || filters.untagged ? "uploaded" : resolveOrder(sp, filters);
+  const order0 = filters.batch || filters.untagged ? "uploaded" : resolveOrder(sp, filters);
 
-  const [photos, personOrder, occasionUse] = await Promise.all([
-    findForTagging(filters, order, MAX, await shuffleSeed()),
-    // People you tagged most recently first, then whoever is in the most photos.
-    // Falls back to most photos if the database hasn't been given the added_at column yet.
-    q<{ id: number }>(
-      `select pe.id from people pe left join photo_people x on x.person_id = pe.id
-        where pe.deleted_at is null group by pe.id, pe.name
-        order by bool_or(coalesce(pe.is_coparent, false)), max(case when x.added_by_device = $1 then x.added_at end) desc nulls last, count(x.photo_id) desc, lower(pe.name)`,
-      [s.did],
-    ).catch(() => q<{ id: number }>(
-      `select pe.id from people pe left join photo_people x on x.person_id = pe.id
-        where pe.deleted_at is null group by pe.id, pe.name order by bool_or(coalesce(pe.is_coparent, false)), count(x.photo_id) desc, lower(pe.name)`,
-    )),
+  const [photos, recent, order, occasionUse] = await Promise.all([
+    findForTagging(filters, order0, MAX, await shuffleSeed()),
+    // "Who's here?": the people this signed-in person tagged most recently first, then family order, then
+    // everyone else A to Z (listPeople's order).
+    s.pid ? q<{ id: number }>(`select person_id as id from tag_recent where tagger_id = $1 order by at desc`, [s.pid]).catch(() => []) : Promise.resolve([]),
+    familyOrder(),
     q<{ id: number; n: number }>(`select occasion_id as id, count(*)::int as n from photo_occasions group by occasion_id`),
   ]);
 
-  const rank = new Map(personOrder.map((p, i) => [p.id, i]));
+  const rank = new Map<number, number>();
+  for (const id of [...recent.map((r) => r.id), ...order]) if (!rank.has(id)) rank.set(id, rank.size);
+  const byName = new Map([...people].sort((a, b) => a.name.localeCompare(b.name)).map((p, i) => [p.id, i]));
   const uses = new Map(occasionUse.map((o) => [o.id, o.n]));
   const qs = filterQuery(sp);
 
@@ -48,7 +44,7 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
           occasions: oo.map((t) => ({ id: t.id, removable: owner || canRemove(s, t.by) })),
         };
       })}
-      people={[...people].sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9))}
+      people={[...people].sort((a, b) => (rank.get(a.id) ?? 1e6 + byName.get(a.id)!) - (rank.get(b.id) ?? 1e6 + byName.get(b.id)!))}
       occasions={[...occasions].sort((a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0) || a.name.localeCompare(b.name))}
       placeKey={`df_tag:${qs}`}
       startId={Number(sp.start) || undefined}

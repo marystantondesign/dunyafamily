@@ -418,3 +418,18 @@ update photo_comments c set author_pid = pe.id
 -- Co-parents (round 14): someone who had a child with a family member but isn't family themselves. They sit small on
 -- the tree beside the children they share, and are left out of the family list, suggestions, and reminders.
 alter table people add column if not exists is_coparent boolean not null default false;
+
+-- Who can sign in (round 15): only people with this on show on the sign-in picker, and the server rejects anyone
+-- else. Null until the first sign-in after this change fills it in once (lib/signin): on for Dunya, her
+-- descendants, and her brothers and sisters, off for everyone else and anyone in memory. After that only the
+-- admin changes it, and anyone added later starts off.
+alter table people add column if not exists can_sign_in boolean;
+
+-- "Who's here?" when tagging: when each signed-in person last saved a photo with someone tagged, so the people
+-- they tagged most recently come first (round 15).
+create table if not exists tag_recent (
+  tagger_id int not null references people(id),
+  person_id int not null references people(id),
+  at timestamptz not null default now(),
+  primary key (tagger_id, person_id)
+);

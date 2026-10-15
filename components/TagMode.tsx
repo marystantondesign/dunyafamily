@@ -16,6 +16,8 @@ type OccasionOption = { id: number; name: string };
 type Draft = { people: Tag[]; occasions: Tag[]; year: number | null; decade: number | null; yearText: string; needed: boolean };
 
 const SHORTCUTS = 9;
+/** Chips past this many in the usual order move to the front when picked, so they stay in the first rows. */
+const FRONT = 12;
 const DECADES = Array.from({ length: 10 }, (_, i) => 1930 + i * 10);
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: THIS_YEAR - 1899 }, (_, i) => THIS_YEAR - i);
@@ -50,6 +52,22 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
   const [otherOpen, setOtherOpen] = useState(false);
   const [message, setMessage] = useState("");
   const queue = useRef<Promise<void>>(Promise.resolve());
+  // "Who's here?" chips: three rows, or six that scroll through everyone after "Show more".
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const [fade, setFade] = useState(false);
+  const measure = useCallback(() => {
+    const el = chipsRef.current;
+    if (!el) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 1);
+    setFade(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  }, []);
+  useEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
   const strip = useRef<HTMLDivElement>(null);
 
   // Pick up where this device left off, unless a specific photo was asked for.
@@ -259,7 +277,12 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
 
   const yearLocked = !photo.owner && saved[photo.id].year !== null;
   const decadeLocked = yearLocked || (!photo.owner && saved[photo.id].decade !== null);
-  const extraPeople = draft.people.filter((t) => !shortcuts.some((p) => p.id === t.id));
+  // Everyone, in order (recent, then family order, then A to Z). Anyone picked from search who would sit past the
+  // first few rows, or a new name, moves to the front so it stays in view.
+  const at = new Map(knownPeople.map((p, i) => [p.id, i]));
+  const front = draft.people.filter((t) => typeof t.id === "string" || (at.get(t.id) ?? 1e9) >= FRONT).map((t) => t.id);
+  const chipIds: Picked[] = [...front, ...knownPeople.map((p) => p.id).filter((id) => !front.includes(id))];
+  const shortcutOf = new Map(shortcuts.map((p, i) => [p.id, i + 1]));
   const extraOcc = draft.occasions.slice(1);
 
   const personChip = (id: Picked, n?: number) => {
@@ -276,12 +299,12 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
         title={tag && !tag.removable ? LOCKED : undefined}
         onClick={() => toggle("people", id)}
       >
-        {tag && <Icon name="check" size={16} stroke={2.2} />}
         <span className="chip-avatar" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {person?.avatar_url ? <img src={person.avatar_url} alt="" /> : name.slice(0, 1).toUpperCase()}
         </span>
         <span className="chip-name">{name}</span>
+        {tag && <Icon name="check" size={16} stroke={2.2} />}
         {n !== undefined && <span className="sr-only">, shortcut {n}</span>}
       </button>
     );
@@ -313,13 +336,21 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
                 placeholder="Search people..."
               />
             </div>
-            <div className="person-chips">
-              {shortcuts.map((p, i) => personChip(p.id, i + 1))}
-              {extraPeople.map((t) => personChip(t.id))}
+            <div className={`chips-box${more ? " more" : ""}${more && fade ? " fade" : ""}`}>
+              <div ref={chipsRef} className="person-chips" onScroll={measure}>
+                {chipIds.map((id) => personChip(id, typeof id === "number" ? shortcutOf.get(id) : undefined))}
+              </div>
             </div>
-            {index > 0 && (
-              <button type="button" className="link-btn plum" onClick={sameAsLast}>Same people as last photo</button>
-            )}
+            <div className="chips-foot">
+              {index > 0 && (
+                <button type="button" className="link-btn plum" onClick={sameAsLast}>Same people as last photo</button>
+              )}
+              {(overflows || more) && (
+                <button type="button" className="show-more" aria-expanded={more} onClick={() => { setMore(!more); chipsRef.current?.scrollTo({ top: 0 }); }}>
+                  {more ? "Show fewer" : "Show more"} <Icon name={more ? "chevronUp" : "chevronDown"} size={16} />
+                </button>
+              )}
+            </div>
             <label className="not-sure">
               <input type="checkbox" checked={draft.needed} onChange={(e) => edit((d) => ({ ...d, needed: e.target.checked }))} />
               <span>

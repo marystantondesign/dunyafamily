@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { CopyButton, ProfilePhotoPicker } from "@/components/PeopleBits";
+import { ProfilePhotoPicker, QuickDetail } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
 import { relationsFor } from "@/lib/family";
 import { displayName } from "@/lib/names";
-import { comingUp, monthDay, personDetails, shortMonthDay, updatedLabel } from "@/lib/people";
+import { monthDay, personDetails, soonLabel } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
 import { isInMemory } from "@/lib/inMemory";
 import { whenLabel } from "@/lib/when";
@@ -33,97 +33,117 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     ),
     relationsFor(id, s),
   ]);
-  const familyLine = ([["Parents", rel.parents], ["Partner", rel.partners], ["Children", rel.children]] as const).filter(([, list]) => list.length);
   const anniversary = det.dates.find((d) => d.kind === "anniversary");
-  const soon = comingUp(det);
   const gone = isInMemory(det);
   const query = `people=${id}&order=oldest`;
+  const seeAll = `/browse?people=${id}&order=oldest`;
+  // Birthday year: only the person themselves and the admin see it.
+  const bday = det.birthday && monthDay(det.birthday.month, det.birthday.day, det.canEdit ? det.birthday.year : null);
+  const bdaySoon = det.birthday && !gone ? soonLabel(det.birthday.month, det.birthday.day) : null;
+  const annSoon = anniversary && !gone ? soonLabel(anniversary.month, anniversary.day) : null;
+  const annText = anniversary && `${monthDay(anniversary.month, anniversary.day)}${anniversary.label ? `, ${anniversary.label.replace(/^with /i, "with ")}` : ""}`;
+  const pill = (t: string | null) => t && <span className="soon-pill">{t}</span>;
+  const pickPhotos = photos.map((p) => ({ id: p.id, url: p.url }));
+  const addressLines = det.address?.split("\n").map((l, i) => <span key={i}>{l}<br /></span>);
+  const quickAddress = (link: string) => <QuickDetail personId={id} name={person.name} what="address" link={link} address={det.address ?? ""} />;
+  const quickAnniversary = (link: string) => <QuickDetail personId={id} name={person.name} what="anniversary" link={link}
+    anniversary={anniversary ? { id: anniversary.id, label: anniversary.label, month: anniversary.month, day: anniversary.day, year: anniversary.year } : null} />;
+
+  const portrait = (
+    <div className="profile-photo">
+      <div className="portrait">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {person.avatar_url ? <img src={person.avatar_url} alt={person.name} /> : <span aria-hidden="true">{person.name.charAt(0)}</span>}
+      </div>
+      {det.canChangePhoto && <ProfilePhotoPicker badge personId={id} name={person.name} photos={pickPhotos} current={det.avatarPhotoId} />}
+    </div>
+  );
+  const photoGrid = (list: typeof photos) => list.map((p) => {
+    const when = whenLabel(p);
+    return (
+      <Link key={p.id} href={`/photos/${p.id}?${query}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={p.url} alt={when ? `${person.name}, ${when}` : person.name} loading="lazy" />
+      </Link>
+    );
+  });
+  const noPhotos = <p className="muted" style={{ marginTop: 24 }}>No photos of {person.name} yet. <Link href="/tag?untagged=1">Tag some photos</Link>.</p>;
 
   return (
     <>
-      <div className="person-top">
-        <div className="person-id">
-          <div className="portrait">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {person.avatar_url ? <img src={person.avatar_url} alt={person.name} /> : <span aria-hidden="true">{person.name.charAt(0)}</span>}
-          </div>
-          <div className="person-name">
+      {/* Phone: photo on the left; name, birthday, address, and anniversary on the right. */}
+      <div className="profile-phone phone-only">
+        <div className="profile-head">
+          {portrait}
+          <div className="profile-lines">
             <h1>{person.name}</h1>
             {det.inMemory && <p className="in-memory">In memory</p>}
-            {det.birthday && (
-              <p className="person-bday"><Icon name="cake" size={20} /> Birthday, {monthDay(det.birthday.month, det.birthday.day)}</p>
+            {bday && <p className="profile-line"><Icon name="cake" size={18} /><span>Birthday, {bday} {pill(bdaySoon)}</span></p>}
+            {!gone && !det.addressHidden && (
+              <div className="profile-line"><Icon name="mail" size={18} />
+                {det.address ? <span>{addressLines}</span> : <span>{quickAddress("Add an address")}</span>}
+              </div>
             )}
-            <div className="person-actions">
-              {det.canChangePhoto && (
-                <ProfilePhotoPicker personId={id} name={person.name} photos={photos.map((p) => ({ id: p.id, url: p.url }))} current={det.avatarPhotoId} />
-              )}
-              <Link href={`/people/${id}/edit`} className="btn btn-primary">Edit details</Link>
-            </div>
+            {anniversary ? (
+              <p className="profile-line"><Icon name="heart" size={18} /><span>Anniversary, {monthDay(anniversary.month, anniversary.day)} {pill(annSoon)}</span></p>
+            ) : det.canEdit && (
+              <div className="profile-line"><Icon name="heart" size={18} /><span>{quickAnniversary("Add an anniversary")}</span></div>
+            )}
           </div>
         </div>
-
-        <div className="details-card">
-          {!gone && <div className="detail">
-            <p className="detail-label"><Icon name="mail" size={20} /> Mailing address</p>
-            {det.address ? (
-              <>
-                <p className="address">{det.address}</p>
-                <p className="small muted">{updatedLabel(det.addressUpdatedAt)}{!det.shareAddress && " · Not shared with the family"}</p>
-                <div className="detail-copy"><CopyButton text={`${person.name}\n${det.address}`} label="Copy address" iconOnly /></div>
-              </>
-            ) : det.addressHidden ? (
-              <p className="muted">Not shared</p>
-            ) : (
-              <Link href={`/people/${id}/edit#address`} className="small">Add an address</Link>
-            )}
-          </div>}
-          <div className="detail">
-            <p className="detail-label"><Icon name="heart" size={20} /> Anniversary</p>
-            {anniversary
-              ? <p>{monthDay(anniversary.month, anniversary.day)}{anniversary.label && `, ${anniversary.label.replace(/^with /i, "with ")}`}</p>
-              : <Link href={`/people/${id}/edit#dates`} className="small">Add a date</Link>}
-          </div>
-          {!gone && <div className="detail">
-            <p className="detail-label"><Icon name="calendar" size={20} /> Coming up</p>
-            {soon ? <p>{soon.title}, {shortMonthDay(soon.month, soon.day)}</p> : <p className="muted">Nothing in the next two months</p>}
-          </div>}
+        {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
+        <div className="profile-photos-head">
+          <h2>Photos</h2>
+          {photos.length > 0 && <Link href={seeAll} className="small">See all {photos.length}</Link>}
         </div>
+        {photos.length ? <div className="profile-grid">{photoGrid(photos.slice(0, 9))}</div> : noPhotos}
       </div>
 
-      {familyLine.length > 0 && (
-        <p className="often small family-line">
-          {familyLine.map(([label, list], i) => (
-            <span key={label}>{i > 0 && " · "}<span className="muted">{label}</span>{" "}
-              {list.map((r, j) => <span key={r.relId}>{j > 0 && ", "}<Link href={`/people/${r.person.id}`}>{r.person.name}</Link></span>)}
-            </span>
-          ))}
-        </p>
-      )}
-
-      {often.length > 0 && (
-        <p className="often small">
-          <span className="muted">Often photographed with</span>{" "}
-          {often.map((o, i) => (
-            <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{displayName(o.name)}</Link> <span className="muted">{o.n}</span></span>
-          ))}
-        </p>
-      )}
-
-      {photos.length ? (
-        <div className="photo-grid">
-          {photos.map((p) => {
-            const when = whenLabel(p);
-            return (
-              <Link key={p.id} href={`/photos/${p.id}?${query}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt={when ? `${person.name}, ${when}` : person.name} loading="lazy" />
-              </Link>
-            );
-          })}
+      {/* Desktop: photo, name, and the details box all start on one line. */}
+      <div className="desktop-only">
+        <div className="profile-top">
+          {portrait}
+          <div className="profile-name">
+            <h1>{person.name}</h1>
+            {det.inMemory && <p className="in-memory">In memory</p>}
+            {bday && <p className="profile-line"><Icon name="cake" size={18} /><span>Birthday, {bday}</span>{pill(bdaySoon)}</p>}
+            {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
+          </div>
+          <section className="profile-details" aria-label="Details">
+            {!gone && (
+              <div className="detail">
+                <p className="detail-label"><Icon name="mail" size={20} /> Mailing address</p>
+                {det.addressHidden ? <p className="muted">Not shared</p>
+                  : det.address ? <><p className="address">{addressLines}</p>{quickAddress("Edit")}</>
+                  : quickAddress("Add an address")}
+              </div>
+            )}
+            <div className="detail">
+              <p className="detail-label"><Icon name="heart" size={20} /> Anniversary</p>
+              {anniversary ? <><p>{annText} {pill(annSoon)}</p>{quickAnniversary("Edit")}</> : quickAnniversary("Add a date")}
+            </div>
+          </section>
         </div>
-      ) : (
-        <p className="muted" style={{ marginTop: 32 }}>No photos of {person.name} yet. <Link href="/tag?untagged=1">Tag some photos</Link>.</p>
-      )}
+
+        {(rel.partners.length > 0 || rel.children.length > 0 || often.length > 0) && (
+          <div className="profile-family">
+            {([["Partner", rel.partners], ["Children", rel.children]] as const).filter(([, list]) => list.length).map(([label, list]) => (
+              <p key={label}>{label}{" "}
+                {list.map((r, j) => <span key={r.relId}>{j > 0 && ", "}<Link href={`/people/${r.person.id}`}>{r.person.name}</Link></span>)}
+              </p>
+            ))}
+            {often.length > 0 && (
+              <p>Often photographed with{" "}
+                {often.map((o, i) => (
+                  <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{displayName(o.name)}</Link> {o.n}</span>
+                ))}
+              </p>
+            )}
+          </div>
+        )}
+
+        {photos.length ? <div className="photo-grid profile-desk-grid">{photoGrid(photos)}</div> : noPhotos}
+      </div>
     </>
   );
 }

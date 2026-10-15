@@ -46,3 +46,17 @@ export async function resolveOccasions(items: (number | string)[], s: Session) {
   }
   return [...new Set(ids)];
 }
+
+/**
+ * "Who's here?" remembers who each signed-in person tagged most recently, for the next photo they tag. The
+ * last person in the list counts as the most recent. Never stops a save.
+ */
+export async function noteRecent(s: Session, personIds: number[]) {
+  if (!s.pid || !personIds.length) return;
+  await q(
+    `insert into tag_recent (tagger_id, person_id, at)
+     select $1, p, now() + (n * interval '1 microsecond') from unnest($2::int[]) with ordinality as t(p, n)
+     on conflict (tagger_id, person_id) do update set at = excluded.at`,
+    [s.pid, personIds],
+  ).catch(() => undefined);
+}

@@ -2,7 +2,8 @@ import { q } from "./db";
 import { displayName } from "./names";
 import { signGet } from "./r2";
 import type { Session } from "./session";
-import { capitalizeName } from "./tags";
+import { familyOrder } from "./familyOrder";
+import { canSignIn, signInIds } from "./signin";
 
 export type Me = { pid: number | null; name: string; avatarUrl: string | null; role: Session["role"] };
 
@@ -17,27 +18,26 @@ export async function whoAmI(s: Session): Promise<Me> {
   return { pid: null, name: displayName(s.name), avatarUrl: null, role: s.role };
 }
 
-/** People someone can pick as themselves: everyone in the family except those in memory. */
+/**
+ * People who can sign in, for the sign-in picker: those with "Can sign in" on (lib/signin), in family order,
+ * then anyone else switched on (like Abe) A to Z.
+ */
 export async function pickablePeople() {
+  const [allowed, order] = await Promise.all([signInIds(), familyOrder()]);
+  if (!allowed.size) return [];
   const rows = await q<{ id: number; name: string; thumb_key: string | null }>(
     `select pe.id, pe.name, ph.thumb_key from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
-      where pe.deleted_at is null and not pe.in_memory order by lower(pe.name)`,
-  );
+      where pe.id = any($1::int[]) order by lower(pe.name)`, [[...allowed]]);
+  const rank = new Map(order.map((id, i) => [id, i]));
+  rows.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
   return Promise.all(rows.map(async (r) => ({ id: r.id, name: displayName(r.name), avatarUrl: r.thumb_key ? await signGet(r.thumb_key) : null })));
 }
 
-/** The person this device picked, or a new person for "I'm not on the list yet". */
-export async function resolveMe(body: { personId?: number; newName?: string }, did: string): Promise<{ id: number; name: string } | { error: string }> {
-  if (body.personId) {
-    const [p] = await q<{ id: number; name: string }>(
-      `select id, name from people where id = $1 and deleted_at is null and not in_memory`, [Number(body.personId)]);
-    return p ?? { error: "That person isn't on the list anymore. Pick again." };
-  }
-  const name = capitalizeName((body.newName ?? "").trim().replace(/\s+/g, " ").slice(0, 80));
-  if (!name) return { error: "Choose who you are, or add your name." };
-  const [existing] = await q<{ id: number; name: string }>(
-    `select id, name from people where deleted_at is null and (lower(name) = lower($1) or lower($1) = any(select lower(a) from unnest(aliases) a))`, [name]);
-  if (existing) return existing;
-  const [row] = await q<{ id: number }>(`insert into people (name, created_by_device, created_by_name) values ($1, $2, $1) returning id`, [name, did]);
-  return { id: row.id, name };
+/** The person this device picked. Only someone who can sign in; nobody new is ever added here. */
+export async function resolveMe(body: { personId?: number }): Promise<{ id: number; name: string } | { error: string }> {
+  const id = Number(body.personId);
+  if (!Number.isInteger(id) || id <= 0) return { error: "Pick your name to keep going." };
+  if (!(await canSignIn(id))) return { error: "That name can't sign in. Ask Mary if you think it should." };
+  const [p] = await q<{ id: number; name: string }>(`select id, name from people where id = $1 and deleted_at is null`, [id]);
+  return p ?? { error: "That person isn't on the list anymore. Pick again." };
 }

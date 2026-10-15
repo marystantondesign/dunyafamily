@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { badRequest, canRemove, forbidden, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
-import { resolveOccasions, resolvePeople } from "@/lib/tags";
+import { noteRecent, resolveOccasions, resolvePeople } from "@/lib/tags";
 
 type Ctx = { params: Promise<{ id: string }> };
 type Body = { kind: "person" | "occasion"; value: number | string };
@@ -15,6 +15,7 @@ export async function POST(req: Request, { params }: Ctx) {
     const [pid] = await resolvePeople([value], s);
     if (!pid) return badRequest("Add a name.");
     await q(`insert into photo_people (photo_id, person_id, added_by_device) values ($1,$2,$3) on conflict do nothing`, [photoId, pid, s.did]);
+    await noteRecent(s, [pid]);
   } else if (kind === "occasion") {
     const [oid] = await resolveOccasions([value], s);
     if (!oid) return badRequest("Add an occasion.");

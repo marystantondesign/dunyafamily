@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Icon } from "./Icon";
-import { PersonPicker, pickedName, type Pickable, type Picked } from "./PersonPicker";
+import { WhoPicker, type Pickable } from "./PersonPicker";
 
 export function Sprig({ size = 48 }: { size?: number }) {
   return (
@@ -14,11 +14,11 @@ export function Sprig({ size = 48 }: { size?: number }) {
   );
 }
 
-/** Come in (screen 05): the family password, then "Which one is you?". */
+/** Come in: the family password, then "Who's here?" (only people who can sign in). */
 export function ComeIn({ next, changed }: { next: string; changed?: boolean }) {
   const [password, setPassword] = useState("");
   const [people, setPeople] = useState<Pickable[] | null>(null);
-  const [picked, setPicked] = useState<Picked>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,49 +29,55 @@ export function ComeIn({ next, changed }: { next: string; changed?: boolean }) {
     return out;
   }
 
-  async function submit(e: React.FormEvent) {
+  async function check(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      if (!people) {
-        const out = await post({ check: true });
-        setPeople(out.people);
-      } else {
-        if (!picked || ("newName" in picked && !picked.newName.trim())) throw new Error("Choose who you are, or add your name.");
-        await post(picked);
-        window.location.href = next;
-        return;
-      }
+      const out = await post({ check: true });
+      setPeople(out.people);
+      setPhoto(out.photo ?? null);
     } catch (err) {
       setError((err as Error).message);
     }
     setBusy(false);
   }
 
-  const name = people ? pickedName(picked, people) : "";
+  async function pick(personId: number) {
+    setError("");
+    setBusy(true);
+    try {
+      await post({ personId });
+      window.location.href = next;
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  if (people) {
+    const back = <button type="button" className="text-btn" onClick={() => { setPeople(null); setPassword(""); setError(""); }}>Cancel</button>;
+    return <WhoPicker people={people} photo={photo} busy={busy} error={error} onContinue={pick} cancel={back} />;
+  }
+
   return (
-    <form className="come-in" onSubmit={submit}>
+    <form className="come-in" onSubmit={check}>
       <div className="come-in-head">
         <Sprig />
         <h1>Dunya Family</h1>
         <p>Our photos, birthdays, and gatherings, all in one place.</p>
       </div>
-      {changed && !people && <p className="notice" role="status">The family password has changed. Ask a family member for the new one.</p>}
+      {changed && <p className="notice" role="status">The family password has changed. Ask a family member for the new one.</p>}
       <div className="field">
         <label htmlFor="pw">Family password</label>
-        <div className={`pw-field${people ? " ok" : ""}`}>
+        <div className="pw-field">
           <Icon name="lock" size={20} />
-          <input id="pw" type="password" autoComplete="current-password" value={password} readOnly={!!people}
+          <input id="pw" type="password" autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)} required autoFocus />
-          {people && <Icon name="check" size={22} stroke={2} className="pw-ok" />}
         </div>
       </div>
-      {people && <PersonPicker people={people} value={picked} onChange={setPicked} />}
       {error && <p className="error" role="alert">{error}</p>}
-      <button className="btn btn-primary come-in-go" disabled={busy}>
-        {busy ? "One moment" : !people ? "Continue" : name ? `Come in, ${name}` : "Come in"}
-      </button>
+      <button className="btn btn-primary come-in-go" disabled={busy}>{busy ? "One moment" : "Continue"}</button>
     </form>
   );
 }

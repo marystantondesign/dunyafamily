@@ -3,7 +3,7 @@ import { badRequest, getSession, unauthorized } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { addToAlbum, resolveAlbum } from "@/lib/albums";
 import { addComment } from "@/lib/comments";
-import { resolveOccasions, resolvePeople } from "@/lib/tags";
+import { noteRecent, resolveOccasions, resolvePeople } from "@/lib/tags";
 
 type Body = {
   photos: { originalKey: string; thumbKey: string; width: number; height: number; takenOn?: string | null }[];
@@ -53,6 +53,7 @@ export async function POST(req: Request) {
        select ph, pe, $3 from unnest($1::int[]) ph cross join unnest($2::int[]) pe on conflict do nothing`,
       [ids, peopleIds, s.did],
     );
+  await noteRecent(s, peopleIds);
   if (occasionIds.length)
     await q(
       `insert into photo_occasions (photo_id, occasion_id, added_by_device)

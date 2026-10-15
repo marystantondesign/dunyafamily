@@ -25,6 +25,7 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
   const [address, setAddress] = useState(det.address ?? "");
   const [share, setShare] = useState(det.shareAddress);
   const [inMemory, setInMemory] = useState(det.inMemory);
+  const [signIn, setSignIn] = useState(!!det.canSignIn);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dateOpen, setDateOpen] = useState<number | "new" | null>(null);
@@ -45,6 +46,7 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
     // Someone in memory has no mailing address; anything stored stays as it was.
     if (det.canEditAddress && !inMemory) { body.address = address; body.shareAddress = share; }
     if (det.canChangeMemory) body.inMemory = inMemory;
+    if (det.canSignIn !== null && (inMemory ? false : signIn) !== det.canSignIn) body.canSignIn = inMemory ? false : signIn;
     setBusy(true);
     try {
       await send(`/api/people/${det.id}/details`, "PATCH", body);
@@ -113,6 +115,15 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
             In memory
           </label>
           <p className="hint">For family who have passed. Their page shows &quot;In memory&quot; and their dates are marked as days to remember.</p>
+          {det.canSignIn !== null && (
+            <>
+              <label className="switch-row">
+                <input type="checkbox" role="switch" className="switch" checked={signIn && !inMemory} disabled={inMemory} onChange={(e) => setSignIn(e.target.checked)} />
+                Can sign in
+              </label>
+              <p className="hint">{inMemory ? "Someone in memory can't sign in." : `Shows ${det.name} on the sign-in screen. Only you can change this.`}</p>
+            </>
+          )}
         </aside>
 
         <div className="edit-cards">

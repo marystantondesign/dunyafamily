@@ -28,13 +28,13 @@ export const viewport: Viewport = { themeColor: "#FBF7F0" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { session: s, stale } = await sessionState();
-  // A family device from before the last password change: sign it out.
-  if (stale) redirect("/api/logout");
+  // A family device from before the last password change, or signed in as someone who can't sign in: sign it out.
+  if (stale) redirect(stale === "password" ? "/api/logout" : "/api/logout?who=1");
   const me = s ? await whoAmI(s) : null;
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>
       <body>
-        {me && <SiteHeader me={me} />}
+        {me ? <SiteHeader me={me} /> : <header className="site-header bare"><div className="site-header-inner"><span className="brand">Dunya Family</span></div></header>}
         <main className="wrap">{children}</main>
       </body>
     </html>
