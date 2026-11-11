@@ -164,8 +164,9 @@ export async function removeNote(id: number, s: Session): Promise<"ok" | "missin
   return "ok";
 }
 
-/** People who can be picked under "Whose recipe": everyone in the tree, in memory too. */
+/** People who can be picked under "Whose recipe": everyone in the tree, in memory too, in family order. */
 export async function recipePeople() {
-  const rows = await q<{ id: number; name: string }>(`select id, name from people where deleted_at is null order by lower(name)`);
-  return rows.map((r) => ({ id: r.id, name: displayName(r.name) }));
+  const rows = await q<{ id: number; name: string }>(`select id, name from people where deleted_at is null`);
+  const { inFamilyOrder } = await import("./familyOrder");
+  return inFamilyOrder(rows.map((r) => ({ id: r.id, name: displayName(r.name) })));
 }

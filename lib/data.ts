@@ -6,13 +6,13 @@ export type Person = { id: number; name: string; aliases: string[]; avatar_url: 
 export type Occasion = { id: number; name: string; kind: string };
 
 export async function listPeople(): Promise<Person[]> {
-  // Family first, A to Z; co-parents after, so they never come up ahead of family in suggestions.
+  // In family order (lib/familyOrder peopleOrder), never A to Z.
   const rows = await q<{ id: number; name: string; aliases: string[]; thumb_key: string | null; in_memory: boolean; is_coparent: boolean }>(
     `select pe.id, pe.name, pe.aliases, ph.thumb_key, pe.in_memory, coalesce(pe.is_coparent, false) as is_coparent
        from people pe left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
-      where pe.deleted_at is null order by coalesce(pe.is_coparent, false), lower(pe.name)`,
+      where pe.deleted_at is null`,
   );
-  return Promise.all(
+  const list = await Promise.all(
     rows.map(async (r) => ({
       id: r.id,
       name: displayName(r.name),
@@ -22,6 +22,9 @@ export async function listPeople(): Promise<Person[]> {
       coparent: !!r.is_coparent,
     })),
   );
+  // Imported here, not at the top: family order reads the tree, which reads lists of people.
+  const { inFamilyOrder } = await import("./familyOrder");
+  return inFamilyOrder(list);
 }
 
 export function listOccasions() {

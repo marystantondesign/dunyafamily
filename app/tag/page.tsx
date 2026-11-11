@@ -21,7 +21,7 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
   const [photos, recent, order, occasionUse] = await Promise.all([
     findForTagging(filters, order0, MAX, await shuffleSeed()),
     // "Who's here?": the people this signed-in person tagged most recently first, then family order, then
-    // everyone else A to Z (listPeople's order).
+    // everyone else (listPeople's order, never A to Z).
     s.pid ? q<{ id: number }>(`select person_id as id from tag_recent where tagger_id = $1 order by at desc`, [s.pid]).catch(() => []) : Promise.resolve([]),
     familyOrder(),
     q<{ id: number; n: number }>(`select occasion_id as id, count(*)::int as n from photo_occasions group by occasion_id`),
@@ -29,7 +29,7 @@ export default async function TagPage({ searchParams }: { searchParams: Promise<
 
   const rank = new Map<number, number>();
   for (const id of [...recent.map((r) => r.id), ...order]) if (!rank.has(id)) rank.set(id, rank.size);
-  const byName = new Map([...people].sort((a, b) => a.name.localeCompare(b.name)).map((p, i) => [p.id, i]));
+  const byName = new Map(people.map((p, i) => [p.id, i]));
   const uses = new Map(occasionUse.map((o) => [o.id, o.n]));
   const qs = filterQuery(sp);
 

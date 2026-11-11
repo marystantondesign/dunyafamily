@@ -131,13 +131,14 @@ export function comingUp(det: PersonDetails, now = new Date()) {
 
 export type AddressRow = { id: number; name: string; address: string | null; updated_at: string | null; shared: boolean };
 
-/** Everyone with a mailing address, by name. Addresses that aren't shared show only to the admin. */
+/** Everyone with a mailing address, in family order. Addresses that aren't shared show only to the admin. */
 export async function addressBook(s: Session | null): Promise<AddressRow[]> {
   const rows = await q<{ id: number; name: string; address: string; address_updated_at: string | null; share_address: boolean }>(
     `select id, name, address, address_updated_at, share_address from people
-      where deleted_at is null and not in_memory and coalesce(trim(address), '') <> '' order by lower(name)`,
+      where deleted_at is null and not in_memory and coalesce(trim(address), '') <> ''`,
   );
-  return rows.map((r) => {
+  const { inFamilyOrder } = await import("./familyOrder");
+  return (await inFamilyOrder(rows)).map((r) => {
     const visible = r.share_address || isAdmin(s);
     return { id: r.id, name: displayName(r.name), address: visible ? r.address : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
   });

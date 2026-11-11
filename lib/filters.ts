@@ -27,7 +27,7 @@ export function filtersFrom(sp: SP, occasions: Occasion[], pid?: number): Filter
 }
 
 const FILTER_KEYS = ["people", "occasions", "decade", "year", "month", "season", "untagged", "batch", "albums", "favorites", "tagging", "order"];
-const ORDERS = new Set(["oldest", "newest", "recent", "shuffled", "favorited"]);
+const ORDERS = new Set(["oldest", "newest", "recent", "activity", "shuffled", "favorited"]);
 
 /** Just the filter params, in a stable order, for links and for remembering a place. */
 export function filterQuery(sp: SP) {

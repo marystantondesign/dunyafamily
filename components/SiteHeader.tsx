@@ -150,7 +150,6 @@ export function SiteHeader({ me }: { me: Me }) {
             ))}
           </nav>
           <div className="header-tools">
-            <Link href="/browse" className="icon-btn" aria-label="Search"><Icon name="search" size={22} /></Link>
             <AccountMenu me={me} />
           </div>
         </div>

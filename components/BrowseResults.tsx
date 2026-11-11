@@ -3,15 +3,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AlbumAdd, type AlbumOption } from "./AlbumPicker";
-import { SortSelect } from "./BrowseFilters";
+import { SortMenu } from "./BrowseFilters";
 import { Gallery } from "./Gallery";
-import { Icon } from "./Icon";
 import { SlideshowStart } from "./SlideshowStart";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
 type BrowsePhoto = { id: number; url: string; width: number | null; height: number | null; year: number | null; decade: number | null; month: number | null; removable: boolean };
 type Panel = "date" | "occasion" | "person" | "album" | null;
-const SORT_WORD: Record<string, string> = { shuffled: ", shuffled", newest: ", newest first", oldest: ", oldest first", favorited: ", newest favorited first" };
 
 /** The browse gallery, plus select mode: check photos, then change them all at once. */
 export function BrowseResults({ photos, query, people, occasions, albums, inAlbum, total, sort }: {
@@ -96,21 +94,13 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
             </>
           ) : sort?.favorites ? (
             <>
-              <span className="desktop-only">{total} {total === 1 ? "favorite" : "favorites"}{SORT_WORD[sort.value] ?? ""}. Only you see this list.</span>
+              <span className="desktop-only">{total} {total === 1 ? "favorite" : "favorites"}. Only you see this list.</span>
               <span className="phone-only">{total} {total === 1 ? "favorite" : "favorites"}. Only you see these.</span>
             </>
-          ) : <>{total} {total === 1 ? "photo" : "photos"}{sort?.value === "shuffled" ? ", shuffled" : ""}</>}
-          {sort?.value === "shuffled" && (
-            <button type="button" className={`icon-btn shuffle-btn${sort.favorites || sort.tagging ? " desktop-only" : ""}`} aria-label="Shuffle again" title="Shuffle again" onClick={() => {
-              document.cookie = `df_shuffle=${Math.random().toString(36).slice(2, 10)}; path=/; samesite=lax`;
-              const qs = new URLSearchParams(sort.params); qs.delete("page");
-              router.push(`${window.location.pathname}${qs.size ? `?${qs}` : ""}`, { scroll: false });
-              router.refresh();
-            }}><Icon name="shuffle" size={18} /></button>
-          )}
+          ) : <>{total} {total === 1 ? "photo" : "photos"}</>}
         </span>
         <span className="browse-actions">
-          {sort && <SortSelect value={sort.value} fallback={sort.fallback} params={sort.params} favorites={sort.favorites} />}
+          {sort && <span className="desktop-only"><SortMenu value={sort.value} fallback={sort.fallback} params={sort.params} /></span>}
           {selecting
             ? <button type="button" className="btn btn-dark-outline" onClick={stop}>Done selecting</button>
             : <button type="button" className="btn select-btn" onClick={() => { setSelecting(true); setMessage(""); }}>Select</button>}
@@ -122,7 +112,8 @@ export function BrowseResults({ photos, query, people, occasions, albums, inAlbu
       </div>
       {message && !selecting && <p className="small muted" role="status">{message}</p>}
 
-      <Gallery photos={photos} base={170} showWhen query={query} selected={selected} onToggle={selecting ? toggle : undefined} starred={sort?.favorites} flagged={sort?.tagging} />
+      {/* Browse: no labels or badges on the tiles, under any sort. Album pages keep the year. */}
+      <Gallery photos={photos} base={170} showWhen={!sort} query={query} selected={selected} onToggle={selecting ? toggle : undefined} starred={sort?.favorites} flagged={sort?.tagging} />
 
       {selecting && (
         <div className="select-bar-wrap">

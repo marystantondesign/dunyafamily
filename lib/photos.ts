@@ -74,7 +74,14 @@ function build(f: Filters) {
 const ORDER = {
   oldest: "coalesce(p.year, p.decade) asc nulls last, p.month asc nulls last, p.id asc",
   newest: "coalesce(p.year, p.decade) desc nulls last, p.month desc nulls last, p.id desc",
-  recent: "p.created_at desc",
+  recent: "p.created_at desc, p.id desc",
+  // Recent activity: the latest comment (or reply) or emoji reaction, on the photo or on one of its comments. Photos
+  // nobody has commented on or reacted to go last.
+  activity: `(select max(t) from (
+      select max(c.created_at) as t from photo_comments c where c.photo_id = p.id and c.deleted_at is null
+      union all select max(r.created_at) from photo_reactions r where r.photo_id = p.id
+      union all select max(e.created_at) from comment_emoji e join photo_comments c2 on c2.id = e.comment_id and c2.deleted_at is null where c2.photo_id = p.id
+    ) a) desc nulls last, p.created_at desc, p.id desc`,
   uploaded: "p.id asc",
   random: "random()",
   // Random, but the same for the whole visit: the seed comes from the df_shuffle cookie (see lib/shuffle).

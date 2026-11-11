@@ -24,7 +24,6 @@ function href(sp: SP, change: SP) {
   for (const [k, v] of Object.entries(next)) if (v) qs.set(k, v);
   return `/browse${qs.size ? `?${qs}` : ""}`;
 }
-const toggle = (list: number[], id: number) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]).join(",") || undefined;
 
 export default async function Browse({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -60,12 +59,8 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q")) as Record<string, string>;
 
   // Everything that's filtering the photos, as removable chips above the grid.
-  const nameOf = (list: { id: number; name: string }[], id: number) => list.find((x) => x.id === id)?.name ?? "Unknown";
+  // People, albums, occasions, and decades show in the filter rows' hints; the rest get a removable chip.
   const chips: { key: string; label: string; icon: "person" | "calendar" | "photo" | "album"; clear: SP }[] = [
-    ...sel.albums.map((id) => ({ key: `a${id}`, label: albums.find((a) => a.id === id)?.title ?? "Album", icon: "album" as const, clear: { albums: toggle(sel.albums, id) } })),
-    ...sel.people.map((id) => ({ key: `p${id}`, label: nameOf(people, id), icon: "person" as const, clear: { people: toggle(sel.people, id) } })),
-    ...sel.occasions.map((id) => ({ key: `o${id}`, label: nameOf(occasions, id), icon: "calendar" as const, clear: { occasions: toggle(sel.occasions, id) } })),
-    ...sel.decades.map((d) => ({ key: `d${d}`, label: `${d}s`, icon: "calendar" as const, clear: { decade: toggle(sel.decades, d) } })),
     ...(filters.year ? [{ key: "y", label: String(filters.year), icon: "calendar" as const, clear: { year: undefined } }] : []),
     ...(sp.month ? [{ key: "m", label: `${MONTHS[Number(sp.month) - 1]}s`, icon: "calendar" as const, clear: { month: undefined } }] : []),
     ...(sp.season ? [{ key: "s", label: `${sp.season}s`, icon: "calendar" as const, clear: { season: undefined } }] : []),
@@ -91,7 +86,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           <label htmlFor="bq" className="sr-only">Search photos, people, or occasions</label>
           <div className="search-field">
             <Icon name="search" />
-            <input id="bq" name="q" placeholder="Search photos, people, or occasions..." />
+            <input id="bq" name="q" placeholder="Search photos, people, or occasions" />
           </div>
         </form>
 
@@ -109,7 +104,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
               <Icon name={c.icon} size={16} /> {c.label} <Icon name="x" size={14} stroke={2} />
             </Link>
           ))}
-          {chips.length > 0 && <Link href="/browse" className="small">Clear filters</Link>}
+          {chips.length > 0 && <Link href={href(sp, { year: undefined, month: undefined, season: undefined, untagged: undefined, batch: undefined })} className="small">Clear filters</Link>}
         </div>
 
         {photos.length ? (

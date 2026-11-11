@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { findDunya } from "./featured";
 import { loadFamily, type Family } from "./family";
 import { q } from "./db";
@@ -14,7 +15,7 @@ export type StoredOrder = { main: number[]; earlier: number[] };
 /** The order Mary sent (round 15), by name. Matched to people once, the first time it's needed. */
 const START = {
   main: ["Dunya", "Lucy", "Sandra", "Cindy", "TJ", "Scott",
-    "Nadia", "Julie", "Jenni", "Memrie", "Danielle", "Mary", "Jessica", "Lane", "Justice", "Afreen", "Leah", "Clark", "Charlie",
+    "Mary", "Julie", "Jenni", "Nadia", "Memrie", "Danielle", "Jessica", "Lane", "Leah", "Justice", "Afreen", "Clark", "Charlie",
     "Knox", "Elise", "Livi", "Briggs", "Ben Jr", "Gunnar", "Harper"],
   earlier: ["Helen", "Louis", "Kaya", "Diana", "Lucaria", "Nyooti", "Fannie", "Michael", "Agnes", "George"],
 };
@@ -33,19 +34,44 @@ function matchNames(f: Family, names: string[], used: Set<number>) {
   return ids;
 }
 
+/**
+ * Round 17 (the Browse spec): grandchildren grouped by parent (Mary, Julie, Jenni, Nadia, Memrie, Danielle, Jessica,
+ * Lane, Leah), and in the earlier part Dunya's brothers and sisters before her parents. Applied once to the saved
+ * list; anyone not named keeps their place after them, so Mary's own changes otherwise stay.
+ */
+const V2_MAIN = ["Dunya", "Lucy", "Sandra", "Cindy", "TJ", "Scott", "Mary", "Julie", "Jenni", "Nadia", "Memrie", "Danielle", "Jessica", "Lane", "Leah"];
+
+async function applyV2(f: Family, o: StoredOrder): Promise<StoredOrder> {
+  const [done] = await q(`select 1 from settings where key = 'family_order_v2'`);
+  if (done) return o;
+  const dunya = await findDunya();
+  const inMain = { ...f, people: f.people.filter((p) => o.main.includes(p.id)) } as Family;
+  const named = matchNames(inMain, V2_MAIN, new Set());
+  const main = [...named, ...o.main.filter((id) => !named.includes(id))];
+  let earlier = o.earlier;
+  if (dunya && f.byId.has(dunya.id)) {
+    const sibs = new Set(f.siblings(dunya.id)), parents = new Set(f.parents(dunya.id));
+    earlier = [...o.earlier.filter((id) => sibs.has(id)), ...o.earlier.filter((id) => parents.has(id)), ...o.earlier.filter((id) => !sibs.has(id) && !parents.has(id))];
+  }
+  const next = { main, earlier };
+  await saveOrder(next);
+  await q(`insert into settings (key, value) values ('family_order_v2', '1') on conflict (key) do nothing`);
+  return next;
+}
+
 export async function storedOrder(f?: Family): Promise<StoredOrder> {
   const [row] = await q<{ value: string | null }>(`select value from settings where key = 'family_order'`);
   if (row?.value) {
     try {
       const v = JSON.parse(row.value) as StoredOrder;
-      if (Array.isArray(v.main) && Array.isArray(v.earlier)) return v;
+      if (Array.isArray(v.main) && Array.isArray(v.earlier)) return applyV2(f ?? await loadFamily(), v);
     } catch { /* fall through and start again */ }
   }
   const fam = f ?? await loadFamily();
   const used = new Set<number>();
   const start = { main: matchNames(fam, START.main, used), earlier: matchNames(fam, START.earlier, used) };
   await q(`insert into settings (key, value) values ('family_order', $1) on conflict (key) do nothing`, [JSON.stringify(start)]);
-  return start;
+  return applyV2(fam, start);
 }
 
 export async function saveOrder(o: StoredOrder) {
@@ -78,4 +104,25 @@ export async function familyOrder(): Promise<number[]> {
   const alive = (ids: number[]) => ids.filter((id) => f.byId.has(id));
   const extra = dunya && f.byId.has(dunya.id) ? unplaced(f, dunya.id, o) : [];
   return [...alive(o.main), ...extra, ...alive(o.earlier)];
+}
+
+/**
+ * Everyone, for any list of people: the family order, then Dunya's spouses and partners, then everyone else (those
+ * in the most photos first). Never A to Z, except where someone picks A to Z (Home's Everyone list).
+ */
+export const peopleOrder = cache(async (): Promise<Map<number, number>> => {
+  const [f, dunya, order, counts] = await Promise.all([loadFamily(), findDunya(), familyOrder(),
+    q<{ id: number; n: number }>(`select person_id as id, count(*)::int as n from photo_people group by person_id`)]);
+  const n = new Map(counts.map((c) => [c.id, c.n]));
+  const ids = [...order, ...(dunya ? f.partners(dunya.id) : [])];
+  const rest = f.people.map((p) => p.id).filter((id) => !ids.includes(id)).sort((a, b) => (n.get(b) ?? 0) - (n.get(a) ?? 0) || a - b);
+  const rank = new Map<number, number>();
+  for (const id of [...ids, ...rest]) if (!rank.has(id)) rank.set(id, rank.size);
+  return rank;
+});
+
+/** Sort any list of people into peopleOrder. */
+export async function inFamilyOrder<T extends { id: number }>(list: T[]): Promise<T[]> {
+  const rank = await peopleOrder();
+  return [...list].sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9) || a.id - b.id);
 }
