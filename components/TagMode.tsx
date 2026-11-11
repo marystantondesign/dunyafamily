@@ -11,7 +11,7 @@ export type TagPhoto = {
   id: number; width: number | null; height: number | null; year: number | null; decade: number | null;
   owner: boolean; people: TagIn[]; occasions: TagIn[]; thumb: string; url: string; tagging_needed: boolean;
 };
-type PersonOption = { id: number; name: string; aliases: string[]; avatar_url: string | null };
+type PersonOption = { id: number; name: string; aliases: string[]; avatar_url: string | null; in_memory?: boolean };
 type OccasionOption = { id: number; name: string };
 type Draft = { people: Tag[]; occasions: Tag[]; year: number | null; decade: number | null; yearText: string; needed: boolean };
 
@@ -301,7 +301,7 @@ export function TagMode({ photos, people, occasions, placeKey, startId, exitHref
       >
         <span className="chip-avatar" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {person?.avatar_url ? <img src={person.avatar_url} alt="" /> : name.slice(0, 1).toUpperCase()}
+          {person?.avatar_url ? <img src={person.avatar_url} alt="" className={person.in_memory ? "in-memory-photo" : undefined} /> : name.slice(0, 1).toUpperCase()}
         </span>
         <span className="chip-name">{name}</span>
         {tag && <Icon name="check" size={16} stroke={2.2} />}

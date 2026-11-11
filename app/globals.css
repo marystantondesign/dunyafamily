@@ -1228,14 +1228,30 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .ep-emoji { min-width: 0; font-size: 28px; }
 }
 
-/* In memory (Option A): sky-blue ring and a gold halo. */
-:root { --memory: #9DC3E6; --halo-gold: #C8962E; }
+/* In memory (round 18): a slate ring, a gold halo raised above the photo, and the photo in black and white. Sizes
+   scale from the photo's diameter D through container units on .halo-mark (1cqw = D / 100). */
+:root { --memory: #3E5A7A; --halo-gold: #B8841F; --halo-cream: #FFFCF6; }
 .halo { position: relative; display: inline-flex; flex: none; }
-.halo::before { content: ""; position: absolute; left: 50%; top: -15%; width: 40%; height: 11%; transform: translateX(-50%); border: 2px solid var(--halo-gold); border-radius: 50%; pointer-events: none; z-index: 1; }
-.halo > :first-child { border-color: var(--memory) !important; box-shadow: 0 0 0 1px var(--memory) !important; }
+.halo img { filter: grayscale(1); }
+.halo > :first-child { border-color: var(--memory) !important; box-shadow: none !important; }
 .halo > .avatar { margin: 0 !important; }
+.halo-mark { position: absolute; inset: 0; container-type: size; pointer-events: none; z-index: 1; }
+.halo-ring { position: absolute; inset: 0; border-radius: 50%; border: max(2.5px, 4.5cqw) solid var(--memory); box-shadow: 0 0 0 max(1px, 1.2cqw) var(--halo-cream); }
+.halo.square .halo-ring { border-radius: 6px; }
+/* Ellipse 0.78D by 0.24D, centered, with 62% of its height above the photo's top edge. A cream line on both sides of
+   the gold keeps it visible over photos. */
+.halo-glow { position: absolute; left: 50%; top: -14.88cqw; width: 78cqw; height: 24cqw; transform: translateX(-50%); box-sizing: border-box; border-radius: 50%;
+  border: max(2.4px, 5cqw) solid var(--halo-gold); background: rgba(233, 196, 106, 0.28);
+  box-shadow: 0 0 0 max(1px, 1.5cqw) var(--halo-cream), inset 0 0 0 max(1px, 1.5cqw) var(--halo-cream); }
 .member .halo { margin-bottom: 6px; }
 .person .halo { margin-bottom: 8px; }
+/* Room above every photo in a row for the halo's overhang (about 0.17D), so names stay lined up. */
+.member { padding-top: 12px; }
+.person { padding-top: 19px; }
+@media (max-width: 760px) {
+  .member { padding-top: 10px; }
+  .person { padding-top: 15px; }
+}
 
 /* Family tree, round 3 (mockup): toolbar, and the earlier generations box. */
 .tree-tools { justify-content: flex-start; margin: 0 0 16px; align-items: center; }
@@ -1329,8 +1345,6 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
   .fa-card li .fa-name { flex: 1 1 auto; min-width: 55%; }
   .fa-year { width: 110px; }
 }
-/* Phone tree cards draw faces without a border, so the ring comes from a shadow there. */
-.tcard .halo > .tdot-face, .trow .halo > .tdot-face { box-shadow: 0 0 0 2.5px var(--memory) !important; }
 
 /* Birthday takeover and On this day on Home. */
 .hero-eyebrow { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--plum); }
@@ -1370,7 +1384,7 @@ main.wrap:has(.ssv) { max-width: none; padding: 0; }
 .pr-mine-empty { margin: 8px 0 18px; }
 .pr-remind-link { display: block; width: fit-content; margin: 22px auto 0; font-size: 15px; color: var(--plum); text-decoration: underline; text-underline-offset: 3px; }
 .pr-remember { display: flex; align-items: center; gap: 18px; padding: 18px 22px; margin-bottom: 8px; background: #EEF4FA; border: 1px solid #C9DCEC; border-radius: 10px; }
-.pr-remember .avatar.lg { width: 56px; height: 56px; font-size: 24px; border: 2px solid var(--memory); }
+.pr-remember .avatar.lg { width: 56px; height: 56px; font-size: 24px; }
 .pr-remember-text { flex: 1; min-width: 0; }
 .pr-remember h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 21px; }
 .pr-remember p { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
@@ -2328,3 +2342,9 @@ main.wrap:has(.tree) { max-width: none; }
   .browse-count { font-size: 15px; color: var(--muted); }
   .browse-actions .btn { min-height: 44px; border-radius: 10px; padding: 0 16px; font-size: 15px; }
 }
+/* Profile photo in memory: the halo over the square photo, with room above it on every screen size. */
+.profile-photo .halo { width: 100%; height: 100%; }
+.profile-top:has(.halo) { padding-top: 40px; }
+.profile-head:has(.halo) { padding-top: 22px; }
+/* Anyone in memory, wherever a small photo of them shows without the halo (tagging chips): black and white. */
+.in-memory-photo { filter: grayscale(1); }

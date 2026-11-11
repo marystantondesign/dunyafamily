@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Halo } from "@/components/Halo";
 import { Icon } from "@/components/Icon";
 import { ProfilePhotoPicker, QuickDetail } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
@@ -52,10 +53,12 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
 
   const portrait = (
     <div className="profile-photo">
-      <div className="portrait">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {person.avatar_url ? <img src={person.avatar_url} alt={person.name} /> : <span aria-hidden="true">{person.name.charAt(0)}</span>}
-      </div>
+      <Halo on={det.inMemory} square>
+        <div className="portrait">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {person.avatar_url ? <img src={person.avatar_url} alt={det.inMemory ? `${person.name}, in memory` : person.name} /> : <span aria-hidden="true">{person.name.charAt(0)}</span>}
+        </div>
+      </Halo>
       {det.canChangePhoto && <ProfilePhotoPicker badge personId={id} name={person.name} photos={pickPhotos} current={det.avatarPhotoId} />}
     </div>
   );
