@@ -433,3 +433,17 @@ create table if not exists tag_recent (
   at timestamptz not null default now(),
   primary key (tagger_id, person_id)
 );
+
+-- Albums (round 19): the profile that started each album. People add photos only to albums they started (Mary to
+-- any). Older albums are matched to their starter by name once, when exactly one person has that name.
+alter table albums add column if not exists created_by_person int;
+update albums a set created_by_person = pe.id
+  from people pe
+ where a.created_by_person is null and a.created_by_name is not null and pe.deleted_at is null
+   and lower(pe.name) = lower(trim(a.created_by_name))
+   and (select count(*) from people x where x.deleted_at is null and lower(x.name) = lower(trim(a.created_by_name))) = 1;
+
+-- Add photos (round 19): who uploaded, by profile, and whether they were scans of old prints. Phone photos (not
+-- scans) count toward 30 a day per profile; the admin has no limit.
+alter table photos add column if not exists uploaded_by_person int;
+alter table photos add column if not exists from_scan boolean;

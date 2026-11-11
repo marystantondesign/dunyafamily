@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { badRequest, getSession, unauthorized } from "@/lib/auth";
-import { addToAlbum, canTakeOut, getAlbum } from "@/lib/albums";
+import { addToAlbum, canAddTo, canTakeOut, getAlbum, NOT_YOURS } from "@/lib/albums";
 import { q } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 const plural = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
 const idsFrom = (v: unknown) => (Array.isArray(v) ? [...new Set(v.map(Number).filter(Number.isInteger))] : []);
 
-/** Add photos to an album. Anyone can. */
+/** Add photos to an album: only whoever started it, or Mary. */
 export async function POST(req: Request, { params }: Ctx) {
   const s = await getSession();
   if (!s) return unauthorized();
   const album = await getAlbum(Number((await params).id));
   if (!album) return badRequest("That album isn't here anymore.");
+  if (!canAddTo(s, album)) return NextResponse.json({ error: NOT_YOURS }, { status: 403 });
   const ids = idsFrom(((await req.json().catch(() => ({}))) as { photoIds?: unknown }).photoIds);
   if (!ids.length) return badRequest("Choose at least one photo.");
   const added = await addToAlbum(album.id, ids, s);

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { byName, displayName } from "@/lib/names";
 import { PhotoScreen } from "@/components/PhotoScreen";
 import { photoTalk } from "@/lib/comments";
-import { albumOptions, albumsFor, canTakeOut } from "@/lib/albums";
+import { albumsFor, canTakeOut, myAlbumOptions } from "@/lib/albums";
 import { homepageEntry, spotsUsed } from "@/lib/homepage";
 import { canRemove, getSession, isAdmin } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
@@ -34,7 +34,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
     listPeople(),
     listOccasions(),
     q<{ id: number; avatar_photo_id: number | null; created_by_device: string | null }>(`select id, avatar_photo_id, created_by_device from people where deleted_at is null`),
-    albumOptions(),
+    myAlbumOptions(s),
     albumsFor(id),
   ]);
   const admin = isAdmin(s);

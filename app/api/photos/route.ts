@@ -4,6 +4,7 @@ import { q } from "@/lib/db";
 import { addToAlbum, resolveAlbum } from "@/lib/albums";
 import { addComment } from "@/lib/comments";
 import { noteRecent, resolveOccasions, resolvePeople } from "@/lib/tags";
+import { phoneUploadsLeft } from "@/lib/uploads";
 
 type Body = {
   photos: { originalKey: string; thumbKey: string; width: number; height: number; takenOn?: string | null }[];
@@ -12,15 +13,22 @@ type Body = {
   scans?: boolean;
   /** A shared album for the whole batch: one that exists, or a new one by name. */
   album?: { albumId?: number; newTitle?: string } | null;
+  /** Big uploads go up in small batches; later batches carry the first one's id so they're tagged together. */
+  batch?: string;
 };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const KEY = /^(originals|thumbs)\/[0-9a-f-]{36}\.[a-z]+$/;
 
 export async function POST(req: Request) {
   const s = await getSession();
   if (!s) return unauthorized();
-  const { photos, tags, scans, album: albumPick } = (await req.json()) as Body;
-  if (!photos?.length) return badRequest("No photos to save.");
+  const { photos: all, tags, scans, album: albumPick, batch: given } = (await req.json()) as Body;
+  if (!all?.length) return badRequest("No photos to save.");
+  // Phone photos: 30 a day per profile (not the admin). Anything past that isn't saved, and the reply says so kindly.
+  const left = scans ? null : await phoneUploadsLeft(s);
+  const photos = left === null ? all : all.slice(0, left);
+  if (!photos.length) return NextResponse.json({ ids: [], batch: given ?? null, limited: true, left: 0 });
   if (photos.some((p) => !KEY.test(p.originalKey) || !KEY.test(p.thumbKey))) return badRequest("Unexpected file keys.");
   // Settle the album first, so a problem with it doesn't leave photos half-saved.
   const album = await resolveAlbum(albumPick, s);
@@ -31,7 +39,7 @@ export async function POST(req: Request) {
   // The upload note becomes the first comment on each photo.
   const note = tags.caption?.trim().slice(0, 2000) || null;
 
-  const batch = crypto.randomUUID();
+  const batch = given && UUID.test(given) ? given : crypto.randomUUID();
   const ids: number[] = [];
   for (const p of photos) {
     // A date saved by the camera beats the batch's shared year, unless these are scans of old prints.
@@ -40,9 +48,9 @@ export async function POST(req: Request) {
     const month = taken ? Number(taken.slice(5, 7)) : null;
     const decade = year ? Math.floor(year / 10) * 10 : tags.decade ?? null;
     const [row] = await q<{ id: number }>(
-      `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name, upload_batch)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
-      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, null, s.did, s.name, batch],
+      `insert into photos (original_key, thumb_key, width, height, taken_on, year, month, decade, caption, uploaded_by_device, uploaded_by_name, upload_batch, uploaded_by_person, from_scan)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning id`,
+      [p.originalKey, p.thumbKey, p.width, p.height, taken, year, month, decade, null, s.did, s.name, batch, s.pid ?? null, !!scans],
     );
     ids.push(row.id);
   }
@@ -64,5 +72,5 @@ export async function POST(req: Request) {
   if (album) await addToAlbum(album.id, ids, s);
   if (note) for (const pid of ids) await addComment(pid, note, s);
 
-  return NextResponse.json({ ids, batch, albumId: album?.id ?? null });
+  return NextResponse.json({ ids, batch, albumId: album?.id ?? null, limited: photos.length < all.length, left: left === null ? null : left - photos.length });
 }

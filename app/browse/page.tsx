@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { BrowseFilters } from "@/components/BrowseFilters";
 import { BrowseResults } from "@/components/BrowseResults";
 import { Icon } from "@/components/Icon";
-import { albumOptions } from "@/lib/albums";
+import { albumOptions, myAlbumOptions } from "@/lib/albums";
 import { canRemove, getSession } from "@/lib/auth";
 import { decadesInUse, listOccasions, listPeople } from "@/lib/data";
 import { defaultOrder, filterQuery, filtersFrom, hasFilters, ids, resolveOrder, type SP } from "@/lib/filters";
@@ -116,7 +116,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             sort={{ value: order, fallback, params, filtered: hasFilters(filters), favorites, tagging }}
             people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
             occasions={occasions}
-            albums={albums}
+            albums={await myAlbumOptions(s)}
           />
         ) : tagging && nFlagged === 0 ? (
           <div className="fav-empty">

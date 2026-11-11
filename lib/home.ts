@@ -56,7 +56,7 @@ export async function featuredCollections(limit = 4): Promise<Collection[]> {
   const pick = async (key: string, title: string, href: string, f: Filters) => {
     const count = await countPhotos(f);
     if (!count) return;
-    const photos = await findPhotos(f, { order: "random", limit: 3 });
+    const photos = await findPhotos(f, { order: "random", limit: 4 });
     auto.push({ key, title, href, count, photos: photos.map(({ id, url }) => ({ id, url })) });
   };
   const decades = await q<{ d: number; n: number }>(

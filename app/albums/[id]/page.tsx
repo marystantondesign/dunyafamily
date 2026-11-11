@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AlbumActions } from "@/components/AlbumActions";
 import { BrowseResults } from "@/components/BrowseResults";
 import { Icon } from "@/components/Icon";
-import { albumOptions, getAlbum } from "@/lib/albums";
+import { canAddTo, getAlbum, myAlbumOptions } from "@/lib/albums";
 import { canRemove, getSession } from "@/lib/auth";
 import { listOccasions, listPeople } from "@/lib/data";
 import { countPhotos, findPhotos } from "@/lib/photos";
@@ -17,10 +17,10 @@ export default async function AlbumPage({ params, searchParams }: { params: Prom
   const order = sp.order === "oldest" ? "oldest" : "newest";
   const filters = { albums: [album.id] };
   const [s, photos, total, people, occasions, albums] = await Promise.all([
-    getSession(), findPhotos(filters, { order, limit: 1000 }), countPhotos(filters), listPeople(), listOccasions(), albumOptions(),
+    getSession(), findPhotos(filters, { order, limit: 1000 }), countPhotos(filters), listPeople(), listOccasions(), getSession().then(myAlbumOptions),
   ]);
   const query = `albums=${album.id}${order === "oldest" ? "&order=oldest" : ""}`;
-  const owner = canRemove(s, album.created_by_device);
+  const owner = canAddTo(s, album);
 
   return (
     <>
@@ -28,10 +28,10 @@ export default async function AlbumPage({ params, searchParams }: { params: Prom
       <div className="page-head with-actions">
         <div>
           <h1 className="display">{album.title}</h1>
-          <p>{total} {total === 1 ? "photo" : "photos"}{album.created_by_name ? `. Started by ${album.created_by_name}` : ""}. Everyone can add to this album.</p>
+          <p>{total} {total === 1 ? "photo" : "photos"}{album.created_by_name ? `. Started by ${album.created_by_name}` : ""}.</p>
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
-          <Link href={`/upload?album=${album.id}`} className="btn btn-primary"><Icon name="plus" size={18} /> Add photos</Link>
+          {owner && <Link href={`/upload?album=${album.id}`} className="btn btn-primary"><Icon name="plus" size={18} /> Add photos</Link>}
           {owner && <AlbumActions id={album.id} title={album.title} />}
         </div>
       </div>
@@ -46,7 +46,7 @@ export default async function AlbumPage({ params, searchParams }: { params: Prom
           inAlbum={{ id: album.id, title: album.title }}
         />
       ) : (
-        <p className="muted">No photos here yet. Add new ones, or open any photo and choose Add to an album. In Browse, Select lets you add many at once.</p>
+        <p className="muted">{owner ? "No photos here yet. Add new ones, or open any photo and choose Add to an album. In Browse, Select lets you add many at once." : "No photos here yet."}</p>
       )}
     </>
   );
