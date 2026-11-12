@@ -480,3 +480,18 @@ create table if not exists story_book_requests (
 -- My stories. Status is now 'draft', 'published', or 'private'; everything public only ever reads 'published'.
 alter table stories add column if not exists recorded_on date;
 alter table stories add column if not exists dont_share boolean;
+-- Submit a story (round 22): a family member's story about someone in the family, sent privately to Mary for a
+-- future project. Never shown on the site; the sender can't edit it afterward. Photos go to private storage
+-- (submissions/...), never into the family archive. Removing one is a soft delete.
+create table if not exists story_submissions (
+  id serial primary key,
+  person_id int references people(id),
+  submitted_by_name text,
+  about int[] not null default '{}',
+  title text not null default '',
+  body text not null,
+  photo_keys text[] not null default '{}',
+  thumb_keys text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);

@@ -91,7 +91,14 @@ export default async function Home() {
           <div className="hk-art" aria-hidden="true"><BookSketch height={132} /></div>
           <div className="hk-text">
             <h2><Link href="/stories" className="hk-link">In Her Words</Link></h2>
-            <p>{stories ? `${stories} ${stories === 1 ? "story" : "stories"}` : "Coming soon"}</p>
+            <p>
+              <span className="desktop-only">{stories ? `${stories} ${stories === 1 ? "story" : "stories"} in the book` : "Coming soon"}</span>
+              <span className="phone-only">{stories ? `${stories} ${stories === 1 ? "story" : "stories"}` : "Coming soon"}</span>
+            </p>
+            <div className="hk-actions">
+              <Link href="/stories" className="btn btn-primary">Open the book</Link>
+              <Link href="/stories/submit" className="btn"><Icon name="plus" size={16} stroke={2} />Submit a story</Link>
+            </div>
           </div>
         </div>
       </section>

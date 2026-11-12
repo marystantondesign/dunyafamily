@@ -6,8 +6,6 @@ import { ProfilePhotoPicker, QuickDetail } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
 import { q } from "@/lib/db";
-import { relationsFor } from "@/lib/family";
-import { displayName } from "@/lib/names";
 import { monthDay, personDetails, soonLabel } from "@/lib/people";
 import { findPhotos } from "@/lib/photos";
 import { isInMemory } from "@/lib/inMemory";
@@ -21,19 +19,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const [person, det] = await Promise.all([listPeople().then((all) => all.find((p) => p.id === id)), personDetails(id, s)]);
   if (!person || !det) notFound();
 
-  const [photos, often, rel] = await Promise.all([
-    findPhotos({ people: [id] }, { order: "oldest", limit: 1000 }),
-    q<{ id: number; name: string; n: number }>(
-      `select pe.id, pe.name, count(*)::int as n
-         from photo_people a
-         join photo_people b on b.photo_id = a.photo_id and b.person_id <> a.person_id
-         join people pe on pe.id = b.person_id and pe.deleted_at is null
-         join photos ph on ph.id = a.photo_id and ph.deleted_at is null
-        where a.person_id = $1 group by pe.id, pe.name order by n desc limit 6`,
-      [id],
-    ),
-    relationsFor(id, s),
-  ]);
+  // Relationships live on the family tree, not on profiles.
+  const photos = await findPhotos({ people: [id] }, { order: "oldest", limit: 1000 });
   const anniversary = det.dates.find((d) => d.kind === "anniversary");
   const gone = isInMemory(det);
   const query = `people=${id}&order=oldest`;
@@ -128,23 +115,6 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </div>
           </section>
         </div>
-
-        {(rel.partners.length > 0 || rel.children.length > 0 || often.length > 0) && (
-          <div className="profile-family">
-            {([["Partner", rel.partners], ["Children", rel.children]] as const).filter(([, list]) => list.length).map(([label, list]) => (
-              <p key={label}>{label}{" "}
-                {list.map((r, j) => <span key={r.relId}>{j > 0 && ", "}<Link href={`/people/${r.person.id}`}>{r.person.name}</Link></span>)}
-              </p>
-            ))}
-            {often.length > 0 && (
-              <p>Often photographed with{" "}
-                {often.map((o, i) => (
-                  <span key={o.id}>{i > 0 && " · "}<Link href={`/browse?people=${id},${o.id}`}>{displayName(o.name)}</Link> {o.n}</span>
-                ))}
-              </p>
-            )}
-          </div>
-        )}
 
         {photos.length ? <div className="photo-grid profile-desk-grid">{photoGrid(photos)}</div> : noPhotos}
       </div>
