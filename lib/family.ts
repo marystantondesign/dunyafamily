@@ -75,8 +75,9 @@ export type KidGroup = {
   partner: FPerson | null; label: string; children: TreeNode[];
   /**
    * Drawn as a co-parent: smallest, on this group's own drop line. True when the other parent is marked co-parent,
-   * or when the person has children with more than one other parent (or some with none recorded), so each pair's
-   * children are clearly theirs. A single partner with children together stands beside the person instead.
+   * or when the person has children with more than one other parent, so each pair's children are clearly theirs
+   * and every other parent sits on the same level. A single partner with children together stands beside the
+   * person instead, and the children drop from the middle of the dash between them.
    */
   coparent: boolean;
 };
@@ -112,12 +113,17 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
   const byParent = new Map<number | null, number[]>();
   const put = (kid: number, other: number | null) => { if (!byParent.has(other)) byParent.set(other, []); byParent.get(other)!.push(kid); };
   const placed = new Set<number>();
-  // Children go by their actual recorded parents: a child with only this person recorded hangs from them alone,
-  // never from the partner beside them.
-  for (const kid of f.children(id)) {
-    if (seen.has(kid)) continue;
+  // Children go by their recorded parents. A child with only this person recorded is the couple's child when this
+  // person has one partner and no children with anyone else: families often add a spouse and the children without
+  // linking the spouse to each child. So a couple's children always hang from the line between the two of them.
+  const ownKids = f.children(id).filter((k) => !seen.has(k));
+  const solo = partnerIds.length === 1 && !f.byId.get(partnerIds[0])?.coparent ? partnerIds[0] : null;
+  const couplePartner = !root && solo !== null
+    && ownKids.every((k) => f.parents(k).every((p) => p === id || p === solo))
+    && f.children(solo).every((k) => seen.has(k) || f.parents(k).includes(id)) ? solo : null;
+  for (const kid of ownKids) {
     const others = f.parents(kid).filter((p) => p !== id);
-    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? null);
+    put(kid, others.find((p) => partnerIds.includes(p)) ?? others[0] ?? couplePartner);
     placed.add(kid);
   }
   for (const p of partnerIds) for (const kid of f.children(p)) if (!seen.has(kid) && !placed.has(kid)) { put(kid, p); placed.add(kid); }
@@ -134,13 +140,11 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
       children: g.kids.filter((k) => !seen.has(k)).map((k) => descend(f, k, seen)),
     }));
 
-  // Several groups: the one recorded partner who had children with this person stays beside them (their children
-  // drop from the dash); every other parent goes small on their own drop line. Children with only this person
-  // recorded drop from below their name. Dunya's groups stay as cards.
-  if (!root && groups.length > 1) {
-    const beside = groups.filter((g) => g.partner && !g.partner.coparent && partnerIds.includes(g.partner.id));
-    for (const g of groups) if (g.partner) g.coparent = !(beside.length === 1 && g === beside[0]);
-  }
+  // Children with more than one other parent: every other parent goes small on their own drop line, side by side
+  // on one level under this person, so no partner sits beside them with a long line down to only some children.
+  // With one other parent and some children with only this person recorded, that partner stays beside them and
+  // the others drop from below their name. Dunya's groups stay as cards.
+  if (!root && groups.filter((g) => g.partner).length > 1) for (const g of groups) if (g.partner) g.coparent = true;
   if (root) for (const g of groups) g.coparent = false;
   const inGroups = new Set(groups.map((g) => g.partner?.id).filter((x): x is number => x != null));
   return {
