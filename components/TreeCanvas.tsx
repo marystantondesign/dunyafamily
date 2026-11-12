@@ -44,9 +44,9 @@ function useMeasure(): Measure {
 function Person({ it }: { it: Item }) {
   const nameStyle = { fontSize: it.fontSize, fontWeight: it.bold ? 700 : 400 };
   if (it.name === "under") {
-    const w = Math.max(it.size, 160);
+    // The link is only as wide as the photo and name (centered on the person), so it never reaches a partner.
     return (
-      <Link href={`/people/${it.p.id}`} className={`tl-p ${it.kind}`} style={{ left: it.x - w / 2, top: it.y - it.size / 2, width: w }}>
+      <Link href={`/people/${it.p.id}`} className={`tl-p ${it.kind} under`} style={{ left: it.x, top: it.y - it.size / 2 }}>
         <Face p={it.p} size={it.size} />
         <span className="tl-name" style={nameStyle}>{it.p.name}</span>
         {it.sub && <span className="tl-sub">{it.sub}</span>}

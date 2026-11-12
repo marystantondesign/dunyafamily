@@ -2126,6 +2126,11 @@ main.wrap:has(.tree) { max-width: none; }
 .tl-p.small .tdot-face { border-width: 1.5px; }
 .tl-p.side { flex-direction: row; align-items: center; gap: 5px; }
 .tl-p.side.to-left { flex-direction: row-reverse; }
+/* Click areas: each person's link covers exactly their photo and name. Lines, box labels, and the gaps inside a link never take the pointer. */
+.tl-p.under { width: max-content; transform: translateX(-50%); }
+.tl-p { pointer-events: none; }
+.tl-p > * { pointer-events: auto; }
+.tl-lines, .tl-box-label { pointer-events: none; }
 .tl-tab { position: absolute; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--paper); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; font-size: 13px; color: var(--ink); text-decoration: none; }
 .tl-tab:hover { color: var(--plum); }
 .tl-tab strong { font-weight: 600; white-space: nowrap; }
