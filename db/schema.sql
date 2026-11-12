@@ -475,3 +475,8 @@ create table if not exists story_book_requests (
   person_id int primary key references people(id),
   created_at timestamptz not null default now()
 );
+-- Adding stories on the site (round 21). recorded_on is the day Mary recorded the answer (today unless she changes it).
+-- dont_share marks Notion pages titled "dont share": they come in with status 'private' and never show anywhere but
+-- My stories. Status is now 'draft', 'published', or 'private'; everything public only ever reads 'published'.
+alter table stories add column if not exists recorded_on date;
+alter table stories add column if not exists dont_share boolean;

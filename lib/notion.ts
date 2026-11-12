@@ -3,7 +3,8 @@ import { signPut } from "./r2";
 
 /**
  * Bringing Mary's stories over from her Notion database "Mammaw Stories". Each page's title is the question and its
- * body is the answer. New pages come in as drafts for Mary to title, theme, and tag before publishing. Pages already
+ * body is the answer. New pages come in as drafts for Mary to title, theme, and tag before publishing; "dont share"
+ * pages come in as private stories (only on My stories). Pages already
  * brought over are never touched again, so edits made on the site stay.
  *
  * Needs NOTION_TOKEN (a Notion integration's secret) in the site's environment, and the database shared with that
@@ -28,11 +29,22 @@ async function notion<T>(path: string, init: { method?: string; body?: unknown }
 
 const plain = (rt: RichText | undefined) => (rt ?? []).map((t) => t.plain_text).join("");
 
-/** Pages that never come over: "dont share" ones, the prompt lists, and anything with no answer. */
+/** Pages titled "dont share" (any capitalization, apostrophe, dash or spacing) come over as private stories. */
+export function isDontShare(title: string) {
+  return title.trim().toLowerCase().replace(/[\s'’`\-–—_]/g, "").startsWith("dontshare");
+}
+
+/** The question with the "dont share" label taken off the front. */
+export function withoutDontShare(title: string) {
+  const sep = "[\\s'’`\\-–—_]*";
+  const rest = title.replace(new RegExp(`^\\s*${"dontshare".split("").join(sep)}[\\s:;'’\`\\-–—_.,()\\[\\]]*`, "i"), "").trim();
+  return rest || title.trim();
+}
+
+/** Pages that never come over: the prompt lists (anything with no answer is skipped too). */
 export function skipTitle(title: string) {
   const t = title.trim().toLowerCase();
-  const squashed = t.replace(/[\s'’`\-–—_]/g, "");
-  return squashed.startsWith("dontshare") || t === "prompts unanswered" || t === "mammaw questions to ask";
+  return t === "prompts unanswered" || t === "mammaw questions to ask";
 }
 
 async function findDatabase(): Promise<string> {
@@ -107,7 +119,7 @@ async function bodyOf(pageId: string): Promise<string> {
   return parts.join("\n\n");
 }
 
-/** Adds any new answered pages as draft stories. Returns what happened. */
+/** Adds any new answered pages as draft (or private) stories. Returns what happened. */
 export async function importFromNotion(): Promise<{ added: number; skipped: number; existing: number }> {
   if (!process.env.NOTION_TOKEN) throw new Error("The Notion import isn't set up yet. Add NOTION_TOKEN to the site's settings on Vercel.");
   const db = await findDatabase();
@@ -120,7 +132,10 @@ export async function importFromNotion(): Promise<{ added: number; skipped: numb
     if (!title || skipTitle(title)) { skipped++; continue; }
     const body = await bodyOf(page.id);
     if (!body.trim()) { skipped++; continue; }
-    const rows = await q(`insert into stories (notion_id, question, body) values ($1, $2, $3) on conflict (notion_id) do nothing returning id`, [page.id, title, body]);
+    const hide = isDontShare(title);
+    const rows = await q(
+      `insert into stories (notion_id, question, body, status, dont_share) values ($1, $2, $3, $4, $5) on conflict (notion_id) do nothing returning id`,
+      [page.id, hide ? withoutDontShare(title) : title, body, hide ? "private" : "draft", hide || null]);
     if (rows.length) added++; else existing++;
   }
   return { added, skipped, existing };

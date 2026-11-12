@@ -6,7 +6,7 @@ import type { AlbumOption } from "./AlbumPicker";
 import { Icon } from "./Icon";
 import { TagPicker, type Option, type Picked } from "./TagPicker";
 
-type Item = {
+export type Item = {
   // body is what gets uploaded: the file itself, or a JPEG copy of an iPhone HEIC photo so every browser can show it.
   key: string; file: File; body?: Blob; preview?: string; thumb?: Blob; width?: number; height?: number;
   takenOn?: string | null; state: "ready" | "uploading" | "done" | "error"; message?: string;
@@ -14,7 +14,7 @@ type Item = {
   on: boolean;
 };
 const THUMB_MAX = 800;
-const SCANS_KEY = "df_scans";
+export const SCANS_KEY = "df_scans";
 /** Phone photos are stored at about this size on the long edge (roughly 300 to 500 KB). Scans keep full quality. */
 const PHONE_MAX = 2400;
 const BATCH = 10;
@@ -42,7 +42,7 @@ async function heicToJpeg(file: File): Promise<Blob> {
   }
 }
 
-async function prepare(file: File): Promise<Item> {
+export async function prepare(file: File): Promise<Item> {
   const key = `${file.name}-${file.size}-${file.lastModified}`;
   try {
     const body = isHeic(file) ? await heicToJpeg(file) : undefined;
@@ -72,7 +72,7 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
 }
 
 /** A phone photo at display size: about 2400 px on the long edge as a JPEG. Small ones go up as they are. */
-async function forPhone(src: Blob): Promise<{ blob: Blob; type: string; width: number; height: number }> {
+export async function forPhone(src: Blob): Promise<{ blob: Blob; type: string; width: number; height: number }> {
   const bitmap = await createImageBitmap(src, { imageOrientation: "from-image" });
   const scale = Math.min(1, PHONE_MAX / Math.max(bitmap.width, bitmap.height));
   if (scale === 1 && src.type === "image/jpeg" && src.size < 700_000) return { blob: src, type: "image/jpeg", width: bitmap.width, height: bitmap.height };
@@ -84,11 +84,11 @@ async function forPhone(src: Blob): Promise<{ blob: Blob; type: string; width: n
 }
 
 /** Waits while the page is hidden (a phone asleep or another app open), so uploads pick up where they left off. */
-const whenVisible = () => document.visibilityState === "visible" ? Promise.resolve()
+export const whenVisible = () => document.visibilityState === "visible" ? Promise.resolve()
   : new Promise<void>((res) => { const on = () => { if (document.visibilityState === "visible") { document.removeEventListener("visibilitychange", on); res(); } }; document.addEventListener("visibilitychange", on); });
 
 /** A PUT that tries again (after the page is visible) when a phone drops the connection. */
-async function put(url: string, body: Blob, type: string) {
+export async function put(url: string, body: Blob, type: string) {
   for (let attempt = 0; attempt < 4; attempt++) {
     await whenVisible();
     try {
@@ -101,7 +101,7 @@ async function put(url: string, body: Blob, type: string) {
 }
 
 /** "These are photos of old prints": the switch card. */
-function ScansSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+export function ScansSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <button type="button" role="switch" aria-checked={on} className={`ap-switch${on ? " on" : ""}`} onClick={() => onChange(!on)}>
       <span className="ap-switch-text">
