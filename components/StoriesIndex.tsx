@@ -92,6 +92,10 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
   const nPicked = sel.people.length + sel.occasions.length + sel.decades.length;
   const filtered = nPicked > 0 || !!theme;
   const featured = !filtered ? list.find((s) => s.id === featuredId) ?? null : null;
+  // Remember which story led this visit, so the next visit leads with a different one.
+  useEffect(() => {
+    if (featuredId) document.cookie = `df_feat=${featuredId}; path=/stories; max-age=31536000; samesite=lax`;
+  }, [featuredId]);
   const rest = featured ? list.filter((s) => s.id !== featured.id) : list;
 
   const names: Record<Key, (id: number) => string> = {
@@ -212,6 +216,7 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
               <span className="sc-text">
                 <span className="sc-theme">{featured.themeLabel}</span>
                 <span className="sc-title">{featured.title}</span>
+                {featured.excerpt && <span className="sc-excerpt">{featured.excerpt}</span>}
                 <span className="sc-time">{featured.minutes} min read</span>
               </span>
             </Link>

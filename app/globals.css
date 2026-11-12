@@ -3169,3 +3169,7 @@ a.pr-fh-link:hover .pr-fh-name { color: var(--plum); }
   .ms-tabs { gap: 2px; }
   .ms-tab { padding: 0 6px; font-size: 14px; white-space: nowrap; }
 }
+/* The featured story: the photo takes the room the text doesn't need, and the start of her answer fills the rest. */
+.sc-featured .sc-text { flex: none; }
+.sc-excerpt { font-family: var(--serif); font-size: 17px; line-height: 1.55; color: #4E3F38; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 760px) { .sc-excerpt { display: none; } }

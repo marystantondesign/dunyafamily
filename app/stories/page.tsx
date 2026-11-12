@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { StoriesIndex } from "@/components/StoriesIndex";
 import { getSession } from "@/lib/auth";
 import { listOccasions } from "@/lib/data";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** In Her Words: Dunya's stories, by theme, and by the people, occasions, and decades they mention. */
 export default async function StoriesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const [s, sp, stories, occasions] = await Promise.all([getSession(), searchParams, publishedStories(), listOccasions()]);
-  const [people, featured, want] = await Promise.all([storyPeople(stories), featuredStory(stories), wantsBook(s?.pid)]);
+  const [people, featured, want] = await Promise.all([storyPeople(stories), featuredStory(stories, Number((await cookies()).get("df_feat")?.value) || null), wantsBook(s?.pid)]);
   const usedOcc = new Set(stories.flatMap((x) => x.occasions));
   const decades = [...new Set(stories.flatMap((x) => x.decades))].sort((a, b) => a - b);
   return (

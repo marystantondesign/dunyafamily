@@ -46,6 +46,8 @@ const FROM = `from stories s left join photos ph on ph.id = s.hero_photo_id and 
 export type StoryCard = {
   id: number; title: string; theme: string; themeLabel: string; minutes: number; photoUrl: string | null;
   people: number[]; occasions: number[]; decades: number[];
+  /** The start of her answer, for the featured card. */
+  excerpt: string;
 };
 
 /** Dunya is never a tagged person in a story: every story is hers. */
@@ -59,6 +61,7 @@ async function card(r: Row): Promise<StoryCard> {
     id: r.id, title: r.title, theme: r.theme ?? "", themeLabel: themeLabel(r.theme), minutes: readingTime(wordsOf(r.body)),
     photoUrl: r.thumb_key ? await signGet(r.thumb_key) : null,
     people: await withoutDunya(r.people ?? []), occasions: r.occasions ?? [], decades: r.decades ?? [],
+    excerpt: wordsOf(r.body).trim().slice(0, 600),
   };
 }
 
@@ -73,16 +76,17 @@ export async function storyCount() {
   return r?.n ?? 0;
 }
 
-/** Today's featured story: Mary's pin, or one a day for everyone, through every story before any repeats. */
-export async function featuredStory(list: StoryCard[]): Promise<StoryCard | null> {
+/**
+ * The featured story: Mary's pin, or a different story on every visit (never the one shown last time on this
+ * browser, which the page remembers in the df_feat cookie).
+ */
+export async function featuredStory(list: StoryCard[], lastId: number | null = null): Promise<StoryCard | null> {
   if (!list.length) return null;
   const [pin] = await q<{ value: string | null }>(`select value from settings where key = 'story_pin'`).catch(() => []);
   const pinned = list.find((s) => s.id === Number(pin?.value));
   if (pinned) return pinned;
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "numeric", day: "numeric" })
-    .formatToParts(new Date()).map((p) => [p.type, p.value]));
-  const day = Math.floor(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / 86_400_000);
-  return list[day % list.length];
+  const pool = list.length > 1 ? list.filter((s) => s.id !== lastId) : list;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export async function storyPin(): Promise<number | null> {
