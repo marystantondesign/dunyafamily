@@ -3014,3 +3014,18 @@ main.wrap:has(.tree) { max-width: none; }
 .you-switch label { display: flex; align-items: flex-start; gap: 16px; padding: 14px 16px; cursor: pointer; }
 .you-switch label > span { flex: 1; }
 .you-switch .error { margin: 0 16px 12px; }
+
+/* Round 27: prayer request headers (photo, "For [name]", who asked and when) and the picked-person chip. */
+.pr-fh { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; min-width: 0; }
+.pr-fh-link { display: contents; color: var(--ink); text-decoration: none; }
+.pr-fh .avatar { grid-row: 1 / span 2; width: 40px; height: 40px; font-size: 17px; border: 0; }
+.pr-fh-name { grid-column: 2; font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+a.pr-fh-link:hover .pr-fh-name { color: var(--plum); }
+.pr-fh-sub { grid-column: 2; font-size: 13px; color: var(--ink-2); line-height: 1.35; }
+.pr-fh:not(:has(.pr-fh-sub)) .avatar { grid-row: 1; }
+.pr-typed .avatar { background: #EFE7DE; color: #5E4E46; }
+.pr-for-chip { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 4px 4px 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.pr-for-chip-who { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.pr-for-chip .icon-btn { width: 44px; height: 44px; color: var(--ink-2); }
+.pr-for-field .avatar { width: 28px; height: 28px; font-size: 12px; }
+.pr-for-list li { min-height: 44px; }

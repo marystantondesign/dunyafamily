@@ -136,10 +136,31 @@ function RememberCard({ r, me }: { r: Remembering; me: Me }) {
  * one in particular (the requester's own photo, and no "For").
  */
 function ForWho({ r, mine = false }: { r: PrayerView; mine?: boolean }) {
-  const dot = mine ? null : <> <span className="pr-dot" aria-hidden="true">·</span> </>;
-  if (r.forPerson) return <><span>For</span> <Link href={`/people/${r.forPerson.id}`} className="pr-for"><Avatar name={r.forPerson.name} url={r.forPerson.avatarUrl} /> {r.forPerson.name}</Link>{dot}</>;
-  if (r.forName) return <><span>For</span> <span className="pr-for"><Avatar name={r.forName} url={null} /> {r.forName}</span>{dot}</>;
-  return mine ? <span className="pr-for"><Avatar name={r.from} url={r.fromAvatarUrl} /> {r.from}</span> : <><Avatar name={r.from} url={r.fromAvatarUrl} /> </>;
+  // The line under the name: who asked and when. My prayers keeps it short.
+  const sub = mine ? null : r.forPerson || r.forName ? `Asked by ${r.from} · ${ago(r.createdAt)}` : ago(r.createdAt);
+  const subLine = sub && <span className="pr-fh-sub" suppressHydrationWarning>{sub}</span>;
+  if (r.forPerson) {
+    return (
+      <span className="pr-fh">
+        <Link href={`/people/${r.forPerson.id}`} className="pr-fh-link"><Avatar name={r.forPerson.name} url={r.forPerson.avatarUrl} /><span className="pr-fh-name">For {r.forPerson.name}</span></Link>
+        {subLine}
+      </span>
+    );
+  }
+  if (r.forName) {
+    return (
+      <span className="pr-fh">
+        <span className="pr-fh-link pr-typed"><Avatar name={r.forName} url={null} /><span className="pr-fh-name">For {r.forName}</span></span>
+        {subLine}
+      </span>
+    );
+  }
+  return (
+    <span className="pr-fh">
+      <span className="pr-fh-link"><Avatar name={r.from} url={r.fromAvatarUrl} /><span className="pr-fh-name">{r.from}</span></span>
+      {subLine}
+    </span>
+  );
 }
 
 function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdit: () => void; onAnswer: () => void }) {
@@ -164,7 +185,6 @@ function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdi
       <div className="pr-top">
         <p className="pr-meta">
           <ForWho r={r} />
-          <span suppressHydrationWarning>From {r.from}, {ago(r.createdAt)}</span>
         </p>
         {r.canEdit && (
           <div className="pr-tools" ref={box}>
@@ -222,38 +242,41 @@ function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdi
 function ForField({ people, value, onChange }: { people: Person[]; value: { id: number | null; text: string }; onChange: (v: { id: number | null; text: string }) => void }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
   const t = value.text.trim().toLowerCase();
+  // Only family members who match. When no one matches, nothing shows: whatever was typed is saved as a plain name.
   const matches = useMemo(() => !t ? [] : people.filter((p) => [p.name, ...p.aliases].some((n) => n.toLowerCase().includes(t)))
     .sort((a, b) => Number(!a.name.toLowerCase().startsWith(t)) - Number(!b.name.toLowerCase().startsWith(t))).slice(0, 6), [people, t]);
-  const exact = matches.some((p) => p.name.toLowerCase() === t);
-  // Family matches first, then the typed name itself as the last option (the only one, highlighted, when no one matches).
-  const options: ({ kind: "person"; p: Person } | { kind: "use" })[] = [...matches.map((p) => ({ kind: "person" as const, p })), ...(t && !exact ? [{ kind: "use" as const }] : [])];
-  const choose = (o: (typeof options)[number]) => {
-    if (o.kind === "person") onChange({ id: o.p.id, text: o.p.name });
-    else onChange({ id: null, text: value.text.trim() });
-    setOpen(false);
-  };
-  const showList = open && !!t && value.id === null;
+  const choose = (p: Person) => { onChange({ id: p.id, text: p.name }); setOpen(false); };
+  const picked = value.id !== null ? people.find((p) => p.id === value.id) ?? { id: value.id, name: value.text, aliases: [], avatarUrl: null } : null;
+  const showList = open && matches.length > 0 && !picked;
   return (
     <div className="field pr-for-field">
       <label htmlFor="pr-for">Who is it for? <span className="opt">Optional</span></label>
-      <input id="pr-for" autoComplete="off" role="combobox" aria-expanded={showList} aria-controls="pr-for-list" value={value.text}
-        onChange={(e) => { onChange({ id: null, text: e.target.value }); setOpen(true); setHi(0); }}
-        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={(e) => {
-          if (!showList || !options.length) return;
-          if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, options.length - 1)); }
-          if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
-          if (e.key === "Enter") { e.preventDefault(); choose(options[hi]); }
-          if (e.key === "Escape") { e.stopPropagation(); setOpen(false); }
-        }} />
+      {picked ? (
+        <div className="pr-for-chip">
+          <span className="pr-for-chip-who"><Avatar name={picked.name} url={picked.avatarUrl} /> {picked.name}</span>
+          <button type="button" id="pr-for" className="icon-btn" aria-label={`Clear ${picked.name}`}
+            onClick={() => { onChange({ id: null, text: "" }); setTimeout(() => input.current?.focus(), 0); }}><Icon name="x" size={18} /></button>
+        </div>
+      ) : (
+        <input id="pr-for" ref={input} autoComplete="off" role="combobox" aria-expanded={showList} aria-controls="pr-for-list" value={value.text}
+          onChange={(e) => { onChange({ id: null, text: e.target.value }); setOpen(true); setHi(0); }}
+          onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={(e) => {
+            if (!showList) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, matches.length - 1)); }
+            if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+            if (e.key === "Enter") { e.preventDefault(); choose(matches[hi]); }
+            if (e.key === "Escape") { e.stopPropagation(); setOpen(false); }
+          }} />
+      )}
       {showList && (
         <ul className="pr-for-list" id="pr-for-list" role="listbox">
-          {options.map((o, i) => (
-            <li key={o.kind === "person" ? o.p.id : "use"} role="option" aria-selected={i === hi} className={i === hi ? "on" : undefined}
-              onMouseDown={(e) => { e.preventDefault(); choose(o); }} onMouseEnter={() => setHi(i)}>
-              {o.kind === "person" ? <><Avatar name={o.p.name} url={o.p.avatarUrl} /> {o.p.name}</>
-                : <span className="pr-for-use"><span>For “{value.text.trim()}”</span><span className="pr-for-note">Not on the site. That’s okay.</span></span>}
+          {matches.map((p, i) => (
+            <li key={p.id} role="option" aria-selected={i === hi} className={i === hi ? "on" : undefined}
+              onMouseDown={(e) => { e.preventDefault(); choose(p); }} onMouseEnter={() => setHi(i)}>
+              <Avatar name={p.name} url={p.avatarUrl} /> {p.name}
             </li>
           ))}
         </ul>
