@@ -56,7 +56,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     favorites ? favoriteCount(s?.pid) : Promise.resolve(0),
     taggingNeededCount(),
   ]);
-  const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q")) as Record<string, string>;
+  const params = Object.fromEntries(Object.entries(sp).filter(([k, v]) => v && k !== "page" && k !== "q" && k !== "select")) as Record<string, string>;
 
   // Everything that's filtering the photos, as removable chips above the grid.
   // People, albums, occasions, and decades show in the filter rows' hints; the rest get a removable chip.
@@ -117,6 +117,8 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             people={people.map(({ id, name, aliases }) => ({ id, name, aliases }))}
             occasions={occasions}
             albums={await myAlbumOptions(s)}
+            allIdsQuery={qs}
+            startSelecting={sp.select === "1"}
           />
         ) : tagging && nFlagged === 0 ? (
           <div className="fav-empty">

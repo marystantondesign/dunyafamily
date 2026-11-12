@@ -160,7 +160,7 @@ export function SiteHeader({ me }: { me: Me }) {
 
       {!tagging && <nav aria-label="Main" className="tab-bar">
         {TABS.map((t) => (
-          <Link key={t.href} href={t.href} aria-current={current(path, t.href) ? "page" : undefined}>
+          <Link key={t.href} href={t.href} aria-current={current(path, t.href) || (t.href === "/browse" && current(path, "/albums")) ? "page" : undefined}>
             <Icon name={t.icon} size={24} stroke={current(path, t.href) ? 1.8 : 1.6} />
             <span>{t.label}</span>
           </Link>

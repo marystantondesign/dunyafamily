@@ -15,7 +15,7 @@ export type AlbumSummary = {
   /** Started by the person viewing (their profile, or this device for older albums). */
   mine: boolean;
 };
-export type AlbumOption = { id: number; title: string; count: number; coverUrl: string | null };
+export type AlbumOption = { id: number; title: string; count: number; coverUrl: string | null; covers?: string[] };
 
 const COLS = `p.id, p.original_key, p.thumb_key, p.width, p.height, p.year, p.month, p.decade, p.caption, p.uploaded_by_device, p.uploaded_by_name, p.created_at`;
 
@@ -60,7 +60,7 @@ export async function albumOptions(): Promise<AlbumOption[]> {
 
 /** For "Add to album": only the albums the person viewing started. */
 export async function myAlbumOptions(s: Session | null): Promise<AlbumOption[]> {
-  return (await listAlbums(s)).filter((a) => a.mine).map((a) => ({ id: a.id, title: a.title, count: a.count, coverUrl: a.photos[0]?.url ?? null }));
+  return (await listAlbums(s)).filter((a) => a.mine).map((a) => ({ id: a.id, title: a.title, count: a.count, coverUrl: a.photos[0]?.url ?? null, covers: a.photos.map((p) => p.url) }));
 }
 
 export async function getAlbum(id: number) {

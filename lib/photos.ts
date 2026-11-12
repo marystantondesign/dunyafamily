@@ -123,6 +123,12 @@ export async function findPhotos(f: Filters, opts: { order?: Order; seed?: strin
   return withThumbs(rows);
 }
 
+/** Every photo id matching the filters (for "Select all N" in Browse). */
+export async function findPhotoIds(f: Filters) {
+  const { where, params } = await build(f);
+  return (await q<{ id: number }>(`select p.id from photos p where ${where} order by p.id desc limit 5000`, params)).map((r) => r.id);
+}
+
 export async function countPhotos(f: Filters) {
   const { where, params } = await build(f);
   const [row] = await q<{ n: number }>(`select count(*)::int as n from photos p where ${where}`, params);

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icon } from "./Icon";
 
-export type AlbumOption = { id: number; title: string; count: number; coverUrl: string | null };
+export type AlbumOption = { id: number; title: string; count: number; coverUrl: string | null; covers?: string[] };
 export type AlbumPick = { albumId: number } | { newTitle: string } | null;
 
 const plural = (n: number) => `${n} ${n === 1 ? "photo" : "photos"}`;
