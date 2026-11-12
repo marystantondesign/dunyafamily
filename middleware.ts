@@ -15,6 +15,13 @@ export async function middleware(req: NextRequest) {
     if (path.startsWith("/api/")) return NextResponse.json({ error: "Enter the family password first." }, { status: 401 });
     // A link to the prayer page from a text: its preview card (and then the password page) comes from a public stand-in.
     if (path === "/prayer") return NextResponse.rewrite(new URL(`/share/prayer${req.nextUrl.search}`, req.url));
+    // A shared link to one photo: a public stand-in with just that photo's preview card (lib/sharePreview).
+    const photo = path.match(/^\/photos\/(\d+)\/?$/);
+    if (photo) {
+      const url = new URL(`/share/photo/${photo[1]}`, req.url);
+      url.searchParams.set("from", path + req.nextUrl.search);
+      return NextResponse.rewrite(url);
+    }
     const url = new URL("/enter", req.url);
     if (path !== "/") url.searchParams.set("next", path + req.nextUrl.search);
     return NextResponse.redirect(url);

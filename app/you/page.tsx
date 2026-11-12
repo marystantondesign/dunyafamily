@@ -9,6 +9,8 @@ import { favoriteCount } from "@/lib/favorites";
 import { ProfilePhotoPicker } from "@/components/PeopleBits";
 import { q } from "@/lib/db";
 import { findPhotos } from "@/lib/photos";
+import { previewsOn } from "@/lib/sharePreview";
+import { SharePreviewToggle } from "@/components/SharePreviewToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +120,7 @@ export default async function YouPage() {
                 <Icon name="chevronRight" className="chev" />
               </Link>
             </li>
+            <li><SharePreviewToggle initial={await previewsOn()} /></li>
             <li>
               <Link href="/admin/password">
                 <span><strong>Family password</strong><span>Change it. Everyone will need the new one.</span></span>

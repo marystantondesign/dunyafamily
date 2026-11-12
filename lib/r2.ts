@@ -30,6 +30,17 @@ export function signGet(key: string, expiresIn = 60 * 60, downloadAs?: string) {
   );
 }
 
+/** Reads a whole object (a photo original, for making its link preview copy). */
+export async function getBytes(key: string) {
+  const res = await s3().send(new GetObjectCommand({ Bucket: Bucket(), Key: key }));
+  return Buffer.from(await res.Body!.transformToByteArray());
+}
+
+/** Writes an object from the server (a link preview copy). */
+export async function putBytes(key: string, body: Buffer, contentType: string) {
+  await s3().send(new PutObjectCommand({ Bucket: Bucket(), Key: key, Body: body, ContentType: contentType }));
+}
+
 export function signPut(key: string, contentType: string) {
   return getSignedUrl(s3(), new PutObjectCommand({ Bucket: Bucket(), Key: key, ContentType: contentType }), {
     expiresIn: 60 * 15,

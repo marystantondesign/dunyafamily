@@ -528,3 +528,17 @@ create table if not exists photo_hidden (
   created_at timestamptz not null default now(),
   primary key (person_id, photo_id)
 );
+
+-- Shared photo link previews (round 26). Link preview bots can't sign in, so a signed-out visit to /photos/:id
+-- gets a public stand-in page with just the preview tags. Its picture is a resized copy of that one photo
+-- (1200px long edge, JPEG) stored at previews/<token>.jpg and served from /share/p/<token>.jpg; the random token
+-- never reveals the photo id. Made on first request. Hidden, pending-removal, and deleted photos never get one
+-- served, and settings 'share_photo_previews' = '0' turns it off for every page.
+create table if not exists share_previews (
+  photo_id int primary key references photos(id),
+  token text not null unique,
+  image_key text not null,
+  width int not null,
+  height int not null,
+  created_at timestamptz not null default now()
+);
