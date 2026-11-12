@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   for (const d of (await importantDates()).filter((d) => (d.kind === "remembrance" && !d.is_coparent) || inUpcoming(d))) {
     const start = new Date(2020, d.month - 1, d.day);
     const end = new Date(2020, d.month - 1, d.day + 1);
-    const summary = d.kind === "anniversary" ? `${d.name}'s anniversary`
+    const summary = d.kind === "anniversary" ? `${d.name}'s anniversary${d.label ? `, ${d.label}` : ""}`
       : d.kind === "remembrance" ? (d.label || `Remembering ${d.name}`)
       : d.label.toLowerCase().includes(d.name.toLowerCase()) ? d.label : `${d.label}, ${d.name}`;
     lines.push("BEGIN:VEVENT", `UID:date-${d.id}@dunyafamily`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ymd(start)}`, `DTEND;VALUE=DATE:${ymd(end)}`, "RRULE:FREQ=YEARLY", `SUMMARY:${esc(summary)}`, "TRANSP:TRANSPARENT", "END:VEVENT");

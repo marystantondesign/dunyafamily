@@ -1,3 +1,4 @@
+import { addressText, parseAddress, type Address } from "./contact";
 import { isInMemory } from "./inMemory";
 import { canRemove, isAdmin } from "./auth";
 import { displayName } from "./names";
@@ -30,6 +31,9 @@ export function soonLabel(month: number, day: number) {
   const { inDays } = nextOccurrence(month, day, familyToday());
   return inDays === 0 ? "today" : inDays === 1 ? "tomorrow" : inDays <= 30 ? `in ${inDays} days` : null;
 }
+
+/** Days until the next time this month and day comes around (0 today). */
+export const daysUntil = (month: number, day: number) => nextOccurrence(month, day, familyToday()).inDays;
 
 function nextOccurrence(month: number, day: number, now: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -72,6 +76,8 @@ export type PersonDetails = {
   addressUpdatedAt: string | null;
   canEditAddress: boolean;
   shareAddress: boolean;
+  /** Address in parts, email, and phone, with the same visibility as the address (null when hidden or none). */
+  contact: Contact | null;
   inMemory: boolean;
   canChangeMemory: boolean;
   /** "Can sign in": shown to and changed by the admin only (null for everyone else). */
@@ -79,9 +85,28 @@ export type PersonDetails = {
   dates: { id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; removable: boolean }[];
 };
 
+export type Contact = {
+  /** The address in parts; for an old address that couldn't be read, null with flagged true and raw set. */
+  address: Address | null; flagged: boolean; raw: string | null; email: string | null; phone: string | null;
+};
+type ContactRow = { address: string | null; addr_street: string | null; addr_apt: string | null; addr_city: string | null; addr_state: string | null; addr_zip: string | null; email: string | null; phone: string | null };
+export const CONTACT_COLS = "address, addr_street, addr_apt, addr_city, addr_state, addr_zip, email, phone";
+
+/** Saved parts win; otherwise the old one-block address is read into parts (or flagged when it can't be). */
+export function contactOf(r: ContactRow): Contact {
+  const saved = r.addr_street || r.addr_city || r.addr_zip;
+  const address = saved
+    ? { street: r.addr_street ?? "", apt: r.addr_apt ?? "", city: r.addr_city ?? "", state: r.addr_state ?? "", zip: r.addr_zip ?? "" }
+    : parseAddress(r.address);
+  const raw = r.address?.trim() || null;
+  return { address, flagged: !saved && !!raw && !address, raw: !saved && !address ? raw : null, email: r.email || null, phone: r.phone || null };
+}
+/** The address as text for copying and the spreadsheet: tidy parts when it could be read, else as typed. */
+export const contactText = (c: Contact) => (c.address ? addressText(c.address) : c.raw ?? "");
+
 export async function personDetails(id: number, s: Session | null): Promise<PersonDetails | null> {
-  const [p] = await q<{ name: string; avatar_photo_id: number | null; created_by_device: string | null; address: string | null; address_updated_at: string | null; address_by_device: string | null; share_address: boolean; in_memory: boolean; in_memory_by_device: string | null; can_sign_in: boolean | null }>(
-    `select name, avatar_photo_id, created_by_device, address, address_updated_at, address_by_device, share_address, in_memory, in_memory_by_device, can_sign_in
+  const [p] = await q<{ name: string; avatar_photo_id: number | null; created_by_device: string | null; address: string | null; address_updated_at: string | null; address_by_device: string | null; share_address: boolean; in_memory: boolean; in_memory_by_device: string | null; can_sign_in: boolean | null } & ContactRow>(
+    `select name, avatar_photo_id, created_by_device, address_updated_at, address_by_device, share_address, in_memory, in_memory_by_device, can_sign_in, ${CONTACT_COLS}
        from people where id = $1 and deleted_at is null`, [id]);
   if (!p) return null;
   const [[b], dates] = await Promise.all([
@@ -93,7 +118,10 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
   ]);
   // In memory: no address at all. It stays in the database, just never shown.
   const gone = isInMemory(p);
-  const hidden = !gone && !!p.address && !p.share_address && !isAdmin(s);
+  const c = contactOf(p);
+  const hasAny = !!(c.address || c.raw || c.email || c.phone);
+  const isSelfEarly = !!s?.pid && s.pid === id;
+  const hidden = !gone && hasAny && !p.share_address && !isAdmin(s) && !isSelfEarly;
   const ownsPerson = canRemove(s, p.created_by_device);
   const isSelf = !!s?.pid && s.pid === id;
   const canEdit = isAdmin(s) || isSelf;
@@ -112,6 +140,7 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
     addressUpdatedAt: hidden || gone ? null : p.address_updated_at,
     canEditAddress: !gone && !hidden,
     shareAddress: p.share_address,
+    contact: hidden || gone || !hasAny ? null : c,
     inMemory: p.in_memory,
     canChangeMemory: canEdit,
     canSignIn: isAdmin(s) ? await canSignIn(id) : null,
@@ -129,19 +158,23 @@ export function comingUp(det: PersonDetails, now = new Date()) {
   return all[0] ?? null;
 }
 
-export type AddressRow = { id: number; name: string; address: string | null; updated_at: string | null; shared: boolean };
+export type AddressRow = { id: number; name: string; contact: Contact | null; updated_at: string | null; shared: boolean };
 
-/** Everyone with a mailing address, in family order. Addresses that aren't shared show only to the admin. */
+/**
+ * Everyone not in memory, in family order, with what they share: address, email, and phone. The admin also sees
+ * what isn't shared, and gets everyone (so she can add details); others get only people with something shared.
+ */
 export async function addressBook(s: Session | null): Promise<AddressRow[]> {
-  const rows = await q<{ id: number; name: string; address: string; address_updated_at: string | null; share_address: boolean }>(
-    `select id, name, address, address_updated_at, share_address from people
-      where deleted_at is null and not in_memory and coalesce(trim(address), '') <> ''`,
-  );
+  const admin = isAdmin(s);
+  const rows = await q<{ id: number; name: string; address_updated_at: string | null; share_address: boolean } & ContactRow>(
+    `select id, name, address_updated_at, share_address, ${CONTACT_COLS} from people
+      where deleted_at is null and not in_memory
+        and (coalesce(trim(address), '') <> '' or coalesce(addr_street, addr_city, addr_zip, email, phone, '') <> '' or $1::boolean)`, [admin]);
   const { inFamilyOrder } = await import("./familyOrder");
   return (await inFamilyOrder(rows)).map((r) => {
-    const visible = r.share_address || isAdmin(s);
-    return { id: r.id, name: displayName(r.name), address: visible ? r.address : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
-  });
+    const visible = r.share_address || admin;
+    return { id: r.id, name: displayName(r.name), contact: visible ? contactOf(r) : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
+  }).filter((r) => admin || (r.contact && (r.contact.address || r.contact.raw || r.contact.email || r.contact.phone)));
 }
 
 export const updatedLabel = (at: string | Date | null) =>

@@ -1,4 +1,5 @@
 import { getSession, unauthorized } from "@/lib/auth";
+import { addressLines, formatPhone } from "@/lib/contact";
 import { addressBook } from "@/lib/people";
 
 const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
@@ -7,12 +8,12 @@ const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
 export async function GET() {
   const s = await getSession();
   if (!s) return unauthorized();
-  const rows = (await addressBook(s)).filter((r) => r.address);
-  const width = Math.max(2, ...rows.map((r) => r.address!.split("\n").length));
-  const header = ["Name", ...Array.from({ length: width }, (_, i) => `Address line ${i + 1}`)];
+  const rows = (await addressBook(s)).filter((r) => r.contact && (r.contact.address || r.contact.raw || r.contact.email || r.contact.phone));
+  const header = ["Name", "Address line 1", "Address line 2", "Email", "Phone"];
   const lines = rows.map((r) => {
-    const parts = r.address!.split("\n");
-    return [r.name, ...Array.from({ length: width }, (_, i) => parts[i] ?? "")].map(cell).join(",");
+    const c = r.contact!;
+    const [one, two] = c.address ? addressLines(c.address) : [(c.raw ?? "").replace(/\n/g, ", "), ""];
+    return [r.name, one, two, c.email ?? "", c.phone ? formatPhone(c.phone) : ""].map(cell).join(",");
   });
   return new Response([header.join(","), ...lines].join("\r\n") + "\r\n", {
     headers: {

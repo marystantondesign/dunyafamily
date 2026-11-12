@@ -101,6 +101,16 @@ alter table people add column if not exists address_updated_at timestamptz;
 alter table people add column if not exists address_by_device text;
 -- When false, the address is hidden from everyone except the admin.
 alter table people add column if not exists share_address boolean not null default true;
+-- Contact details (round 24). The mailing address in parts, plus email and phone (digits, with country code if
+-- given). share_address covers all three. The old one-block address column stays as it was; until someone saves
+-- the parts, the site reads the parts out of it (lib/contact parseAddress). Saving the parts also writes the block.
+alter table people add column if not exists addr_street text;
+alter table people add column if not exists addr_apt text;
+alter table people add column if not exists addr_city text;
+alter table people add column if not exists addr_state text;
+alter table people add column if not exists addr_zip text;
+alter table people add column if not exists email text;
+alter table people add column if not exists phone text;
 alter table people add column if not exists in_memory boolean not null default false;
 alter table people add column if not exists in_memory_by_device text;
 

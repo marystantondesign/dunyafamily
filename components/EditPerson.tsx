@@ -22,8 +22,6 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
   const [bm, setBm] = useState(det.birthday ? String(det.birthday.month) : "");
   const [bd, setBd] = useState(det.birthday ? String(det.birthday.day) : "");
   const [by, setBy] = useState(det.birthday?.year ? String(det.birthday.year) : "");
-  const [address, setAddress] = useState(det.address ?? "");
-  const [share, setShare] = useState(det.shareAddress);
   const [inMemory, setInMemory] = useState(det.inMemory);
   const [signIn, setSignIn] = useState(!!det.canSignIn);
   const [busy, setBusy] = useState(false);
@@ -43,8 +41,7 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
         body.birthday = { month: Number(bm), day: Number(bd), year: by ? Number(by) : null };
       } else if (det.birthday) body.birthday = null;
     }
-    // Someone in memory has no mailing address; anything stored stays as it was.
-    if (det.canEditAddress && !inMemory) { body.address = address; body.shareAddress = share; }
+    // Mailing address, email, and phone are saved from the profile's contact card (api/people/[id]/contact).
     if (det.canChangeMemory) body.inMemory = inMemory;
     if (det.canSignIn !== null && (inMemory ? false : signIn) !== det.canSignIn) body.canSignIn = inMemory ? false : signIn;
     setBusy(true);
@@ -149,23 +146,9 @@ export function EditPerson({ det, avatarUrl, photos, children }: { det: PersonDe
           </section>
 
           {!inMemory && <section className="edit-card" id="address">
-            <h2>Mailing address</h2>
-            {det.addressHidden ? (
-              <p className="muted">{det.name}&apos;s address isn&apos;t shared with the family.</p>
-            ) : (
-              <>
-                <div className="field">
-                  <label htmlFor="ep-address" className="sr-only">Mailing address</label>
-                  <textarea id="ep-address" rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, city, state, zip" disabled={!det.canEditAddress} />
-                </div>
-                <label className="switch-row">
-                  <input type="checkbox" role="switch" className="switch" checked={share} disabled={!det.canEditAddress} onChange={(e) => setShare(e.target.checked)} />
-                  Share this address with the family
-                </label>
-                {!share && <p className="hint">Only Mary will see it.</p>}
-                {!det.canEditAddress && <p className="hint">Only the person who added this address, or Mary, can change it.</p>}
-              </>
-            )}
+            <h2>Mailing address, email and phone</h2>
+            <p className="hint" style={{ marginTop: 0 }}>These are on the contact card on {det.name}&apos;s profile. Use the pencil in its corner to change them.</p>
+            <Link href={back} className="small">Go to the profile</Link>
           </section>}
 
           <section className="edit-card" id="dates">
