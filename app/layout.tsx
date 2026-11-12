@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { redirect } from "next/navigation";
 import { sessionState } from "@/lib/auth";
 import { whoAmI } from "@/lib/me";
+import { unreadSubmissions } from "@/lib/submissions";
 import "./globals.css";
 
 const serif = Libre_Caslon_Text({ subsets: ["latin"], weight: ["400", "700"], style: ["normal", "italic"], variable: "--font-serif" });
@@ -30,7 +31,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { session: s, stale } = await sessionState();
   // A family device from before the last password change, or signed in as someone who can't sign in: sign it out.
   if (stale) redirect(stale === "password" ? "/api/logout" : "/api/logout?who=1");
-  const me = s ? await whoAmI(s) : null;
+  const who = s ? await whoAmI(s) : null;
+  // Mary: a dot on "My stories" while a submitted story is waiting unread.
+  const me = who && who.role === "admin" ? { ...who, storiesDot: (await unreadSubmissions()) > 0 } : who;
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${hand.variable}`}>
       <body>

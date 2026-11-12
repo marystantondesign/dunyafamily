@@ -44,6 +44,10 @@ const PATHS: Record<string, React.ReactNode> = {
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></>,
   swap: <path d="M4 8h14l-3-3M20 16H6l3 3" />,
   logout: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l-4-4 4-4M6 12h10" /></>,
+  calendarPlus: <><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4M12 12.5v5M9.5 15h5" /></>,
+  calendarLink: <><path d="M20.5 11V7a2 2 0 0 0-2-2h-13a2 2 0 0 0-2 2v11.5a2 2 0 0 0 2 2H12" /><path d="M3.5 10h17M8 3v4M16 3v4" /><path d="M16 17.5a2 2 0 0 1 2-2h1.5a2 2 0 0 1 0 4H18" /><path d="M14.5 17.5h1" /></>,
+  recipe: <><rect x="3.5" y="9" width="17" height="11.5" rx="1.5" /><path d="M6 9V5.5h12V9M7.5 13.5h9M7.5 16.5h5" /></>,
+  mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
   moon: <path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z" />,
 };
 

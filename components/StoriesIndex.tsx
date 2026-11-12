@@ -138,6 +138,7 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
         <div>
           <h1>In Her Words</h1>
           <p>Dunya answers the questions we&apos;ve always wanted to ask · {stories.length} {stories.length === 1 ? "story" : "stories"}</p>
+          <Link href="/stories/submit?from=stories" className="si-submit"><Icon name="plus" size={16} stroke={2.2} />Submit a story</Link>
         </div>
       </div>
 

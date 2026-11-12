@@ -5,29 +5,38 @@ import { useEffect, useRef, useState } from "react";
 import { BookSketch } from "./Sketches";
 import { Icon } from "./Icon";
 import { StoryFace } from "./StoriesIndex";
+import { StoryPhotoPicker, type PickedPhoto } from "./StoryPhotoPicker";
 import { forPhone, prepare, put, whenVisible, type Item } from "./Uploader";
 
 type Person = { id: number; name: string; aliases: string[]; avatarUrl: string | null; inMemory: boolean };
+/** A chosen photo: one already in the family archive (linked, never re-uploaded), or one from this device. */
+type Pic = { kind: "archive"; id: number; url: string | null } | { kind: "device"; item: Item };
+const MAX = 10;
 const first = (n: string) => n.split(/\s+/)[0];
+const picKey = (p: Pic) => (p.kind === "archive" ? `a${p.id}` : `d${p.item.key}`);
 
 /**
- * Submit a story: who it's about, an optional title, the story, and optional photos. It goes to Mary privately
- * (photos too, never into the family archive) and can't be edited after sending.
+ * Submit a story: who it's about, an optional title, the story, and optional photos. It goes to Mary privately and
+ * can't be seen or edited again after sending. Photos from the device stay private (never in the family archive);
+ * archive photos are linked by id.
  */
 export function SubmitStory({ me, people, start }: { me: { name: string; avatarUrl: string | null; inMemory: boolean }; people: Person[]; start: number[] }) {
   const router = useRouter();
   const [about, setAbout] = useState<number[]>(start);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [photos, setPhotos] = useState<Item[]>([]);
+  const [pics, setPics] = useState<Pic[]>([]);
   const [adding, setAdding] = useState(false);
   const [find, setFind] = useState("");
+  const [choosing, setChoosing] = useState(false);
+  const [archive, setArchive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const storyRef = useRef<HTMLTextAreaElement>(null);
-  const typed = !!(title.trim() || body.trim() || photos.length);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const typed = !!(title.trim() || body.trim() || pics.length);
   const typedRef = useRef(false);
   typedRef.current = typed && !sent;
 
@@ -37,37 +46,58 @@ export function SubmitStory({ me, people, start }: { me: { name: string; avatarU
     window.addEventListener("beforeunload", unload);
     return () => window.removeEventListener("beforeunload", unload);
   }, []);
+  // The photo choice closes with Escape or a click outside it.
+  useEffect(() => {
+    if (!choosing) return;
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setChoosing(false); };
+    const down = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setChoosing(false); };
+    window.addEventListener("keydown", key);
+    window.addEventListener("mousedown", down);
+    return () => { window.removeEventListener("keydown", key); window.removeEventListener("mousedown", down); };
+  }, [choosing]);
 
   const byId = new Map(people.map((p) => [p.id, p]));
   const chosen = about.map((id) => byId.get(id)).filter((p): p is Person => !!p);
   const options = people.filter((p) => !about.includes(p.id) && (!find.trim() || [p.name, ...p.aliases].some((n) => n.toLowerCase().includes(find.trim().toLowerCase()))));
+  const archived = pics.filter((p): p is Extract<Pic, { kind: "archive" }> => p.kind === "archive");
 
-  async function pick(list: FileList) {
-    const files = [...list].slice(0, 10 - photos.length);
+  async function fromDevice(list: FileList) {
+    const files = [...list].slice(0, MAX - pics.length);
     const ready = (await Promise.all(files.map(prepare))).filter((i) => i.state === "ready");
-    setPhotos((cur) => [...cur, ...ready].slice(0, 10));
+    setPics((cur) => [...cur, ...ready.map((item) => ({ kind: "device" as const, item }))].slice(0, MAX));
+  }
+
+  // The archive picker returns everything picked there; photos picked before keep their place.
+  function fromArchive(list: PickedPhoto[]) {
+    setPics((cur) => {
+      const keep = cur.filter((p) => p.kind === "device" || list.some((x) => x.id === p.id));
+      const added = list.filter((x) => !cur.some((p) => p.kind === "archive" && p.id === x.id)).map((x) => ({ kind: "archive" as const, id: x.id, url: x.url }));
+      return [...keep, ...added].slice(0, MAX);
+    });
+    setArchive(false);
   }
 
   async function send() {
     if (!body.trim()) { setError("Write the story before sending it."); storyRef.current?.focus(); return; }
     setBusy(true); setError("");
     try {
+      const device = pics.flatMap((p) => (p.kind === "device" ? [p.item] : []));
       let uploaded: { key: string; thumbKey: string }[] = [];
-      if (photos.length) {
-        const res = await fetch("/api/stories/submit/sign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: photos.length }) });
+      if (device.length) {
+        const res = await fetch("/api/stories/submit/sign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: device.length }) });
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
         const spots: { key: string; thumbKey: string; url: string; thumbUrl: string }[] = await res.json();
-        for (let i = 0; i < photos.length; i++) {
-          const img = await forPhone(photos[i].body ?? photos[i].file);
+        for (let i = 0; i < device.length; i++) {
+          const img = await forPhone(device[i].body ?? device[i].file);
           await whenVisible();
           await put(spots[i].url, img.blob, "image/jpeg");
-          await put(spots[i].thumbUrl, photos[i].thumb!, "image/jpeg");
+          await put(spots[i].thumbUrl, device[i].thumb!, "image/jpeg");
         }
         uploaded = spots.map(({ key, thumbKey }) => ({ key, thumbKey }));
       }
       const res = await fetch("/api/stories/submit", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ about, title, body, photos: uploaded }),
+        body: JSON.stringify({ about, title, body, photos: uploaded, photoIds: archived.map((p) => p.id) }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
       setSent(true);
@@ -83,17 +113,24 @@ export function SubmitStory({ me, people, start }: { me: { name: string; avatarU
       <div className="ss-thanks">
         <BookSketch height={84} />
         <h1>Thank you</h1>
-        <p>Your story is on its way to Mary. She’ll keep it safe for a future project.</p>
+        <p>Your story has been sent to Mary. Thank you for helping preserve our family’s memories.</p>
         <Link href="/stories" className="ss-send">Back to In Her Words</Link>
       </div>
     );
   }
 
+  const leave = (e?: React.MouseEvent) => {
+    if (typedRef.current && !window.confirm("Leave without sending your story?")) { e?.preventDefault(); return false; }
+    typedRef.current = false;
+    return true;
+  };
+
   return (
     <div className="ss-page">
-      <Link href="/stories" className="sf-back" onClick={(e) => { if (typedRef.current && !window.confirm("Leave without sending your story?")) e.preventDefault(); }}><Icon name="chevronLeft" size={18} />In Her Words</Link>
+      <Link href="/stories" className="sf-back" onClick={(e) => leave(e)}><Icon name="chevronLeft" size={18} />In Her Words</Link>
       <h1>Submit a story</h1>
-      <p className="ss-intro">Share a story about someone in our family. It goes straight to Mary for a future project. It won’t be posted on the site, and you can’t edit it after you send it.</p>
+      <p className="ss-intro">Share a favorite memory about Mammaw or a funny story about someone else in the family. If you sit with Mammaw as she tells you a story about her life, and she’s okay with it being shared here, that’s perfect.</p>
+      <p className="ss-intro">When you submit this story, it will go to Mary for a future Family Stories project. It won’t be published on the site just yet. Stay tuned.</p>
       <div className="ss-from"><StoryFace p={me} size={32} /><span>Sending as <strong>{me.name}</strong></span></div>
 
       <div className="sf-field">
@@ -128,32 +165,66 @@ export function SubmitStory({ me, people, start }: { me: { name: string; avatarU
         <input type="text" className="ss-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Give it a name" maxLength={200} />
       </label>
 
-      <label className="sf-field">
-        <span className="sf-label">The story</span>
-        <textarea ref={storyRef} className="ss-story" value={body} onChange={(e) => { setBody(e.target.value); setError(""); }} placeholder="Tell it the way you’d tell it at the dinner table." />
-      </label>
+      <div className="sf-field">
+        <label className="sf-label" htmlFor="ss-story">The story</label>
+        <textarea id="ss-story" ref={storyRef} className="ss-story" value={body} onChange={(e) => { setBody(e.target.value); setError(""); }} placeholder="Tell it the way you’d tell it at the dinner table." />
+        <p className="ss-voice"><Icon name="mic" size={16} />Prefer telling your story out loud? Voice recordings are coming in a future update.</p>
+      </div>
 
       <div className="sf-field">
         <span className="sf-label">Photos <span className="sf-opt">(optional)</span></span>
         <div className="ss-photos">
-          {photos.map((p) => (
-            <span key={p.key} className="ss-thumb">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {p.preview && <img src={p.preview} alt="" />}
-              <button type="button" aria-label="Remove this photo" onClick={() => setPhotos((cur) => cur.filter((x) => x.key !== p.key))}><Icon name="x" size={14} stroke={2.4} /></button>
-            </span>
-          ))}
-          {!photos.length && <span className="ss-thumb empty" aria-hidden="true" />}
-          {photos.length < 10 && <button type="button" className="sf-btn" onClick={() => fileRef.current?.click()}><Icon name="photo" size={18} />Add photos</button>}
-          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { if (e.target.files) pick(e.target.files); e.target.value = ""; }} />
+          {pics.map((p) => {
+            const src = p.kind === "archive" ? p.url : p.item.preview;
+            return (
+              <span key={picKey(p)} className="ss-thumb">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {src && <img src={src} alt="" />}
+                <button type="button" aria-label="Remove photo" onClick={() => setPics((cur) => cur.filter((x) => picKey(x) !== picKey(p)))}><Icon name="x" size={14} stroke={2.4} /></button>
+              </span>
+            );
+          })}
+          {pics.length < MAX && (
+            <div className="ss-add-wrap" ref={menuRef}>
+              <button type="button" className="sf-btn" aria-haspopup="menu" aria-expanded={choosing} onClick={() => setChoosing(!choosing)}>
+                <Icon name="photo" size={18} />{pics.length ? "Add more" : "Add photos"}
+              </button>
+              {choosing && (
+                <>
+                  {/* Desktop: a small menu under the button. */}
+                  <div className="ss-drop desktop-only" role="menu">
+                    <button type="button" role="menuitem" onClick={() => { setChoosing(false); setArchive(true); }}><Icon name="album" size={18} />Choose from archive</button>
+                    <button type="button" role="menuitem" onClick={() => { setChoosing(false); fileRef.current?.click(); }}><Icon name="upload" size={18} />Upload from device</button>
+                  </div>
+                  {/* Phone: an action sheet. */}
+                  <div className="ss-sheet-back phone-only" onClick={() => setChoosing(false)}>
+                    <div className="ss-sheet" role="menu" aria-label="Add photos to your story" onClick={(e) => e.stopPropagation()}>
+                      <div className="ss-sheet-group">
+                        <p>Add photos to your story</p>
+                        <button type="button" role="menuitem" onClick={() => { setChoosing(false); setArchive(true); }}>Choose from archive</button>
+                        <button type="button" role="menuitem" onClick={() => { setChoosing(false); fileRef.current?.click(); }}>Upload from device</button>
+                      </div>
+                      <button type="button" className="ss-sheet-cancel" onClick={() => setChoosing(false)}>Cancel</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { if (e.target.files) fromDevice(e.target.files); e.target.value = ""; }} />
         </div>
       </div>
 
       {error && <p className="sf-missing" role="alert">{error}</p>}
       <div className="ss-actions">
-        <button type="button" className="sf-save" disabled={busy} onClick={() => { if (!typedRef.current || window.confirm("Leave without sending your story?")) { typedRef.current = false; router.push("/stories"); } }}>Cancel</button>
+        <button type="button" className="sf-save" disabled={busy} onClick={() => { if (leave()) router.push("/stories"); }}>Cancel</button>
         <button type="button" className="ss-send" disabled={busy} onClick={send}>{busy ? "Sending" : "Send to Mary"}</button>
       </div>
+
+      {archive && (
+        <StoryPhotoPicker multi archiveOnly people={chosen.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, inMemory: p.inMemory }))}
+          already={archived.map((p) => ({ id: p.id, url: p.url }))} onClose={() => setArchive(false)} onAdd={fromArchive} />
+      )}
     </div>
   );
 }

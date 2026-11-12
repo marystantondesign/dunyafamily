@@ -114,12 +114,15 @@ function descend(f: Family, id: number, seen: Set<number>, root = false): TreeNo
   const put = (kid: number, other: number | null) => { if (!byParent.has(other)) byParent.set(other, []); byParent.get(other)!.push(kid); };
   const placed = new Set<number>();
   // Children go by their recorded parents. A child with only this person recorded is the couple's child when this
-  // person has one partner and no children with anyone else: families often add a spouse and the children without
-  // linking the spouse to each child. So a couple's children always hang from the line between the two of them.
+  // person has one partner, no children with anyone else, and the partner isn't linked to any of the children yet:
+  // families often add a spouse and the children without linking the spouse to each child (Jenni and Abe). When the
+  // partner is linked to some children but not others (Freed to Afreen, not Elise), the difference is on purpose,
+  // and the others hang from this person alone.
   const ownKids = f.children(id).filter((k) => !seen.has(k));
   const solo = partnerIds.length === 1 && !f.byId.get(partnerIds[0])?.coparent ? partnerIds[0] : null;
   const couplePartner = !root && solo !== null
     && ownKids.every((k) => f.parents(k).every((p) => p === id || p === solo))
+    && !ownKids.some((k) => f.parents(k).includes(solo))
     && f.children(solo).every((k) => seen.has(k) || f.parents(k).includes(id)) ? solo : null;
   for (const kid of ownKids) {
     const others = f.parents(kid).filter((p) => p !== id);

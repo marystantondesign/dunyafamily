@@ -97,10 +97,15 @@ export default async function Home() {
             </p>
             <div className="hk-actions">
               <Link href="/stories" className="btn btn-primary">Open the book</Link>
-              <Link href="/stories/submit" className="btn"><Icon name="plus" size={16} stroke={2} />Submit a story</Link>
+              <Link href="/stories/submit?from=stories" className="btn"><Icon name="plus" size={16} stroke={2} />Submit a story</Link>
             </div>
           </div>
         </div>
+        {/* Phones: a way to send Mary a story, under the two cards. */}
+        <Link href="/stories/submit?from=stories" className="hk-memory phone-only">
+          <span className="hk-memory-icon" aria-hidden="true"><Icon name="pencil" size={24} /></span>
+          <span><strong>Have a memory of Mammaw?</strong><span>Submit a story for the family project</span></span>
+        </Link>
       </section>
 
       {past.length > 0 && (

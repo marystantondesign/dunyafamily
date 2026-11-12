@@ -542,3 +542,12 @@ create table if not exists share_previews (
   height int not null,
   created_at timestamptz not null default now()
 );
+
+-- Story submissions, round 29. Photos picked from the archive are linked by id (photo_ids), never re-uploaded;
+-- photos from the sender's device stay private (photo_keys). read_at drives the dot on "My stories"; draft_story_id
+-- is the admin draft Mary made from it. A story made from a submission credits the sender.
+alter table story_submissions add column if not exists photo_ids int[] not null default '{}';
+alter table story_submissions add column if not exists read_at timestamptz;
+alter table story_submissions add column if not exists draft_story_id int;
+alter table stories add column if not exists credit_person_id int;
+alter table stories add column if not exists credit_name text;

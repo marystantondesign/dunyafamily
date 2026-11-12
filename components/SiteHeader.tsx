@@ -31,18 +31,17 @@ const phoneBack = (path: string) => {
 };
 
 const ADD: { href: string; title: string; text: string; icon: IconName }[] = [
-  { href: "/upload", title: "Photos", text: "Upload photos from your phone", icon: "photo" },
-  { href: "/albums", title: "Album", text: "Start a shared album everyone can add to", icon: "album" },
-  { href: "/people/new", title: "Person", text: "Add family or a loved one", icon: "person" },
-  { href: "/calendar#add-birthday", title: "Birthday", text: "Add a birthday to someone's profile", icon: "cake" },
-  { href: "/people/new-date?kind=anniversary", title: "Anniversary", text: "Remember an important date", icon: "heart" },
-  { href: "/calendar#add-gathering", title: "Gathering or event", text: "Bring everyone together", icon: "family" },
-  { href: "/calendar#subscribe", title: "Connect a calendar", text: "Google Calendar or Apple Calendar", icon: "link" },
+  { href: "/upload", title: "Photos", text: "Share photos with the family", icon: "photo" },
+  { href: "/albums#new-album", title: "Album", text: "Create a shared photo album", icon: "album" },
+  { href: "/calendar#add-gathering", title: "Event", text: "Add something to the family calendar", icon: "calendarPlus" },
+  { href: "/calendar#subscribe", title: "Connect calendar", text: "See family dates in your own calendar", icon: "calendarLink" },
+  { href: "/stories/submit", title: "Story", text: "Share a memory for a future family project", icon: "book" },
+  { href: "/recipes/new", title: "Recipe", text: "Preserve a family favorite", icon: "recipe" },
 ];
 
 const current = (path: string, href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
 
-type Me = { pid: number | null; name: string; avatarUrl: string | null; role: "family" | "admin" };
+type Me = { pid: number | null; name: string; avatarUrl: string | null; role: "family" | "admin"; storiesDot?: boolean };
 
 export function Avatar({ me, className = "me" }: { me: Pick<Me, "name" | "avatarUrl">; className?: string }) {
   return (
@@ -108,7 +107,7 @@ function AccountMenu({ me }: { me: Me }) {
               <span className="account-label">Admin</span>
               <Link role="menuitem" href="/admin/homepage"><Icon name="home" size={20} /> Homepage photos</Link>
               <Link role="menuitem" href="/admin/family"><Icon name="family" size={20} /> Family tree</Link>
-              <Link role="menuitem" href="/admin/stories"><Icon name="book" size={20} /> My stories</Link>
+              <Link role="menuitem" href={me.storiesDot ? "/admin/stories?tab=submitted" : "/admin/stories"}><Icon name="book" size={20} /> My stories{me.storiesDot && <span className="menu-dot" role="img" aria-label="New stories sent to you" />}</Link>
               <Link role="menuitem" href="/admin/stories/book"><Icon name="book" size={20} /> Printed book interest</Link>
               <Link role="menuitem" href="/admin/order"><Icon name="family" size={20} /> Family order</Link>
               <Link role="menuitem" href="/admin/removals"><Icon name="photo" size={20} /> Removal requests</Link>

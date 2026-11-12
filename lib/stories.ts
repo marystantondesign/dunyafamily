@@ -23,7 +23,7 @@ export const readingTime = (body: string) => Math.max(1, Math.ceil(body.trim().s
 /** Her answer as blocks: paragraphs, and photos (a site photo by id, or an image brought over from Notion). */
 export type Block = { kind: "p"; text: string } | { kind: "photo"; photoId: number; caption: string } | { kind: "image"; key: string; caption: string };
 const PHOTO = /^\[photo (\d+)\]\s*(.*)$/i;
-const IMAGE = /^\[image (stories\/[\w.-]+)\]\s*(.*)$/i;
+const IMAGE = /^\[image ((?:stories|submissions)\/[\w.-]+)\]\s*(.*)$/i;
 export function parseBody(body: string): Block[] {
   return body.replace(/\r\n/g, "\n").split(/\n\s*\n/).map((chunk) => chunk.trim()).filter(Boolean).map((c) => {
     const p = c.match(PHOTO);

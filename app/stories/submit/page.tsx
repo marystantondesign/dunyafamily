@@ -9,7 +9,9 @@ import { findDunya } from "@/lib/featured";
 export const dynamic = "force-dynamic";
 
 /** Submit a story: a family member sends Mary a story about someone in the family. It isn't posted on the site. */
-export default async function SubmitStoryPage() {
+export default async function SubmitStoryPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+  // From In Her Words (its page, or Home's cards), Dunya starts chosen. From anywhere else, no one does.
+  const fromStories = (await searchParams).from === "stories";
   const s = await getSession();
   if (!s) redirect("/enter");
   if (!s.pid) {
@@ -28,7 +30,7 @@ export default async function SubmitStoryPage() {
     <SubmitStory
       me={{ name: me?.name ?? s.name, avatarUrl: me?.avatar_url ?? null, inMemory: false }}
       people={people.map((p) => ({ id: p.id, name: p.name, aliases: p.aliases, avatarUrl: p.avatar_url, inMemory: p.in_memory }))}
-      start={dunya ? [dunya.id] : []}
+      start={fromStories && dunya ? [dunya.id] : []}
     />
   );
 }

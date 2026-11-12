@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /** "Start an album": name it, then land on its page to add photos. */
 export function NewAlbum() {
@@ -7,6 +7,8 @@ export function NewAlbum() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // The Add menu's Album row lands here with #new-album: open the name field right away.
+  useEffect(() => { if (window.location.hash === "#new-album") setOpen(true); }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
