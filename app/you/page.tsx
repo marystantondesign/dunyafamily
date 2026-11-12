@@ -89,6 +89,12 @@ export default async function YouPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/stories/book">
+                <span><strong>Printed book interest</strong><span>Who wants a copy of the book</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/order">
                 <span><strong>Family order</strong><span>The order of Everyone, the sign-in screen, and tagging</span></span>
                 <Icon name="chevronRight" className="chev" />

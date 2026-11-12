@@ -57,6 +57,8 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
   const [section, setSection] = useState<Key | null>(null);
   const [allPeople, setAllPeople] = useState(false);
   const [want, setWant] = useState(want0);
+  // Once someone is on the list, the bar is gone for that profile on later visits; during this visit it can be undone.
+  const showBook = !want0;
   const wrap = useRef<HTMLDivElement>(null);
 
   const qs = useMemo(() => {
@@ -129,7 +131,7 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
   ];
 
   return (
-    <div className="si">
+    <div className={`si${showBook ? "" : " no-book"}`}>
       <Link href="/" className="back-link si-back"><Icon name="chevronLeft" size={16} /> Home</Link>
       <div className="si-head">
         <BookSketch height={92} />
@@ -232,14 +234,14 @@ export function StoriesIndex({ stories, featuredId, people, occasions, decades, 
         </div>
       ) : <p className="muted">Her stories are on their way.</p>}
 
-      <div className="si-book" role="region" aria-label="Printed book">
+      {showBook && <div className="si-book" role="region" aria-label="Printed book">
         <span className="si-book-text"><Icon name="book" size={20} /> These stories are becoming a printed book.</span>
         {canWant && (
           <button type="button" className={`si-want${want ? " on" : ""}`} aria-pressed={want} onClick={toggleWant}>
             {want ? "You’re on the list" : "I’d want a copy"}
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -20,11 +20,10 @@ export default async function MyStoriesPage() {
       </div>
       <p className="ms-only">Only you can see this page.</p>
       <MyStories rows={rows} />
+      <Link href="/admin/stories/book" className="ms-booklink">
+        <Icon name="book" size={20} /><span>Printed book interest · {wants.length}</span><Icon name="chevronRight" size={18} />
+      </Link>
       <NotionImport />
-      <section className="ms-book">
-        <h2>Want a printed copy</h2>
-        {wants.length ? <p>{wants.map((w) => w.name).join(", ")}</p> : <p className="muted">No one yet.</p>}
-      </section>
     </div>
   );
 }

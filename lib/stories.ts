@@ -155,10 +155,17 @@ export async function allStories() {
     `select id, title, question, status, theme, notion_id, updated_at, published_at from stories where deleted_at is null order by (status = 'draft') desc, updated_at desc, id desc`);
 }
 
+/** Everyone who tapped "I'd want a copy", newest first. */
 export async function bookRequests() {
-  const rows = await q<{ id: number; name: string; created_at: string }>(
-    `select pe.id, pe.name, r.created_at from story_book_requests r join people pe on pe.id = r.person_id and pe.deleted_at is null order by r.created_at`);
-  return rows.map((r) => ({ ...r, name: displayName(r.name) }));
+  const rows = await q<{ id: number; name: string; in_memory: boolean; thumb_key: string | null; created_at: string }>(
+    `select pe.id, pe.name, pe.in_memory, ph.thumb_key, r.created_at from story_book_requests r
+       join people pe on pe.id = r.person_id and pe.deleted_at is null
+       left join photos ph on ph.id = pe.avatar_photo_id and ph.deleted_at is null
+      order by r.created_at desc`);
+  return Promise.all(rows.map(async (r) => ({
+    id: r.id, name: displayName(r.name), inMemory: !!r.in_memory, avatarUrl: r.thumb_key ? await signGet(r.thumb_key) : null,
+    at: new Date(r.created_at).toISOString(),
+  })));
 }
 
 export async function storyForEdit(id: number) {
