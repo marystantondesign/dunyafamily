@@ -495,3 +495,26 @@ create table if not exists story_submissions (
   created_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+-- Photo removal requests (round 23). From their own profile, someone asks Mary to remove a photo of them
+-- ('remove', with at least 400 characters of reasons), remove just their tag ('untag'), or says it's upsetting
+-- ('upset', which also hides it from them right away through photo_hidden). Mary decides: 'removed' (the photo is
+-- soft deleted), 'untagged', or 'kept'. The requester isn't told the outcome.
+create table if not exists photo_removal_requests (
+  id serial primary key,
+  photo_id int not null references photos(id),
+  person_id int not null references people(id),
+  kind text not null,
+  note text,
+  status text not null default 'pending',
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by_name text
+);
+create unique index if not exists photo_removal_pending_once on photo_removal_requests (photo_id, person_id) where status = 'pending';
+-- Photos hidden from one person's own views (they found them upsetting). Everyone else still sees them.
+create table if not exists photo_hidden (
+  person_id int not null references people(id),
+  photo_id int not null references photos(id),
+  created_at timestamptz not null default now(),
+  primary key (person_id, photo_id)
+);

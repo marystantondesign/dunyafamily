@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Halo } from "@/components/Halo";
 import { Icon } from "@/components/Icon";
+import { MyPhotos } from "@/components/MyPhotos";
 import { ProfilePhotoPicker, QuickDetail } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
@@ -58,6 +59,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       </Link>
     );
   });
+  // Your own profile: Photos of you, with requests to remove photos of yourself.
+  const mine = !!s?.pid && s.pid === id;
+  const myList = photos.map((p) => { const when = whenLabel(p); return { id: p.id, url: p.url, href: `/photos/${p.id}?${query}`, alt: when ? `${person.name}, ${when}` : person.name }; });
   const noPhotos = <p className="muted" style={{ marginTop: 24 }}>No photos of {person.name} yet. <Link href="/tag?untagged=1">Tag some photos</Link>.</p>;
 
   return (
@@ -83,11 +87,13 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
         {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
-        <div className="profile-photos-head">
-          <h2>Photos</h2>
-          {photos.length > 0 && <Link href={seeAll} className="small">See all {photos.length}</Link>}
-        </div>
-        {photos.length ? <div className="profile-grid">{photoGrid(photos.slice(0, 9))}</div> : noPhotos}
+        {mine && photos.length ? <MyPhotos variant="phone" photos={myList} seeAll={seeAll} /> : <>
+          <div className="profile-photos-head">
+            <h2>Photos</h2>
+            {photos.length > 0 && <Link href={seeAll} className="small">See all {photos.length}</Link>}
+          </div>
+          {photos.length ? <div className="profile-grid">{photoGrid(photos.slice(0, 9))}</div> : noPhotos}
+        </>}
       </div>
 
       {/* Desktop: photo, name, and the details box all start on one line. */}
@@ -116,7 +122,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </section>
         </div>
 
-        {photos.length ? <div className="photo-grid profile-desk-grid">{photoGrid(photos)}</div> : noPhotos}
+        {mine && photos.length ? <MyPhotos variant="desktop" photos={myList} seeAll={seeAll} />
+          : photos.length ? <div className="photo-grid profile-desk-grid">{photoGrid(photos)}</div> : noPhotos}
       </div>
     </>
   );

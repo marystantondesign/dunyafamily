@@ -39,13 +39,25 @@ export type Filters = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function build(f: Filters) {
+/** The profile looking right now, so photos they asked to hide stay out of their own views (and only theirs). */
+async function viewerPid(): Promise<number | null> {
+  try {
+    const { getSession } = await import("./auth");
+    return (await getSession())?.pid ?? null;
+  } catch {
+    return null; // no request (scripts, cron)
+  }
+}
+
+async function build(f: Filters) {
   const where = ["p.deleted_at is null"];
   const params: unknown[] = [];
   const $ = (v: unknown) => {
     params.push(v);
     return `$${params.length}`;
   };
+  const viewer = await viewerPid();
+  if (viewer) where.push(`not exists (select 1 from photo_hidden h where h.photo_id = p.id and h.person_id = ${$(viewer)})`);
   // Every selected pill must match (AND), so "Grandma + Mary" means photos with both.
   for (const id of f.people ?? [])
     where.push(`exists (select 1 from photo_people x where x.photo_id = p.id and x.person_id = ${$(id)})`);
@@ -99,7 +111,7 @@ function orderBy(order: Order, $: (v: unknown) => string, seed: string | undefin
 }
 
 export async function findPhotos(f: Filters, opts: { order?: Order; seed?: string; limit?: number; offset?: number } = {}) {
-  const { where, params, $ } = build(f);
+  const { where, params, $ } = await build(f);
   const rows = await q<PhotoRow>(
     `select p.id, p.original_key, p.thumb_key, p.width, p.height, p.year, p.month, p.decade, p.caption,
             p.uploaded_by_device, p.uploaded_by_name, p.created_at
@@ -112,7 +124,7 @@ export async function findPhotos(f: Filters, opts: { order?: Order; seed?: strin
 }
 
 export async function countPhotos(f: Filters) {
-  const { where, params } = build(f);
+  const { where, params } = await build(f);
   const [row] = await q<{ n: number }>(`select count(*)::int as n from photos p where ${where}`, params);
   return row?.n ?? 0;
 }
@@ -133,7 +145,7 @@ export type TagTarget = {
 
 /** Everything tagging mode needs for each photo, with links that last long enough for a long session. */
 export async function findForTagging(f: Filters, order: Order, limit = 1000, seed?: string): Promise<TagTarget[]> {
-  const { where, params, $ } = build(f);
+  const { where, params, $ } = await build(f);
   const rows = await q<Omit<TagTarget, "thumb" | "url"> & { original_key: string; thumb_key: string }>(
     `select p.id, p.width, p.height, p.year, p.decade, p.tagging_needed, p.uploaded_by_device, p.original_key, p.thumb_key,
             coalesce((select json_agg(json_build_object('id', x.person_id, 'by', x.added_by_device))
@@ -157,7 +169,7 @@ export async function findForTagging(f: Filters, order: Order, limit = 1000, see
 
 /** The photos on either side of this one, in the same filtered and ordered list the person came from. */
 export async function neighbors(f: Filters, order: Order, id: number, seed?: string) {
-  const { where, params, $ } = build(f);
+  const { where, params, $ } = await build(f);
   const [row] = await q<{ prev: number | null; next: number | null; pos: number; total: number }>(
     `select prev, next, pos::int, total::int from (
        select p.id, lag(p.id) over w as prev, lead(p.id) over w as next,
@@ -173,7 +185,7 @@ export type Slide = { id: number; title: string | null; occasion: string | null;
 
 /** Everything a slideshow needs to play a view, in the same order browse shows it. No file links: those are fetched as it plays. */
 export async function findSlides(f: Filters, order: Order, seed?: string, limit = 5000): Promise<Slide[]> {
-  const { where, params, $ } = build(f);
+  const { where, params, $ } = await build(f);
   return q<Slide>(
     `select p.id, p.title, p.year, p.decade, p.month,
             (select o.name from photo_occasions x join occasions o on o.id = x.occasion_id where x.photo_id = p.id order by o.name limit 1) as occasion,

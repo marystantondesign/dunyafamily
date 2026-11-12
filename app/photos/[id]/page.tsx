@@ -23,6 +23,8 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
   const [photo] = await q<PhotoRow>(`select * from photos where id = $1 and deleted_at is null`, [id]);
   if (!photo) notFound();
   const s = await getSession();
+  // Someone who said a photo upsets them doesn't see it again, even from an old link.
+  if (s?.pid && (await q(`select 1 from photo_hidden where person_id = $1 and photo_id = $2`, [s.pid, id])).length) notFound();
 
   const [url, thumb, taggedRaw, occasionTags, people, occasions, owners, albums, inAlbums] = await Promise.all([
     signGet(photo.original_key),

@@ -111,6 +111,7 @@ function AccountMenu({ me }: { me: Me }) {
               <Link role="menuitem" href="/admin/stories"><Icon name="book" size={20} /> My stories</Link>
               <Link role="menuitem" href="/admin/stories/book"><Icon name="book" size={20} /> Printed book interest</Link>
               <Link role="menuitem" href="/admin/order"><Icon name="family" size={20} /> Family order</Link>
+              <Link role="menuitem" href="/admin/removals"><Icon name="photo" size={20} /> Removal requests</Link>
               <Link role="menuitem" href="/admin/deleted"><Icon name="trash" size={20} /> Recently deleted</Link>
               <Link role="menuitem" href="/admin/texts"><Icon name="mail" size={20} /> Texts sent</Link>
               <Link role="menuitem" href="/admin/password"><Icon name="lock" size={20} /> Family password</Link>

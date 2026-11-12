@@ -95,6 +95,12 @@ export default async function YouPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/removals">
+                <span><strong>Removal requests</strong><span>Photos people asked you to remove</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/order">
                 <span><strong>Family order</strong><span>The order of Everyone, the sign-in screen, and tagging</span></span>
                 <Icon name="chevronRight" className="chev" />
