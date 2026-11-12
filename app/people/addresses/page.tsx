@@ -2,29 +2,27 @@ import Link from "next/link";
 import { AddressBookList } from "@/components/Contact";
 import { Icon } from "@/components/Icon";
 import { getSession, isAdmin } from "@/lib/auth";
-import { addressBook, updatedLabel } from "@/lib/people";
+import { addressBook } from "@/lib/people";
 
 export const dynamic = "force-dynamic";
 
-/** Everyone's shared mailing addresses, emails, and phone numbers. The admin also sees and edits what isn't shared. */
+/** The family's mailing addresses, phones and emails. The admin sees everyone (shared or not) and edits any row. */
 export default async function AddressBook() {
   const s = await getSession();
   const admin = isAdmin(s);
   const rows = await addressBook(s);
-  const intro = (
-    <div className="ab-intro">
-      <h1>Address book</h1>
-      <p>Mailing addresses, emails and phone numbers people have chosen to share with the family.{admin && " As admin, you also see the ones that aren’t shared."}</p>
-    </div>
-  );
+  const n = `${rows.length} ${rows.length === 1 ? "person" : "people"}`;
   return (
     <div className="ab-page">
       <Link href="/people" className="back-link"><Icon name="chevronLeft" size={16} /> Back to the family</Link>
       {rows.length ? (
-        <AddressBookList admin={admin} intro={intro}
-          rows={rows.map((r) => ({ id: r.id, name: r.name, contact: r.contact, updated: updatedLabel(r.updated_at), shared: r.shared }))} />
+        <AddressBookList admin={admin} title="Address book" sub={admin ? `${n} · Only you can see the ones that aren’t shared.` : n}
+          rows={rows.map((r) => ({ id: r.id, name: r.name, avatarUrl: r.avatarUrl, contact: r.contact, shared: r.shared }))} />
       ) : (
-        <>{intro}<p className="muted">Nothing shared yet.</p></>
+        <>
+          <div className="ab-intro"><h1>Address book</h1></div>
+          <p className="muted">Nothing shared yet.</p>
+        </>
       )}
     </div>
   );

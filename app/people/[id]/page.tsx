@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Halo } from "@/components/Halo";
 import { Icon } from "@/components/Icon";
 import { MyPhotos } from "@/components/MyPhotos";
-import { ProfileContactCard } from "@/components/Contact";
+import { EditProfile, ProfileContactCard } from "@/components/Contact";
 import { ProfilePhotoPicker } from "@/components/PeopleBits";
 import { getSession } from "@/lib/auth";
 import { listPeople } from "@/lib/data";
@@ -29,18 +29,20 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   // Birthday year: only the person themselves and the admin see it.
   const bday = det.birthday && monthDay(det.birthday.month, det.birthday.day, det.canEdit ? det.birthday.year : null);
   const bdaySoon = det.birthday && !gone ? soonLabel(det.birthday.month, det.birthday.day) : null;
-  // Every anniversary (and other yearly date) with its note, soonest first: "June 2, 1962 · Our wedding".
-  const anniversaries = det.dates.filter((d) => d.kind !== "remembrance")
-    .map((d) => ({ id: d.id, month: d.month, day: d.day, year: d.year, label: d.label,
-      text: `${monthDay(d.month, d.day, d.year)}${d.label ? ` · ${d.label}` : ""}`, soon: daysUntil(d.month, d.day) }))
-    .sort((a, b) => a.soon - b.soon);
+  // Every anniversary (weddings, remembrance days, any yearly date) with its note, soonest first.
+  const anniversaries = det.dates
+    .map((d) => ({ id: d.id, month: d.month, day: d.day, year: d.year, label: d.label, onCalendar: d.on_calendar, soon: daysUntil(d.month, d.day) }))
+    .sort((a, b) => a.soon - b.soon).map(({ soon: _soon, ...a }) => a);
   const pill = (t: string | null) => t && <span className="soon-pill">{t}</span>;
   const pickPhotos = photos.map((p) => ({ id: p.id, url: p.url }));
-  // One contact card: nothing for someone in memory; otherwise what's shared (everything for them and the admin).
-  const card = !gone && (det.canEdit || det.contact || anniversaries.length > 0)
-    ? <ProfileContactCard personId={id} name={person.name} contact={det.contact} share={det.shareAddress} canEdit={det.canEdit}
-        anniversaries={anniversaries.map(({ soon: _soon, ...a }) => a)} />
+  const self = !!s?.pid && s.pid === id;
+  // One contact card, showing only what exists: nothing for someone in memory, only shared details for others.
+  const c = det.contact;
+  const hasContact = !!(c && (c.address || c.raw || c.phone || c.email));
+  const card = !gone && (hasContact || anniversaries.length > 0)
+    ? <ProfileContactCard name={person.name} contact={c} anniversaries={anniversaries} self={self} />
     : null;
+  const edit = det.canEdit && <EditProfile personId={id} name={person.name} self={self} contact={det.contact} share={det.shareAddress} anniversaries={anniversaries} />;
 
   const portrait = (
     <div className="profile-photo">
@@ -63,7 +65,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     );
   });
   // Your own profile: Photos of you, with requests to remove photos of yourself.
-  const mine = !!s?.pid && s.pid === id;
+  const mine = self;
   const myList = photos.map((p) => { const when = whenLabel(p); return { id: p.id, url: p.url, href: `/photos/${p.id}?${query}`, alt: when ? `${person.name}, ${when}` : person.name }; });
   const noPhotos = <p className="muted" style={{ marginTop: 24 }}>No photos of {person.name} yet. <Link href="/tag?untagged=1">Tag some photos</Link>.</p>;
 
@@ -77,7 +79,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             <h1>{person.name}</h1>
             {det.inMemory && <p className="in-memory">In memory</p>}
             {bday && <p className="profile-line" aria-label={`Birthday, ${bday}${bdaySoon ? `, ${bdaySoon}` : ""}`}><Icon name="cake" size={18} /><span aria-hidden="true">{bday} {pill(bdaySoon)}</span></p>}
-            {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
+            {edit}
           </div>
         </div>
         {card}
@@ -98,7 +100,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             <h1>{person.name}</h1>
             {det.inMemory && <p className="in-memory">In memory</p>}
             {bday && <p className="profile-line" aria-label={`Birthday, ${bday}${bdaySoon ? `, ${bdaySoon}` : ""}`}><Icon name="cake" size={18} /><span aria-hidden="true">{bday}</span><span aria-hidden="true">{pill(bdaySoon)}</span></p>}
-            {det.canEdit && <Link href={`/people/${id}/edit`} className="btn btn-primary profile-edit">Edit profile</Link>}
+            {edit}
           </div>
           {card}
         </div>

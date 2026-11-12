@@ -52,7 +52,7 @@ export async function importantDates(now = new Date()): Promise<UpcomingDate[]> 
   const rows = await q<Omit<UpcomingDate, "next" | "inDays">>(
     `select d.id, d.person_id, pe.name, pe.in_memory, coalesce(pe.is_coparent, false) as is_coparent, d.kind, d.label, d.month, d.day, d.year
        from person_dates d join people pe on pe.id = d.person_id
-      where d.deleted_at is null and pe.deleted_at is null`,
+      where d.deleted_at is null and pe.deleted_at is null and coalesce(d.on_calendar, true)`,
   );
   return rows.map((r) => ({ ...r, name: displayName(r.name), ...nextOccurrence(r.month, r.day, now) })).sort((a, b) => a.inDays - b.inDays);
 }
@@ -82,7 +82,7 @@ export type PersonDetails = {
   canChangeMemory: boolean;
   /** "Can sign in": shown to and changed by the admin only (null for everyone else). */
   canSignIn: boolean | null;
-  dates: { id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; removable: boolean }[];
+  dates: { id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; on_calendar: boolean; removable: boolean }[];
 };
 
 export type Contact = {
@@ -112,8 +112,8 @@ export async function personDetails(id: number, s: Session | null): Promise<Pers
   const [[b], dates] = await Promise.all([
     q<{ id: number; month: number; day: number; year: number | null; created_by_device: string | null }>(
       `select id, month, day, year, created_by_device from birthdays where person_id = $1 and deleted_at is null`, [id]),
-    q<{ id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; created_by_device: string | null }>(
-      `select id, kind, label, month, day, year, created_by_device from person_dates
+    q<{ id: number; kind: DateKind; label: string; month: number; day: number; year: number | null; created_by_device: string | null; on_calendar: boolean }>(
+      `select id, kind, label, month, day, year, created_by_device, coalesce(on_calendar, true) as on_calendar from person_dates
         where person_id = $1 and deleted_at is null order by month, day`, [id]),
   ]);
   // In memory: no address at all. It stays in the database, just never shown.
@@ -158,22 +158,40 @@ export function comingUp(det: PersonDetails, now = new Date()) {
   return all[0] ?? null;
 }
 
-export type AddressRow = { id: number; name: string; contact: Contact | null; updated_at: string | null; shared: boolean };
+export type AddressRow = { id: number; name: string; avatarUrl: string | null; contact: Contact | null; updated_at: string | null; shared: boolean };
+
+/** Besides Dunya and everyone descended from her, the two people Mary counts as family in the Address book. */
+const ALSO_FAMILY = ["abe", "charlotte"];
 
 /**
- * Everyone not in memory, in family order, with what they share: address, email, and phone. The admin also sees
- * what isn't shared, and gets everyone (so she can add details); others get only people with something shared.
+ * The Address book: Dunya and all her descendants, plus Abe and Charlotte, in family order. No other partners or
+ * spouses, and no one in memory. The admin sees everyone, details or not; others see only what's been shared.
  */
 export async function addressBook(s: Session | null): Promise<AddressRow[]> {
   const admin = isAdmin(s);
+  const [{ loadFamily }, { findDunya }, { inFamilyOrder }] = await Promise.all([import("./family"), import("./featured"), import("./familyOrder")]);
+  const [f, dunya] = await Promise.all([loadFamily(), findDunya()]);
+  const ids = new Set<number>();
+  if (dunya) {
+    const queue = [dunya.id];
+    while (queue.length) {
+      const id = queue.shift()!;
+      if (ids.has(id)) continue;
+      ids.add(id);
+      queue.push(...f.children(id));
+    }
+  }
+  for (const p of f.people) if (ALSO_FAMILY.includes(p.name.trim().toLowerCase())) ids.add(p.id);
+  if (!ids.size) return [];
   const rows = await q<{ id: number; name: string; address_updated_at: string | null; share_address: boolean } & ContactRow>(
     `select id, name, address_updated_at, share_address, ${CONTACT_COLS} from people
-      where deleted_at is null and not in_memory
-        and (coalesce(trim(address), '') <> '' or coalesce(addr_street, addr_city, addr_zip, email, phone, '') <> '' or $1::boolean)`, [admin]);
-  const { inFamilyOrder } = await import("./familyOrder");
+      where deleted_at is null and not in_memory and id = any($1::int[])`, [[...ids]]);
   return (await inFamilyOrder(rows)).map((r) => {
     const visible = r.share_address || admin;
-    return { id: r.id, name: displayName(r.name), contact: visible ? contactOf(r) : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address };
+    return {
+      id: r.id, name: displayName(r.name), avatarUrl: f.byId.get(r.id)?.avatarUrl ?? null,
+      contact: visible ? contactOf(r) : null, updated_at: visible ? r.address_updated_at : null, shared: r.share_address,
+    };
   }).filter((r) => admin || (r.contact && (r.contact.address || r.contact.raw || r.contact.email || r.contact.phone)));
 }
 

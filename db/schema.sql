@@ -551,3 +551,6 @@ alter table story_submissions add column if not exists read_at timestamptz;
 alter table story_submissions add column if not exists draft_story_id int;
 alter table stories add column if not exists credit_person_id int;
 alter table stories add column if not exists credit_name text;
+
+-- Anniversaries (round 30): "Show on the family calendar", on unless turned off. Null counts as on.
+alter table person_dates add column if not exists on_calendar boolean default true;
