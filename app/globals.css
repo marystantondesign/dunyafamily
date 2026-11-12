@@ -1904,12 +1904,19 @@ a.rd-from:hover { color: var(--plum); }
 
 /* Home: Recipes and In Her Words, between Featured albums and Everyone. */
 .home-keep { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
-.hk-card { position: relative; display: flex; align-items: center; gap: 24px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 24px; }
+.hk-card { position: relative; display: flex; align-items: center; gap: 24px; background: #FFFFFF; border: 1px solid #E6DACD; border-radius: 16px; padding: 20px 24px;
+  box-shadow: 0 1px 2px rgba(42, 30, 26, 0.06), 0 8px 20px rgba(42, 30, 26, 0.10); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+@media (hover: hover) { .hk-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(42, 30, 26, 0.08), 0 14px 28px rgba(42, 30, 26, 0.14); } }
+.hk-card:has(.hk-link:active) { transform: scale(0.98); }
+.hk-card:has(.hk-link:focus-visible) { outline: 3px solid #7A1E2C; outline-offset: 3px; }
+.hk-link:focus-visible { outline: none; }
+.hk-link::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+.hk-actions { position: relative; z-index: 1; }
 .hk-art { flex: none; display: block; }
 .hk-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .hk-text h2 { font-family: var(--serif); font-size: 22px; }
 .hk-link { color: var(--ink); text-decoration: none; }
-.hk-link:hover { color: var(--plum); }
+.hk-link:hover { color: var(--ink); }
 .hk-text p { margin: 0; color: var(--muted); font-size: 14px; }
 .hk-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .hk-actions .btn { font-size: 15px; font-weight: 500; gap: 6px; }
@@ -1921,8 +1928,7 @@ a.rd-from:hover { color: var(--plum); }
   .hk-text h2 { font-size: 17px; line-height: 1.2; }
   .hk-text p { font-size: 12px; }
   .hk-actions { display: none; }
-  /* The whole Recipes card is the link on phones. In Her Words isn't tappable yet. */
-  .hk-link::after { content: ""; position: absolute; inset: 0; }
+  /* The whole card is the link; the buttons are desktop only. */
 }
 
 /* ===== Favorites: a gold star, only ever shown to the person who saved it ===== */

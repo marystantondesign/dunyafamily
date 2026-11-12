@@ -72,11 +72,11 @@ export default async function Home() {
       )}
 
       {/* Recipes and In Her Words. */}
-      <section className="home-keep" aria-label="Recipes and stories">
+      <section className="home-keep" aria-label="Family recipes and stories">
         <div className="hk-card">
-          <Link href="/recipes" className="hk-art" tabIndex={-1} aria-hidden="true"><RecipeBoxSketch height={132} /></Link>
+          <div className="hk-art" aria-hidden="true"><RecipeBoxSketch height={132} /></div>
           <div className="hk-text">
-            <h2><Link href="/recipes" className="hk-link">Recipes</Link></h2>
+            <h2><Link href="/recipes" className="hk-link">Family Recipes</Link></h2>
             <p>
               <span className="desktop-only">{recipes ? `${recipes} ${recipes === 1 ? "recipe" : "recipes"} in the box` : "Start the recipe box"}</span>
               <span className="phone-only">{recipes ? `${recipes} ${recipes === 1 ? "recipe" : "recipes"}` : "Start the box"}</span>
@@ -88,10 +88,10 @@ export default async function Home() {
           </div>
         </div>
         <div className="hk-card">
-          <Link href="/stories" className="hk-art" tabIndex={-1} aria-hidden="true"><BookSketch height={132} /></Link>
+          <div className="hk-art" aria-hidden="true"><BookSketch height={132} /></div>
           <div className="hk-text">
             <h2><Link href="/stories" className="hk-link">In Her Words</Link></h2>
-            <p>{stories ? `${stories} ${stories === 1 ? "story" : "stories"}` : "Her stories are on their way"}</p>
+            <p>{stories ? `${stories} ${stories === 1 ? "story" : "stories"}` : "Coming soon"}</p>
           </div>
         </div>
       </section>
