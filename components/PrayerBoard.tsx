@@ -131,6 +131,17 @@ function RememberCard({ r, me }: { r: Remembering; me: Me }) {
   );
 }
 
+/**
+ * Who a request is for: a family member (photo and name, linked), a typed name (an initial circle, no link), or no
+ * one in particular (the requester's own photo, and no "For").
+ */
+function ForWho({ r, mine = false }: { r: PrayerView; mine?: boolean }) {
+  const dot = mine ? null : <> <span className="pr-dot" aria-hidden="true">·</span> </>;
+  if (r.forPerson) return <><span>For</span> <Link href={`/people/${r.forPerson.id}`} className="pr-for"><Avatar name={r.forPerson.name} url={r.forPerson.avatarUrl} /> {r.forPerson.name}</Link>{dot}</>;
+  if (r.forName) return <><span>For</span> <span className="pr-for"><Avatar name={r.forName} url={null} /> {r.forName}</span>{dot}</>;
+  return mine ? <span className="pr-for"><Avatar name={r.from} url={r.fromAvatarUrl} /> {r.from}</span> : <><Avatar name={r.from} url={r.fromAvatarUrl} /> </>;
+}
+
 function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdit: () => void; onAnswer: () => void }) {
   const router = useRouter();
   const [shown, set] = useOptimistic(r.praying, r.mine, me);
@@ -152,11 +163,7 @@ function RequestCard({ r, me, onEdit, onAnswer }: { r: PrayerView; me: Me; onEdi
     <article className={`pr-card${answered ? " answered" : ""}`}>
       <div className="pr-top">
         <p className="pr-meta">
-          {r.forPerson ? (
-            <><span>For</span> <Link href={`/people/${r.forPerson.id}`} className="pr-for"><Avatar name={r.forPerson.name} url={r.forPerson.avatarUrl} /> {r.forPerson.name}</Link> <span className="pr-dot" aria-hidden="true">·</span> </>
-          ) : r.forName ? (
-            <><span>For</span> <strong className="pr-for">{r.forName}</strong> <span className="pr-dot" aria-hidden="true">·</span> </>
-          ) : null}
+          <ForWho r={r} />
           <span suppressHydrationWarning>From {r.from}, {ago(r.createdAt)}</span>
         </p>
         {r.canEdit && (
@@ -219,7 +226,8 @@ function ForField({ people, value, onChange }: { people: Person[]; value: { id: 
   const matches = useMemo(() => !t ? [] : people.filter((p) => [p.name, ...p.aliases].some((n) => n.toLowerCase().includes(t)))
     .sort((a, b) => Number(!a.name.toLowerCase().startsWith(t)) - Number(!b.name.toLowerCase().startsWith(t))).slice(0, 6), [people, t]);
   const exact = matches.some((p) => p.name.toLowerCase() === t);
-  const options: ({ kind: "person"; p: Person } | { kind: "use" })[] = [...matches.map((p) => ({ kind: "person" as const, p })), ...(t && !exact && !matches.length ? [{ kind: "use" as const }] : [])];
+  // Family matches first, then the typed name itself as the last option (the only one, highlighted, when no one matches).
+  const options: ({ kind: "person"; p: Person } | { kind: "use" })[] = [...matches.map((p) => ({ kind: "person" as const, p })), ...(t && !exact ? [{ kind: "use" as const }] : [])];
   const choose = (o: (typeof options)[number]) => {
     if (o.kind === "person") onChange({ id: o.p.id, text: o.p.name });
     else onChange({ id: null, text: value.text.trim() });
@@ -241,11 +249,11 @@ function ForField({ people, value, onChange }: { people: Person[]; value: { id: 
         }} />
       {showList && (
         <ul className="pr-for-list" id="pr-for-list" role="listbox">
-          {!matches.length && <li className="pr-for-none" aria-hidden="true">No one on the site named &quot;{value.text.trim()}&quot;</li>}
           {options.map((o, i) => (
             <li key={o.kind === "person" ? o.p.id : "use"} role="option" aria-selected={i === hi} className={i === hi ? "on" : undefined}
               onMouseDown={(e) => { e.preventDefault(); choose(o); }} onMouseEnter={() => setHi(i)}>
-              {o.kind === "person" ? <><Avatar name={o.p.name} url={o.p.avatarUrl} /> {o.p.name}</> : <>Use &quot;{value.text.trim()}&quot;</>}
+              {o.kind === "person" ? <><Avatar name={o.p.name} url={o.p.avatarUrl} /> {o.p.name}</>
+                : <span className="pr-for-use"><span>For “{value.text.trim()}”</span><span className="pr-for-note">Not on the site. That’s okay.</span></span>}
             </li>
           ))}
         </ul>
@@ -280,10 +288,9 @@ function AskForm({ people, me, editing, onClose }: { people: Person[]; me: Me; e
     if (!about.trim()) return;
     setBusy(true);
     setError("");
-    // A typed name that matches someone on the site links to them.
+    // Only someone picked from the list links to a profile; a typed name stays plain text.
     const typed = forWho.text.trim();
-    const match = forWho.id ?? people.find((p) => p.name.toLowerCase() === typed.toLowerCase())?.id ?? null;
-    const body = { forPersonId: match, forName: match ? null : typed || null, about, howToPray: how };
+    const body = { forPersonId: forWho.id, forName: forWho.id ? null : typed || null, about, howToPray: how };
     try {
       await call(editing ? `/api/prayer/${editing.id}` : "/api/prayer", editing ? "PATCH" : "POST", body);
       router.refresh();
@@ -359,10 +366,9 @@ function AnswerForm({ r, onClose }: { r: PrayerView; onClose: () => void }) {
 /** A compact card for My prayers: who it's for, what's going on, and the gold I'm praying button. */
 function MyCard({ r, me }: { r: PrayerView; me: Me }) {
   const [shown, set] = useOptimistic(r.praying, r.mine, me);
-  const forName = r.forPerson?.name ?? r.forName;
   return (
     <article className="pr-card pr-mine">
-      {forName && <p className="pr-meta"><span>For</span> <strong className="pr-for">{forName}</strong></p>}
+      <p className="pr-meta"><ForWho r={r} mine /></p>
       <h3 className="pr-about">{r.about}</h3>
       <div className="pr-foot"><PrayButton url={`/api/prayer/${r.id}/praying`} mine={shown.mine} onChange={set} /></div>
     </article>

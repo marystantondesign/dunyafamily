@@ -11,7 +11,7 @@ export type PrayerView = {
   forPerson: { id: number; name: string; avatarUrl: string | null } | null;
   forName: string | null;
   about: string; howToPray: string | null;
-  from: string; createdAt: string;
+  from: string; fromAvatarUrl: string | null; createdAt: string;
   answeredAt: string | null; answerUpdate: string | null;
   praying: Praying[]; mine: boolean; canEdit: boolean;
 };
@@ -44,11 +44,12 @@ export async function prayerPage(s: Session | null, allAnswered = false) {
   const [requests, praying, remember] = await Promise.all([
     q<{ id: number; for_person_id: number | null; for_name: string | null; about: string; how_to_pray: string | null; posted_by_device: string | null;
       posted_by_name: string | null; poster_name: string | null; created_at: string; answered_at: string | null; answer_update: string | null;
-      fp_name: string | null; fp_thumb: string | null }>(
+      fp_name: string | null; fp_thumb: string | null; po_thumb: string | null }>(
       `select r.id, r.for_person_id, r.for_name, r.about, r.how_to_pray, r.posted_by_device, r.posted_by_name, po.name as poster_name,
-              r.created_at, r.answered_at, r.answer_update, fp.name as fp_name, fph.thumb_key as fp_thumb
+              r.created_at, r.answered_at, r.answer_update, fp.name as fp_name, fph.thumb_key as fp_thumb, poph.thumb_key as po_thumb
          from prayer_requests r
          left join people po on po.id = r.posted_by_person_id and po.deleted_at is null
+         left join photos poph on poph.id = po.avatar_photo_id and poph.deleted_at is null
          left join people fp on fp.id = r.for_person_id and fp.deleted_at is null
          left join photos fph on fph.id = fp.avatar_photo_id and fph.deleted_at is null
         where r.deleted_at is null
@@ -67,7 +68,7 @@ export async function prayerPage(s: Session | null, allAnswered = false) {
     forPerson: r.for_person_id && r.fp_name ? { id: r.for_person_id, name: displayName(r.fp_name), avatarUrl: r.fp_thumb ? await signGet(r.fp_thumb) : null } : null,
     forName: r.for_person_id && r.fp_name ? null : r.for_name,
     about: r.about, howToPray: r.how_to_pray,
-    from: displayName(r.poster_name ?? r.posted_by_name ?? "Someone"), createdAt: r.created_at,
+    from: displayName(r.poster_name ?? r.posted_by_name ?? "Someone"), fromAvatarUrl: r.po_thumb ? await signGet(r.po_thumb) : null, createdAt: r.created_at,
     answeredAt: r.answered_at, answerUpdate: r.answer_update,
     ...(await prayingList(praying.filter((p) => p.prayer_request_id === r.id), s)),
     canEdit: canRemove(s, r.posted_by_device),
