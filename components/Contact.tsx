@@ -170,7 +170,8 @@ export function AddressBookList({ rows, admin, title, sub }: { rows: BookRow[]; 
 }
 
 /**
- * The profile's contact card: mailing address and anniversaries side by side, then phone, then email. Only what
+ * The profile's contact card: mailing address and anniversaries side by side, then phone and email (side by side on
+ * desktop, stacked on phones), in the same two columns. Only what
  * exists shows. Text and Call show on phones, on other people's profiles.
  */
 export function ProfileContactCard({ name, contact, anniversaries, self }: {
@@ -194,13 +195,17 @@ export function ProfileContactCard({ name, contact, anniversaries, self }: {
           )}
         </div>
       )}
-      {contact?.phone && (
-        <div className="pc-item">
-          {label("phone", "Phone")}
-          <span className="pc-phone"><span className="pc-value">{formatPhone(contact.phone)}</span>{!self && <span className="pc-actions"><PhoneActions digits={contact.phone} name={name} /></span>}</span>
+      {(contact?.phone || contact?.email) && (
+        <div className="pc-row pc-reach">
+          {contact?.phone && (
+            <div className="pc-item">
+              {label("phone", "Phone")}
+              <span className="pc-phone"><span className="pc-value">{formatPhone(contact.phone)}</span>{!self && <span className="pc-actions"><PhoneActions digits={contact.phone} name={name} /></span>}</span>
+            </div>
+          )}
+          {contact?.email && <div className="pc-item">{label("at", "Email")}<a href={`mailto:${contact.email}`} className="pc-value pc-email">{contact.email}</a></div>}
         </div>
       )}
-      {contact?.email && <div className="pc-item">{label("at", "Email")}<a href={`mailto:${contact.email}`} className="pc-value pc-email">{contact.email}</a></div>}
     </section>
   );
 }

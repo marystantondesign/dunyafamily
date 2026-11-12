@@ -3199,3 +3199,6 @@ a.pr-fh-link:hover .pr-fh-name { color: var(--plum); }
 }
 .ep-date select { padding: 0 6px 0 10px; }
 @media (max-width: 760px) { .ep-ann .ep-two { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } .ep-date { grid-template-columns: minmax(0, 1.6fr) minmax(58px, 1fr); } }
+/* Profile card: two even columns on desktop, so Phone sits under Mailing address and Email under Anniversaries. */
+.pc-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .pc-reach { grid-template-columns: 1fr; } }
