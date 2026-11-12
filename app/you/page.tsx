@@ -83,6 +83,12 @@ export default async function YouPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/stories">
+                <span><strong>In Her Words</strong><span>Bring stories over from Notion, edit, and publish</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/order">
                 <span><strong>Family order</strong><span>The order of Everyone, the sign-in screen, and tagging</span></span>
                 <Icon name="chevronRight" className="chev" />

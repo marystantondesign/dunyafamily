@@ -447,3 +447,31 @@ update albums a set created_by_person = pe.id
 -- scans) count toward 30 a day per profile; the admin has no limit.
 alter table photos add column if not exists uploaded_by_person int;
 alter table photos add column if not exists from_scan boolean;
+
+-- In Her Words (round 20): Dunya's stories. The question Mary asked, her answer (paragraphs, with lines like
+-- "[photo 123] caption" for a site photo or "[image stories/....jpg] caption" for one brought over from Notion), a
+-- catchy title, one theme, and the people (never Dunya), occasions, and decades it mentions. Only published stories
+-- show. notion_id ties an imported story to its Notion page so importing again only adds new pages.
+create table if not exists stories (
+  id serial primary key,
+  notion_id text unique,
+  question text not null default '',
+  title text not null default '',
+  body text not null default '',
+  hero_photo_id int references photos(id),
+  hero_caption text,
+  theme text,
+  people int[] not null default '{}',
+  occasions int[] not null default '{}',
+  decades int[] not null default '{}',
+  status text not null default 'draft',
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+-- "I'd want a copy" of the printed book, one per profile.
+create table if not exists story_book_requests (
+  person_id int primary key references people(id),
+  created_at timestamptz not null default now()
+);

@@ -7,13 +7,14 @@ import { EveryoneList } from "@/components/EveryoneList";
 import { BookSketch, RecipeBoxSketch } from "@/components/Sketches";
 import { Icon } from "@/components/Icon";
 import { recipeCount } from "@/lib/recipes";
+import { storyCount } from "@/lib/stories";
 import { whenLabel } from "@/lib/when";
 
 export const dynamic = "force-dynamic";
 
 
 export default async function Home() {
-  const [hero, collections, people, bdays, past, recipes] = await Promise.all([heroSlides(), featuredCollections(), everyoneInOrder(), birthdaysToday(), onThisDay(), recipeCount()]);
+  const [hero, collections, people, bdays, past, recipes, stories] = await Promise.all([heroSlides(), featuredCollections(), everyoneInOrder(), birthdaysToday(), onThisDay(), recipeCount(), storyCount()]);
 
   // Birthday takeover: on someone's birthday the hero is theirs, fading through photos of them across the years.
   const celebrating = bdays.filter((b) => !b.inMemory);
@@ -70,7 +71,7 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Recipes and In Her Words. In Her Words is a card only for now: its stories pages aren't designed yet. */}
+      {/* Recipes and In Her Words. */}
       <section className="home-keep" aria-label="Recipes and stories">
         <div className="hk-card">
           <Link href="/recipes" className="hk-art" tabIndex={-1} aria-hidden="true"><RecipeBoxSketch height={132} /></Link>
@@ -86,11 +87,11 @@ export default async function Home() {
             </div>
           </div>
         </div>
-        <div className="hk-card soon">
-          <div className="hk-art"><BookSketch height={132} /></div>
+        <div className="hk-card">
+          <Link href="/stories" className="hk-art" tabIndex={-1} aria-hidden="true"><BookSketch height={132} /></Link>
           <div className="hk-text">
-            <h2>In Her Words</h2>
-            <p>Coming soon</p>
+            <h2><Link href="/stories" className="hk-link">In Her Words</Link></h2>
+            <p>{stories ? `${stories} ${stories === 1 ? "story" : "stories"}` : "Her stories are on their way"}</p>
           </div>
         </div>
       </section>
