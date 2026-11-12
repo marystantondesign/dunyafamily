@@ -12,14 +12,14 @@ type Person = { id: number; name: string; avatarUrl: string | null; inMemory: bo
  * tagged with the people in the story). Multi-select inserts photos into her answer; single-select swaps one photo
  * or sets the main photo. Full screen on phones, a centered window on desktop.
  */
-export function StoryPhotoPicker({ multi, people, onClose, onAdd, archiveOnly = false, already = [] }: {
+export function StoryPhotoPicker({ multi, people, onClose, onAdd, startTab = "site", already = [] }: {
   multi: boolean; people: Person[]; onClose: () => void; onAdd: (photos: PickedPhoto[]) => void;
-  /** Submit a story: family photos only. Uploads from the device go through the form, privately. */
-  archiveOnly?: boolean;
+  /** Which tab opens first: the family photos, or uploading new ones. */
+  startTab?: "site" | "upload";
   /** Photos already chosen, which show as picked. */
   already?: PickedPhoto[];
 }) {
-  const [tab, setTab] = useState<"site" | "upload">("site");
+  const [tab, setTab] = useState<"site" | "upload">(startTab);
   const [search, setSearch] = useState("");
   const [person, setPerson] = useState<number | null>(null);
   const [photos, setPhotos] = useState<PickedPhoto[] | null>(null);
@@ -117,16 +117,14 @@ export function StoryPhotoPicker({ multi, people, onClose, onAdd, archiveOnly = 
       <div ref={sheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={multi ? "Add photos to the story" : "Choose a photo"} className="pk-sheet">
         <div className="pk-head">
           <button type="button" className="pk-cancel" onClick={onClose} disabled={!!upload}>Cancel</button>
-          <h2>{archiveOnly ? "Family photos" : "Add photos"}</h2>
+          <h2>Add photos</h2>
           <span aria-hidden="true" />
         </div>
         <div className="pk-body">
-          {!archiveOnly && (
-            <div role="tablist" aria-label="Photo source" className="pk-tabs">
-              <button type="button" role="tab" aria-selected={tab === "site"} className={tab === "site" ? "on" : ""} onClick={() => setTab("site")}>Family photos</button>
-              <button type="button" role="tab" aria-selected={tab === "upload"} className={tab === "upload" ? "on" : ""} onClick={() => setTab("upload")}>Upload new</button>
-            </div>
-          )}
+          <div role="tablist" aria-label="Photo source" className="pk-tabs">
+            <button type="button" role="tab" aria-selected={tab === "site"} className={tab === "site" ? "on" : ""} onClick={() => setTab("site")}>Family photos</button>
+            <button type="button" role="tab" aria-selected={tab === "upload"} className={tab === "upload" ? "on" : ""} onClick={() => setTab("upload")}>Upload new</button>
+          </div>
           {tab === "site" ? (
             <>
               <label className="pk-search">
