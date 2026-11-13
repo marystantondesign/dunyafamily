@@ -103,6 +103,12 @@ export default async function YouPage() {
               </Link>
             </li>
             <li>
+              <Link href="/admin/occasions">
+                <span><strong>Occasions</strong><span>Remove occasions you don&apos;t want in the filters</span></span>
+                <Icon name="chevronRight" className="chev" />
+              </Link>
+            </li>
+            <li>
               <Link href="/admin/order">
                 <span><strong>Family order</strong><span>The order of Everyone, the sign-in screen, and tagging</span></span>
                 <Icon name="chevronRight" className="chev" />

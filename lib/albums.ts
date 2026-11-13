@@ -79,6 +79,7 @@ export async function autoAlbums(): Promise<{ occasions: AutoAlbum[]; decades: A
          select ${COLS}, o.id as gid, o.name as gname, count(*) over (partition by o.id)::int as n,
                 row_number() over (partition by o.id order by p.created_at desc, p.id desc) as rn
            from occasions o join photo_occasions x on x.occasion_id = o.id join photos p on p.id = x.photo_id and p.deleted_at is null
+          where o.deleted_at is null
        ) t where rn <= 4 order by n desc, gname, rn`),
     q<PhotoRow & { gid: number; n: number }>(
       `select * from (

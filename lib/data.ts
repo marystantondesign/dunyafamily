@@ -29,7 +29,7 @@ export async function listPeople(): Promise<Person[]> {
 
 export function listOccasions() {
   return q<Occasion>(
-    `select o.id, o.name, o.kind from occasions o
+    `select o.id, o.name, o.kind from occasions o where o.deleted_at is null
       order by case o.kind when 'holiday' then 0 when 'occasion' then 1 else 2 end, o.name`,
   );
 }

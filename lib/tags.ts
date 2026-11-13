@@ -38,7 +38,7 @@ export async function resolveOccasions(items: (number | string)[], s: Session) {
       const name = item.trim().slice(0, 60);
       const [row] = await q<{ id: number }>(
         `insert into occasions (name, created_by_device) values ($1, $2)
-         on conflict (lower(name)) do update set name = occasions.name returning id`,
+         on conflict (lower(name)) do update set name = occasions.name, deleted_at = null, deleted_by_name = null returning id`,
         [name, s.did],
       );
       ids.push(row.id);

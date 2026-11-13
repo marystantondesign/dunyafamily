@@ -554,3 +554,13 @@ alter table stories add column if not exists credit_name text;
 
 -- Anniversaries (round 30): "Show on the family calendar", on unless turned off. Null counts as on.
 alter table person_dates add column if not exists on_calendar boolean default true;
+
+-- Occasions can be removed (round 31): soft delete. Photos keep the link, it just stops showing anywhere; typing the
+-- name again as a tag brings it back. Mary asked for Tooty and Mary-Jean to go: done once, remembered in settings
+-- so a later restore isn't undone by the next deploy.
+alter table occasions add column if not exists deleted_at timestamptz;
+alter table occasions add column if not exists deleted_by_name text;
+update occasions set deleted_at = now(), deleted_by_name = 'Mary'
+  where lower(name) in ('tooty', 'mary-jean', 'mary jean') and deleted_at is null
+    and not exists (select 1 from settings where key = 'occasions_cleanup_1');
+insert into settings (key, value) values ('occasions_cleanup_1', '1') on conflict (key) do nothing;

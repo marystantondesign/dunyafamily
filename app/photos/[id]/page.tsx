@@ -32,7 +32,7 @@ export default async function PhotoPage({ params, searchParams }: { params: Prom
     q<{ id: number; name: string; added_by_device: string | null }>(
       `select pe.id, pe.name, t.added_by_device from photo_people t join people pe on pe.id = t.person_id and pe.deleted_at is null where t.photo_id = $1 order by pe.name`, [id]),
     q<{ id: number; name: string; added_by_device: string | null }>(
-      `select o.id, o.name, t.added_by_device from photo_occasions t join occasions o on o.id = t.occasion_id where t.photo_id = $1 order by o.name`, [id]),
+      `select o.id, o.name, t.added_by_device from photo_occasions t join occasions o on o.id = t.occasion_id and o.deleted_at is null where t.photo_id = $1 order by o.name`, [id]),
     listPeople(),
     listOccasions(),
     q<{ id: number; avatar_photo_id: number | null; created_by_device: string | null }>(`select id, avatar_photo_id, created_by_device from people where deleted_at is null`),

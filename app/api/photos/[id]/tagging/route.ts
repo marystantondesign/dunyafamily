@@ -65,7 +65,7 @@ export async function POST(req: Request, { params }: Ctx) {
     q<{ id: number; name: string; by: string | null }>(
       `select pe.id, pe.name, t.added_by_device as by from photo_people t join people pe on pe.id = t.person_id and pe.deleted_at is null where t.photo_id = $1`, [id]),
     q<{ id: number; name: string; by: string | null }>(
-      `select o.id, o.name, t.added_by_device as by from photo_occasions t join occasions o on o.id = t.occasion_id where t.photo_id = $1`, [id]),
+      `select o.id, o.name, t.added_by_device as by from photo_occasions t join occasions o on o.id = t.occasion_id and o.deleted_at is null where t.photo_id = $1`, [id]),
   ]);
   const shape = (t: { id: number; name: string; by: string | null }) => ({ id: t.id, name: t.name, removable: owner || canRemove(s, t.by) });
   return NextResponse.json({ people: people.map(shape), occasions: occasions.map(shape), year, decade, taggingNeeded: !!flag?.tagging_needed });

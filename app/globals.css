@@ -3202,3 +3202,15 @@ a.pr-fh-link:hover .pr-fh-name { color: var(--plum); }
 /* Profile card: two even columns on desktop, so Phone sits under Mailing address and Email under Anniversaries. */
 .pc-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 760px) { .pc-reach { grid-template-columns: 1fr; } }
+
+/* Round 31: Occasions (admin). */
+.oc-page { max-width: 640px; display: flex; flex-direction: column; gap: 14px; }
+.oc-page .back-link { align-self: flex-start; }
+.oc-page h1 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 40px; }
+.oc-sub { margin: 0 0 6px; font-size: 15px; line-height: 1.5; color: #5E4E46; }
+.oc-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); overflow: hidden; }
+.oc-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 8px 16px; }
+.oc-list li + li { border-top: 1px solid var(--line); }
+.oc-list strong { display: block; font-weight: 600; font-size: 16px; }
+.oc-list li > span > span { font-size: 14px; color: var(--muted); }
+.oc-remove { color: var(--danger); min-height: 44px; }

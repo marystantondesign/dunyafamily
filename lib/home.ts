@@ -62,7 +62,7 @@ export async function featuredCollections(limit = 4): Promise<Collection[]> {
   const decades = await q<{ d: number; n: number }>(
     `select coalesce(decade, (year / 10) * 10) as d, count(*)::int as n from photos
       where deleted_at is null and coalesce(decade, year) is not null group by 1 order by n desc limit 2`);
-  const occasions = await q<{ id: number; name: string }>(`select id, name from occasions`);
+  const occasions = await q<{ id: number; name: string }>(`select id, name from occasions where deleted_at is null`);
   if (decades[0]) await pick(`d${decades[0].d}`, `The ${decades[0].d}s`, `/browse?decade=${decades[0].d}`, { decades: [decades[0].d] });
   for (const s of SEASONS) {
     if (auto.length >= 2) break;

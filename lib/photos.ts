@@ -158,7 +158,7 @@ export async function findForTagging(f: Filters, order: Order, limit = 1000, see
                         from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
                        where x.photo_id = p.id), '[]') as people,
             coalesce((select json_agg(json_build_object('id', x.occasion_id, 'by', x.added_by_device))
-                        from photo_occasions x where x.photo_id = p.id), '[]') as occasions
+                        from photo_occasions x join occasions o on o.id = x.occasion_id and o.deleted_at is null where x.photo_id = p.id), '[]') as occasions
        from photos p where ${where}
       order by ${orderBy(order, $, seed, f)} limit ${$(limit)}`,
     params,
@@ -194,7 +194,7 @@ export async function findSlides(f: Filters, order: Order, seed?: string, limit 
   const { where, params, $ } = await build(f);
   return q<Slide>(
     `select p.id, p.title, p.year, p.decade, p.month,
-            (select o.name from photo_occasions x join occasions o on o.id = x.occasion_id where x.photo_id = p.id order by o.name limit 1) as occasion,
+            (select o.name from photo_occasions x join occasions o on o.id = x.occasion_id and o.deleted_at is null where x.photo_id = p.id order by o.name limit 1) as occasion,
             coalesce((select array_agg(pe.name order by pe.name) from photo_people x join people pe on pe.id = x.person_id and pe.deleted_at is null
                        where x.photo_id = p.id), '{}') as people
        from photos p where ${where}

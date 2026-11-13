@@ -68,6 +68,7 @@ export async function featuredAlbums(limit = 3): Promise<Album[]> {
   const occasions = await q<{ id: number; name: string; kind: string; n: number }>(
     `select o.id, o.name, o.kind, count(p.id)::int as n from occasions o
        join photo_occasions x on x.occasion_id = o.id join photos p on p.id = x.photo_id and p.deleted_at is null
+      where o.deleted_at is null
       group by o.id order by n desc`,
   );
   const idOf = (name: string) => occasions.find((o) => o.name.toLowerCase() === name.toLowerCase())?.id;

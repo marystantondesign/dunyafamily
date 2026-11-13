@@ -129,7 +129,7 @@ export async function pickerPhotos(search: string, personId: number | null, view
         and ($2 = '' or ph.title ilike $3 or ph.caption ilike $3 or ph.decade::text || 's' ilike $3 or ph.year::text = $2
              or exists (select 1 from photo_people pp join people pe on pe.id = pp.person_id
                          where pp.photo_id = ph.id and pe.deleted_at is null and (pe.name ilike $3 or array_to_string(pe.aliases, ' ') ilike $3))
-             or exists (select 1 from photo_occasions po join occasions o on o.id = po.occasion_id where po.photo_id = ph.id and o.name ilike $3))
+             or exists (select 1 from photo_occasions po join occasions o on o.id = po.occasion_id and o.deleted_at is null where po.photo_id = ph.id and o.name ilike $3))
       order by coalesce(ph.taken_on, make_date(coalesce(ph.year, 1900), coalesce(ph.month, 1), 1)) desc nulls last, ph.id desc
       limit 120`,
     [personId, term, like, viewer]);
