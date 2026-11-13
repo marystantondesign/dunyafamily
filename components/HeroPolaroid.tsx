@@ -5,26 +5,18 @@ import { useEffect, useState } from "react";
 type Slide = { id: number; url: string; caption: string | null };
 
 /**
- * The Polaroid on Home: crossfades through the chosen photos every few seconds, each with its handwritten caption.
- * With reduced motion it stays on the first photo.
+ * The Polaroid on Home: moves through the chosen photos every few seconds, on phones and desktop alike, each with
+ * its handwritten caption. Normally it crossfades; with Reduce Motion on (common on iPhones) it still moves on, just
+ * without the fade (see globals.css).
  */
 export function HeroPolaroid({ slides, seconds }: { slides: Slide[]; seconds: number }) {
   const [at, setAt] = useState(0);
-  const [still, setStill] = useState(true);
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => { setStill(mq.matches); if (mq.matches) setAt(0); };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    if (still || slides.length < 2) return;
-    const t = window.setInterval(() => setAt((i) => (i + 1) % slides.length), seconds * 1000);
+    if (slides.length < 2) return;
+    const t = window.setInterval(() => setAt((i) => (i + 1) % slides.length), Math.max(2, seconds) * 1000);
     return () => window.clearInterval(t);
-  }, [still, slides.length, seconds]);
+  }, [slides.length, seconds]);
 
   const current = slides[at];
   return (
@@ -33,9 +25,9 @@ export function HeroPolaroid({ slides, seconds }: { slides: Slide[]; seconds: nu
         <div className="polaroid-photo">
           {slides.length ? slides.map((s, i) => (
             <Link key={s.id} href={`/photos/${s.id}`} className={`polaroid-slide${i === at ? " on" : ""}`} tabIndex={i === at ? 0 : -1} aria-hidden={i !== at} aria-label="Open this photo">
-              {/* The first photo loads right away; the rest wait their turn. */}
+              {/* The photo showing and the next one load right away, so each turn has its photo ready. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.url} alt={s.caption ?? ""} loading={i === 0 ? "eager" : "lazy"} />
+              <img src={s.url} alt={s.caption ?? ""} loading={i === at || i === (at + 1) % slides.length ? "eager" : "lazy"} />
             </Link>
           )) : <div className="polaroid-blank" />}
         </div>
